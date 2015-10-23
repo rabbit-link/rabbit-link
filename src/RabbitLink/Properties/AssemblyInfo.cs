@@ -10,7 +10,7 @@ using System.Runtime.InteropServices;
 // associated with an assembly.
 
 [assembly: AssemblyTitle("RabbitLink")]
-[assembly: AssemblyDescription("")]
+[assembly: AssemblyDescription("Advanced .Net API for RabbitMQ")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("")]
 [assembly: AssemblyProduct("RabbitLink")]

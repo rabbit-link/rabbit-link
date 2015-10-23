@@ -1,0 +1,19 @@
+﻿<?xml version="1.0"?>
+<package >
+  <metadata>
+    <id>$id$</id>
+    <title>Rabbit Link</title>
+    <version>$version$</version>
+    <authors>Artur Kraev</authors>
+    <owners>Artur Kraev</owners>    
+    <projectUrl>https://github.com/rabbit-link/rabbit-link</projectUrl>    
+    <licenseUrl>https://raw.githubusercontent.com/rabbit-link/rabbit-link/master/LICENSE</licenseUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <description>$description$</description>    
+    <copyright>Copyright © Artur Kraev 2015</copyright>
+    <tags>RabbitMQ Messaging AMQP</tags>
+    <releaseNotes></releaseNotes>
+    <dependencies>      
+    </dependencies>
+  </metadata>
+</package>
