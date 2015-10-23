@@ -1,3 +1,3 @@
 # RabbitLink
 
-RabbitLink is RabbitMQ .Net client wrapper with addition functionality
+Advanced .Net API for RabbitMQ
