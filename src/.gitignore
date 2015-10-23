@@ -1,0 +1,43 @@
+# Ignore Visual Studio files
+.localhistory
+.vs/
+*.obj
+*.pdb
+*.user
+*.aps
+*.pch
+*.vspscc
+*_i.c
+*_p.c
+*.ncb
+*.suo
+*.tlb
+*.tlh
+*.bak
+*.cache
+*.ilk
+*.log
+*.lib
+*.sbr
+*.scc
+*.dbmdl
+*.sln.ide
+[Bb]in
+[Dd]ebug*/
+[Oo]bj/
+[Rr]elease*/
+_ReSharper*/
+[Tt]est[Rr]esult*
+TestsResult.html
+[Bb]uild[Ll]og.*
+*.[Pp]ublish.xml
+[Tt]humbs.db
+
+# Idea
+.idea
+
+# NuGet
+/packages/
+
+# Build
+/artifacts/

@@ -1,0 +1,167 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="14.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{B2148830-A507-44A5-BC99-EFDA7F36E21D}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>RabbitLink</RootNamespace>
+    <AssemblyName>RabbitLink</AssemblyName>
+    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="Newtonsoft.Json, Version=7.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
+      <HintPath>..\packages\Newtonsoft.Json.7.0.1\lib\net45\Newtonsoft.Json.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Nito.AsyncEx, Version=3.0.1.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\Nito.AsyncEx.3.0.1\lib\net45\Nito.AsyncEx.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Nito.AsyncEx.Concurrent, Version=3.0.1.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\Nito.AsyncEx.3.0.1\lib\net45\Nito.AsyncEx.Concurrent.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Nito.AsyncEx.Enlightenment, Version=3.0.1.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\Nito.AsyncEx.3.0.1\lib\net45\Nito.AsyncEx.Enlightenment.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="RabbitMQ.Client, Version=3.5.4.0, Culture=neutral, PublicKeyToken=89e7d7c5feba84ce, processorArchitecture=MSIL">
+      <HintPath>..\packages\RabbitMQ.Client.3.5.4\lib\net40\RabbitMQ.Client.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Net.Http" />
+    <Reference Include="System.Xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Configuration\ILinkConfigurationBuilder.cs" />
+    <Compile Include="Configuration\ILinkConfigurationTypeNameMapBuilder.cs" />
+    <Compile Include="Configuration\ILinkConsumerConfigurationBuilder.cs" />
+    <Compile Include="Configuration\ILinkProducerConfigurationBuilder.cs" />
+    <Compile Include="Configuration\ILinkPullConsumerConfigurationBuilder.cs" />
+    <Compile Include="Configuration\ILinkPushConsumerConfigurationBuilder.cs" />
+    <Compile Include="Configuration\LinkConfiguration.cs" />
+    <Compile Include="Configuration\LinkConfigurationBuilder.cs" />
+    <Compile Include="Configuration\LinkConfigurationTypeNameMapBuilder.cs" />
+    <Compile Include="Configuration\LinkConsumerConfiguration.cs" />
+    <Compile Include="Configuration\LinkProducerConfiguration.cs" />
+    <Compile Include="Configuration\LinkProducerConfigurationBuilder.cs" />
+    <Compile Include="Configuration\LinkConsumerConfigurationBuilder.cs" />
+    <Compile Include="Consumer\DefaultConsumerErrorStrategy.cs" />
+    <Compile Include="Consumer\ILinkConsumer.cs" />
+    <Compile Include="Consumer\ILinkConsumerHandlerConfiguration.cs" />
+    <Compile Include="Consumer\ILinkConsumerInternal.cs" />
+    <Compile Include="Consumer\ILinkPullConsumer.cs" />
+    <Compile Include="Consumer\ILinkPullConsumerInternal.cs" />
+    <Compile Include="Consumer\ILinkConsumerErrorStrategy.cs" />
+    <Compile Include="Consumer\ILinkPushConsumer.cs" />
+    <Compile Include="Consumer\ILinkPushConsumerInternal.cs" />
+    <Compile Include="Consumer\LinkConsumerHandler.cs" />
+    <Compile Include="Consumer\LinkConsumerHandlerConfiguration.cs" />
+    <Compile Include="Consumer\LinkConsumerHandlerConfigurationExtensions.cs" />
+    <Compile Include="Consumer\LinkConsumerHandlerFinder.cs" />
+    <Compile Include="Consumer\LinkPullConsumer.cs" />
+    <Compile Include="Consumer\LinkPullConsumerExtensions.cs" />
+    <Compile Include="Consumer\LinkConsumerMessageQueue.cs" />
+    <Compile Include="Consumer\LinkPushConsumer.cs" />
+    <Compile Include="Consumer\LinkConsumerAckStrategy.cs" />
+    <Compile Include="Exceptions\LinkConsumerNackMessageException.cs" />
+    <Compile Include="Exceptions\LinkDeserializationException.cs" />
+    <Compile Include="Exceptions\LinkMessageNackedException.cs" />
+    <Compile Include="Exceptions\LinkMessageReturnedException.cs" />
+    <Compile Include="Exceptions\LinkSerializationException.cs" />
+    <Compile Include="Exceptions\LinkTypeNameMappingException.cs" />
+    <Compile Include="Helpers\DateTimeHelper.cs" />
+    <Compile Include="Helpers\DictionaryHelpers.cs" />
+    <Compile Include="Messaging\ILinkAckableRecievedMessage.cs" />
+    <Compile Include="Messaging\ILinkMessage.cs" />
+    <Compile Include="Messaging\ILinkRecievedMessage.cs" />
+    <Compile Include="Messaging\LinkAckableRecievedMessage.cs" />
+    <Compile Include="Messaging\LinkMessage.cs" />
+    <Compile Include="Messaging\LinkRecievedMessage.cs" />
+    <Compile Include="Messaging\LinkPublishProperties.cs" />
+    <Compile Include="Messaging\LinkRecievedMessageProperties.cs" />
+    <Compile Include="Producer\ILinkProducer.cs" />
+    <Compile Include="Producer\LinkProducerExtensions.cs" />
+    <Compile Include="Producer\ILinkProducerIntenal.cs" />
+    <Compile Include="Serialization\ILinkMessageSerializer.cs" />
+    <Compile Include="Serialization\JsonMessageSerializer.cs" />
+    <Compile Include="Messaging\LinkGenericMessageFactory.cs" />
+    <Compile Include="Serialization\LinkMessageSerializerExtensions.cs" />
+    <Compile Include="Serialization\TypeNameMapping.cs" />
+    <Compile Include="Topology\Internal\ILinkTopology.cs" />
+    <Compile Include="Producer\LinkProducer.cs" />
+    <Compile Include="LinkDisconnectedEventArgs.cs" />
+    <Compile Include="LinkDisconnectedInitiator.cs" />
+    <Compile Include="Exceptions\LinkNotConnectedException.cs" />
+    <Compile Include="Exceptions\LinkException.cs" />
+    <Compile Include="Internals\EventLoop.cs" />
+    <Compile Include="Connection\ILinkChannel.cs" />
+    <Compile Include="Connection\ILinkConnection.cs" />
+    <Compile Include="Connection\LinkChannel.cs" />
+    <Compile Include="Topology\Internal\LinkTopology.cs" />
+    <Compile Include="LinkConnectionProperties.cs" />
+    <Compile Include="LinkExtensions.cs" />
+    <Compile Include="Logging\ActionLinkLoggerFactory.cs" />
+    <Compile Include="Logging\BufferedLinkLogger.cs" />
+    <Compile Include="Logging\ILinkLogger.cs" />
+    <Compile Include="Logging\LinkConsoleLogger.cs" />
+    <Compile Include="Logging\LinkLoggerExtenions.cs" />
+    <Compile Include="Logging\LinkLoggerLevel.cs" />
+    <Compile Include="Logging\LinkTextWriterLogger.cs" />
+    <Compile Include="Logging\ILinkLoggerFactory.cs" />
+    <Compile Include="Logging\LinkNullLogger.cs" />
+    <Compile Include="Connection\LinkConnection.cs" />
+    <Compile Include="Messaging\LinkMessageDeliveryMode.cs" />
+    <Compile Include="Messaging\LinkMessageProperties.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Link.cs" />
+    <Compile Include="Topology\ILinkExchage.cs" />
+    <Compile Include="Topology\ILinkQueue.cs" />
+    <Compile Include="Topology\Internal\LinkExchage.cs" />
+    <Compile Include="Topology\Internal\LinkQueue.cs" />
+    <Compile Include="Topology\ILinkTopologyHandler.cs" />
+    <Compile Include="Topology\Internal\LinkTopologyConfig.cs" />
+    <Compile Include="Topology\ILinkTopologyConfig.cs" />
+    <Compile Include="Topology\Internal\LinkActionsTopologyHandler.cs" />
+    <Compile Include="Topology\LinkExchangeType.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup />
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>
