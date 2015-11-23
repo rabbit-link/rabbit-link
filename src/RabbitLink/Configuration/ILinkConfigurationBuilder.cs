@@ -66,6 +66,12 @@ namespace RabbitLink.Configuration
         ILinkConfigurationBuilder ProducerPublishTimeout(TimeSpan value);
 
         /// <summary>
+        ///     Is need to force set <see cref="LinkMessageProperties.UserId" /> from connection string to all published messages
+        ///     By default false
+        /// </summary>
+        ILinkConfigurationBuilder ProducerSetUserId(bool value);
+
+        /// <summary>
         ///     Default consumer message prefetch count
         ///     By default 1
         /// </summary>
@@ -103,5 +109,12 @@ namespace RabbitLink.Configuration
         ///     Default <see cref="ILinkMessageSerializer" /> for serialization / deserialization
         /// </summary>
         ILinkConfigurationBuilder MessageSerializer(ILinkMessageSerializer value);
+
+        /// <summary>
+        ///     Sets <see cref="LinkMessageProperties.AppId" /> to all published messages, white spaces will be trimmed, must be
+        ///     not null or white space
+        ///     By default Guit.NewValue().ToString("D")
+        /// </summary>
+        ILinkConfigurationBuilder AppId(string value);
     }
 }

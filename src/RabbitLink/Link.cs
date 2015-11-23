@@ -39,7 +39,7 @@ namespace RabbitLink
         /// <summary>
         ///     Is Link connected
         /// </summary>
-        public bool IsConnected => !_disposed && _connection.IsConnected;
+        public bool IsConnected => !_disposed && _connection.IsConnected;                              
 
         #endregion
 

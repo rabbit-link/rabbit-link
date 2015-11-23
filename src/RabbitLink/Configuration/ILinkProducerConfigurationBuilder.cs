@@ -41,6 +41,12 @@ namespace RabbitLink.Configuration
         /// </summary>
         ILinkProducerConfigurationBuilder MessageSerializer(ILinkMessageSerializer value);
 
+        /// <summary>
+        ///     Is need to force set <see cref="LinkMessageProperties.UserId" /> from connection string to all published messages
+        ///     By default <see cref="ILinkConfigurationBuilder.ProducerSetUserId"/> value
+        /// </summary>
+        ILinkProducerConfigurationBuilder SetUserId(bool value);
+
 
         ILinkProducerConfigurationBuilder TypeNameMap(IDictionary<Type, string> values);
         ILinkProducerConfigurationBuilder TypeNameMap(Action<ILinkConfigurationTypeNameMapBuilder> map);

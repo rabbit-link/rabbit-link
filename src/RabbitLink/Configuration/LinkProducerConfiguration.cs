@@ -67,5 +67,7 @@ namespace RabbitLink.Configuration
                 _messageSerializer = value;
             }
         }
+
+        public bool SetUserId { get; set; }
     }
 }

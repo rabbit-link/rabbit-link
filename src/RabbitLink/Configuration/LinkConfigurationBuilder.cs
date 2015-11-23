@@ -68,6 +68,12 @@ namespace RabbitLink.Configuration
             return this;
         }
 
+        public ILinkConfigurationBuilder ProducerSetUserId(bool value)
+        {
+            Configuration.SetUserId = value;
+            return this;
+        }
+
         public ILinkConfigurationBuilder ConsumerPrefetchCount(ushort value)
         {
             Configuration.ConsumerPrefetchCount = value;
@@ -101,6 +107,12 @@ namespace RabbitLink.Configuration
         public ILinkConfigurationBuilder MessageSerializer(ILinkMessageSerializer value)
         {
             Configuration.MessageSerializer = value;
+            return this;
+        }
+
+        public ILinkConfigurationBuilder AppId(string value)
+        {
+            Configuration.AppId = value;
             return this;
         }
     }

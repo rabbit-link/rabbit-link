@@ -30,13 +30,17 @@ namespace RabbitLink.Connection
             if (_logger == null)
                 throw new ArgumentException("Cannot create logger", nameof(configuration.LoggerFactory));
 
+            ConnectionString = _configuration.ConnectionString;
+
             _connectionFactory = new ConnectionFactory
             {
-                Uri = _configuration.ConnectionString,
+                Uri = ConnectionString,
                 TopologyRecoveryEnabled = false,
                 AutomaticRecoveryEnabled = false,
                 RequestedConnectionTimeout = (int) _configuration.ConnectionTimeout.TotalMilliseconds
             };
+
+            UserId = _connectionFactory.UserName;
 
             _logger.Debug("Created");
             if (_configuration.AutoStart)
@@ -104,6 +108,9 @@ namespace RabbitLink.Connection
                                    _connection?.IsOpen == true;
 
         public bool Initialized { get; private set; }
+
+        public string ConnectionString { get; }
+        public string UserId { get; }
 
         #endregion
 

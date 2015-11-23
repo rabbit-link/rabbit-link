@@ -48,6 +48,7 @@ namespace RabbitLink.Consumer
                 throw new ArgumentNullException(nameof(topologyConfigErrorHandler));
 
             _configuration = configuration;
+            _linkConfiguration = linkConfiguration;
             _logger = linkConfiguration.LoggerFactory.CreateLogger($"{GetType().Name}({Id:D})");
 
             if (_logger == null)
@@ -239,9 +240,9 @@ namespace RabbitLink.Consumer
             var rawMessage = await PrivateGetRawMessageAsync(cancellation)
                 .ConfigureAwait(false);
 
-            if (typeof (T) == typeof (byte[]))
+            if (typeof(T) == typeof(byte[]))
             {
-                return new LinkAckableRecievedMessage<T>((ILinkRecievedMessage<T>) rawMessage.Message, rawMessage.Ack,
+                return new LinkAckableRecievedMessage<T>((ILinkRecievedMessage<T>)rawMessage.Message, rawMessage.Ack,
                     rawMessage.Nack);
             }
 
@@ -270,6 +271,7 @@ namespace RabbitLink.Consumer
         #region .fields
 
         private readonly LinkConsumerConfiguration _configuration;
+        private readonly LinkConfiguration _linkConfiguration;
         private readonly ILinkLogger _logger;
         private readonly Func<ILinkTopologyConfig, Task<ILinkQueue>> _topologyConfigHandler;
         private readonly Func<Exception, Task> _topologyConfigErrorHandler;
@@ -366,10 +368,21 @@ namespace RabbitLink.Consumer
                     };
                 }
 
+                var msgProperties = new LinkMessageProperties(e.BasicProperties);
+                var msgRecievedProperties = new LinkRecievedMessageProperties(
+                    e.Redelivered,
+                    e.Exchange,
+                    e.RoutingKey,
+                    _queue.Name,
+                    _linkConfiguration.AppId != null && 
+                    msgProperties.AppId != null &&
+                    _linkConfiguration.AppId == msgProperties.AppId
+                );
+
                 var msg = new LinkRecievedMessage<byte[]>(
                     e.Body,
-                    new LinkMessageProperties(e.BasicProperties),
-                    new LinkRecievedMessageProperties(e.Redelivered, e.Exchange, e.RoutingKey, _queue.Name)
+                    msgProperties,
+                    msgRecievedProperties
                     );
 
                 _messageQueue.Enqueue(msg, ackAction, nackAction);

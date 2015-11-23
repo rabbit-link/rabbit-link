@@ -23,6 +23,7 @@ namespace RabbitLink.Configuration
         private LinkMessageProperties _producerMessageProperties = new LinkMessageProperties();
         private TimeSpan? _producerPublishTimeout;
         private TimeSpan? _topologyRecoveryInterval;
+        private string _appId = Guid.NewGuid().ToString("D");
 
         public bool AutoStart { get; set; } = true;
 
@@ -180,5 +181,19 @@ namespace RabbitLink.Configuration
                 _messageSerializer = value;
             }
         }
+
+        public string AppId
+        {
+            get { return _appId; }
+            set
+            {
+                if(string.IsNullOrWhiteSpace(value))
+                    throw new ArgumentNullException(nameof(value));
+
+                _appId = value;
+            }
+        }
+
+        public bool SetUserId { get; set; }
     }
 }

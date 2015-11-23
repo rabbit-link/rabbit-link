@@ -11,6 +11,8 @@ namespace RabbitLink.Connection
     {
         bool IsConnected { get; }
         bool Initialized { get; }
+        string ConnectionString { get; }
+        string UserId { get; }
         event EventHandler Disposed;
         event EventHandler Connected;
         event EventHandler<LinkDisconnectedEventArgs> Disconnected;
