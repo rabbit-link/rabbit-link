@@ -70,7 +70,13 @@ namespace RabbitLink.Configuration
 
         public ILinkConfigurationBuilder ProducerSetUserId(bool value)
         {
-            Configuration.SetUserId = value;
+            Configuration.ProducerSetUserId = value;
+            return this;
+        }
+
+        public ILinkConfigurationBuilder ProducerMessageIdStrategy(ILinkMessageIdStrategy value)
+        {
+            Configuration.ProducerMessageIdStrategy = value;
             return this;
         }
 

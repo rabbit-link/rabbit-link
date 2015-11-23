@@ -10,6 +10,9 @@ using RabbitLink.Serialization;
 
 namespace RabbitLink.Configuration
 {
+    /// <summary>
+    ///     <see cref="Link" /> configuration builder
+    /// </summary>
     public interface ILinkConfigurationBuilder
     {
         /// <summary>
@@ -70,6 +73,12 @@ namespace RabbitLink.Configuration
         ///     By default false
         /// </summary>
         ILinkConfigurationBuilder ProducerSetUserId(bool value);
+
+        /// <summary>
+        ///     Default MessageId strategy for producers
+        ///     By default <see cref="LinkGuidMessageIdStrategy" /> used
+        /// </summary>
+        ILinkConfigurationBuilder ProducerMessageIdStrategy(ILinkMessageIdStrategy value);
 
         /// <summary>
         ///     Default consumer message prefetch count

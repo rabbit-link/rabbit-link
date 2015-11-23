@@ -17,7 +17,8 @@ namespace RabbitLink.Configuration
             Configuration.MessageProperties = linkConfiguration.ProducerMessageProperties;
             Configuration.PublishTimeout = linkConfiguration.ProducerPublishTimeout;
             Configuration.MessageSerializer = linkConfiguration.MessageSerializer;
-            Configuration.SetUserId = linkConfiguration.SetUserId;
+            Configuration.SetUserId = linkConfiguration.ProducerSetUserId;
+            Configuration.MessageIdStrategy = linkConfiguration.ProducerMessageIdStrategy;
         }
 
         internal LinkProducerConfiguration Configuration { get; } = new LinkProducerConfiguration();
@@ -55,6 +56,12 @@ namespace RabbitLink.Configuration
         public ILinkProducerConfigurationBuilder SetUserId(bool value)
         {
             Configuration.SetUserId = value;
+            return this;
+        }
+
+        public ILinkProducerConfigurationBuilder MessageIdStrategy(ILinkMessageIdStrategy value)
+        {
+            Configuration.MessageIdStrategy = value;
             return this;
         }
 

@@ -14,6 +14,7 @@ namespace RabbitLink.Configuration
         private ILinkMessageSerializer _messageSerializer;
         private LinkPublishProperties _publishProperties = new LinkPublishProperties();
         private TimeSpan? _publishTimeout;
+        private ILinkMessageIdStrategy _messageIdStrategy;
 
         public LinkMessageProperties MessageProperties
         {
@@ -69,5 +70,17 @@ namespace RabbitLink.Configuration
         }
 
         public bool SetUserId { get; set; }
+
+        public ILinkMessageIdStrategy MessageIdStrategy
+        {
+            get { return _messageIdStrategy; }
+            set
+            {
+                if(value == null)
+                    throw new ArgumentNullException(nameof(value));
+
+                _messageIdStrategy = value;
+            }
+        }
     }
 }

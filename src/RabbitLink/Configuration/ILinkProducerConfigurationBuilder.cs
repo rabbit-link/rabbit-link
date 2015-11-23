@@ -3,12 +3,16 @@
 using System;
 using System.Collections.Generic;
 using RabbitLink.Messaging;
+using RabbitLink.Producer;
 using RabbitLink.Serialization;
 
 #endregion
 
 namespace RabbitLink.Configuration
 {
+    /// <summary>
+    /// Configuration builder for <see cref="ILinkProducer"/>
+    /// </summary>
     public interface ILinkProducerConfigurationBuilder
     {
         /// <summary>
@@ -47,6 +51,11 @@ namespace RabbitLink.Configuration
         /// </summary>
         ILinkProducerConfigurationBuilder SetUserId(bool value);
 
+        /// <summary>
+        ///     MessageId strategy
+        ///     By default <see cref="ILinkConfigurationBuilder.ProducerMessageIdStrategy" /> used
+        /// </summary>
+        ILinkProducerConfigurationBuilder MessageIdStrategy(ILinkMessageIdStrategy value);
 
         ILinkProducerConfigurationBuilder TypeNameMap(IDictionary<Type, string> values);
         ILinkProducerConfigurationBuilder TypeNameMap(Action<ILinkConfigurationTypeNameMapBuilder> map);

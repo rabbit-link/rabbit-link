@@ -171,7 +171,7 @@ namespace RabbitLink.Producer
                 cancellation = _configuration.PublishTimeout != null
                     ? new CancellationTokenSource(_configuration.PublishTimeout.Value).Token
                     : CancellationToken.None;
-            }
+            }            
 
             var publishProperties = _configuration.PublishProperties.Clone();
             publishProperties.Extend(properties ?? new LinkPublishProperties());
@@ -184,7 +184,10 @@ namespace RabbitLink.Producer
                 messageProperties.UserId = _channel.Connection.UserId;
             }
 
-            var holder = new MessageHolder(message.Body, messageProperties, publishProperties, cancellation.Value);
+            message = new LinkMessage<byte[]>(message.Body, messageProperties);
+            _configuration.MessageIdStrategy.SetMessageId(message);            
+
+            var holder = new MessageHolder(message.Body, message.Properties, publishProperties, cancellation.Value);
 
             try
             {

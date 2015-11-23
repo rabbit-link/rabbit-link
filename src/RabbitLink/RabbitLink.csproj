@@ -103,8 +103,10 @@
     <Compile Include="Helpers\DictionaryHelpers.cs" />
     <Compile Include="Messaging\ILinkAckableRecievedMessage.cs" />
     <Compile Include="Messaging\ILinkMessage.cs" />
+    <Compile Include="Messaging\ILinkMessageIdGenerator.cs" />
     <Compile Include="Messaging\ILinkRecievedMessage.cs" />
     <Compile Include="Messaging\LinkAckableRecievedMessage.cs" />
+    <Compile Include="Messaging\LinkGuidMessageIdGenerator.cs" />
     <Compile Include="Messaging\LinkMessage.cs" />
     <Compile Include="Messaging\LinkRecievedMessage.cs" />
     <Compile Include="Messaging\LinkPublishProperties.cs" />

@@ -1,6 +1,7 @@
 ﻿#region Usings
 
 using System;
+using System.Threading;
 using RabbitLink.Consumer;
 using RabbitLink.Logging;
 using RabbitLink.Messaging;
@@ -24,6 +25,7 @@ namespace RabbitLink.Configuration
         private TimeSpan? _producerPublishTimeout;
         private TimeSpan? _topologyRecoveryInterval;
         private string _appId = Guid.NewGuid().ToString("D");
+        private ILinkMessageIdStrategy _producerMessageIdStrategy = new LinkGuidMessageIdStrategy();
 
         public bool AutoStart { get; set; } = true;
 
@@ -187,13 +189,25 @@ namespace RabbitLink.Configuration
             get { return _appId; }
             set
             {
-                if(string.IsNullOrWhiteSpace(value))
+                if (string.IsNullOrWhiteSpace(value))
                     throw new ArgumentNullException(nameof(value));
 
                 _appId = value;
             }
         }
 
-        public bool SetUserId { get; set; }
+        public bool ProducerSetUserId { get; set; }
+
+        public ILinkMessageIdStrategy ProducerMessageIdStrategy
+        {
+            get { return _producerMessageIdStrategy; }
+            set
+            {
+                if (value == null)
+                    throw new ArgumentNullException(nameof(value));
+
+                _producerMessageIdStrategy = value;
+            }
+        }
     }
 }
