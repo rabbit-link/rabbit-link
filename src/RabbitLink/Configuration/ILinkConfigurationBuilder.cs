@@ -22,7 +22,7 @@ namespace RabbitLink.Configuration
         ///     Connection timeout
         ///     By default 10 seconds
         /// </summary>
-        ILinkConfigurationBuilder ConnectionTimeot(TimeSpan value);
+        ILinkConfigurationBuilder ConnectionTimeout(TimeSpan value);
 
         /// <summary>
         ///     Timeout before next connection attempt

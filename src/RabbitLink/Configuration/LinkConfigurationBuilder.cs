@@ -20,7 +20,7 @@ namespace RabbitLink.Configuration
             return this;
         }
 
-        public ILinkConfigurationBuilder ConnectionTimeot(TimeSpan value)
+        public ILinkConfigurationBuilder ConnectionTimeout(TimeSpan value)
         {
             Configuration.ConnectionTimeout = value;
             return this;
