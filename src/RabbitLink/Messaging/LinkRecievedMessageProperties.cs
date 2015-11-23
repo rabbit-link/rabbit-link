@@ -16,10 +16,10 @@ namespace RabbitLink.Messaging
             QueueName = queueName;
         }
 
-        private bool Redelivered { get; }
-        private string ExchangeName { get; }
-        private string RoutingKey { get; }
-        private string QueueName { get; }
+        public bool Redelivered { get; }
+        public string ExchangeName { get; }
+        public string RoutingKey { get; }
+        public string QueueName { get; }
 
         object ICloneable.Clone()
         {
