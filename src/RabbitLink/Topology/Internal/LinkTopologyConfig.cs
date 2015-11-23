@@ -186,7 +186,7 @@ namespace RabbitLink.Topology.Internal
         public async Task<ILinkQueue> QueueDeclareExclusive(
             bool autoDelete = true,
             TimeSpan? messageTtl = null,
-            int? expires = null,
+            TimeSpan? expires = null,
             byte? maxPriority = null,
             int? maxLength = null,
             int? maxLengthBytes = null,
@@ -204,7 +204,7 @@ namespace RabbitLink.Topology.Internal
             string prefix,
             bool autoDelete = true,
             TimeSpan? messageTtl = null,
-            int? expires = null,
+            TimeSpan? expires = null,
             byte? maxPriority = null,
             int? maxLength = null,
             int? maxLengthBytes = null,
@@ -235,7 +235,7 @@ namespace RabbitLink.Topology.Internal
             bool exclusive = false,
             bool autoDelete = false,
             TimeSpan? messageTtl = null,
-            int? expires = null,
+            TimeSpan? expires = null,
             byte? maxPriority = null,
             int? maxLength = null,
             int? maxLengthBytes = null,
@@ -256,7 +256,10 @@ namespace RabbitLink.Topology.Internal
 
             if (expires != null)
             {
-                arguments.Add("x-expires", expires.Value);
+                if(expires.Value.TotalMilliseconds<= 0 || expires.Value.TotalMilliseconds > int.MaxValue)
+                    throw new ArgumentOutOfRangeException(nameof(expires), "Total milliseconds must be greater than 0 and less than Int32.MaxValue");
+
+                arguments.Add("x-expires", (int)expires.Value.TotalMilliseconds);
             }
 
             if (maxPriority != null)
