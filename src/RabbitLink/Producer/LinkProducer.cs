@@ -44,7 +44,8 @@ namespace RabbitLink.Producer
             if (topologyConfigErrorHandler == null)
                 throw new ArgumentNullException(nameof(topologyConfigErrorHandler));
 
-            _configuration = configuration;            
+            _configuration = configuration;
+            _linkConfiguration = linkConfiguration;
             _logger = linkConfiguration.LoggerFactory.CreateLogger($"{GetType().Name}({Id:D})");
 
             if (_logger == null)
@@ -178,6 +179,7 @@ namespace RabbitLink.Producer
 
             var messageProperties = _configuration.MessageProperties.Clone();
             messageProperties.CopyFrom(message.Properties);
+            messageProperties.AppId = _linkConfiguration.AppId;         
 
             if (_configuration.SetUserId)
             {
@@ -255,7 +257,8 @@ namespace RabbitLink.Producer
         private readonly object _syncQueue = new object();
         private readonly object _sync = new object();
 
-        private readonly LinkProducerConfiguration _configuration;        
+        private readonly LinkProducerConfiguration _configuration;
+        private readonly LinkConfiguration _linkConfiguration;
 
         private readonly ILinkChannel _channel;
         private readonly ILinkTopology _topology;
