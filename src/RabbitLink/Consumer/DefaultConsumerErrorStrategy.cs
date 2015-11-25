@@ -25,7 +25,7 @@ namespace RabbitLink.Consumer
         {
             var nackedException = exception as LinkConsumerNackMessageException;
 
-            return nackedException?.Requeue != true
+            return nackedException?.Requeue == true
                 ? LinkConsumerAckStrategy.NackWithRequeue
                 : LinkConsumerAckStrategy.Nack;
         }
