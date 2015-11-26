@@ -390,9 +390,7 @@ namespace RabbitLink.Consumer
             catch (Exception ex)
             {
                 _logger.Warning("Cannot add recieved message to queue: {0}", ex);
-            }
-
-            _logger.Info("Ready");
+            }            
         }
 
         #endregion
