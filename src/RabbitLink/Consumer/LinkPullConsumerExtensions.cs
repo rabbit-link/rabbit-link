@@ -12,16 +12,24 @@ namespace RabbitLink.Consumer
 {
     public static class LinkPullConsumerExtensions
     {
-        public static Task<ILinkAckableRecievedMessage<object>> GetMessageAsync(this ILinkPullConsumer @this,
+        public static async Task<ILinkAckableRecievedMessage<object>> GetMessageAsync(this ILinkPullConsumer @this,
             TimeSpan timeout)
         {
-            return @this.GetMessageAsync<object>(new CancellationTokenSource(timeout).Token);
+            using (var cts = new CancellationTokenSource(timeout))
+            {
+                return await @this.GetMessageAsync<object>(cts.Token)
+                    .ConfigureAwait(false);
+            }
         }
 
-        public static Task<ILinkAckableRecievedMessage<T>> GetMessageAsync<T>(this ILinkPullConsumer @this,
+        public static async Task<ILinkAckableRecievedMessage<T>> GetMessageAsync<T>(this ILinkPullConsumer @this,
             TimeSpan timeout) where T : class
         {
-            return @this.GetMessageAsync<T>(new CancellationTokenSource(timeout).Token);
+            using (var cts = new CancellationTokenSource(timeout))
+            {
+                return await @this.GetMessageAsync<T>(cts.Token)
+                    .ConfigureAwait(false);                
+            }            
         }
 
         public static ILinkAckableRecievedMessage<object> GetMessage(this ILinkPullConsumer @this, TimeSpan timeout)

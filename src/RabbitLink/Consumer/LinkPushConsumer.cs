@@ -19,7 +19,8 @@ namespace RabbitLink.Consumer
     {
         private readonly LinkConsumerConfiguration _configuration;
         private readonly ILinkPullConsumerInternal _consumer;
-        private readonly CancellationTokenSource _disposedCancellation = new CancellationTokenSource();
+        private readonly CancellationTokenSource _disposedCancellationSource;
+        private readonly CancellationToken _disposedCancellation;
         private readonly LinkConsumerHandlerFinder _handlerFinder;
         private readonly ILinkLogger _logger;
         private readonly Task _loopTask;
@@ -47,6 +48,8 @@ namespace RabbitLink.Consumer
             if (serializationErrorHandler == null)
                 throw new ArgumentNullException(nameof(serializationErrorHandler));
 
+            _disposedCancellationSource = new CancellationTokenSource();
+            _disposedCancellation = _disposedCancellationSource.Token;
 
             _configuration = configuration;
             _handlerFinder = handlerFinder;
@@ -60,7 +63,7 @@ namespace RabbitLink.Consumer
             if (_logger == null)
                 throw new ArgumentException("Cannot create logger", nameof(linkConfiguration.LoggerFactory));
 
-            _loopTask = Task.Run(async () => await Loop().ConfigureAwait(false));
+            _loopTask = Task.Run(async () => await LoopAsync().ConfigureAwait(false));
 
             _logger.Debug("Created");
         }
@@ -79,8 +82,10 @@ namespace RabbitLink.Consumer
 
                 _logger.Debug("Disposing");
 
-                _disposedCancellation.Cancel();
+                _disposedCancellationSource.Cancel();
+                _disposedCancellationSource.Dispose();                
                 _loopTask.WaitWithoutException();
+                _loopTask.Dispose();
 
                 _consumer.Disposed -= ConsumerOnDisposed;
                 _consumer.Dispose();
@@ -163,7 +168,7 @@ namespace RabbitLink.Consumer
             });
         }
 
-        private async Task Loop()
+        private async Task LoopAsync()
         {
             var tasks = new ConcurrentDictionary<Task, object>();
 
@@ -174,7 +179,7 @@ namespace RabbitLink.Consumer
 
                 try
                 {
-                    msg = await _consumer.GetMessageAsync<byte[]>(_disposedCancellation.Token)
+                    msg = await _consumer.GetMessageAsync<byte[]>(_disposedCancellation)
                         .ConfigureAwait(false);
                 }
                 catch (ObjectDisposedException)

@@ -57,10 +57,13 @@ namespace RabbitLink.Consumer
             _topologyConfigHandler = topologyConfigHandler;
             _topologyConfigErrorHandler = topologyConfigErrorHandler;
 
+            _disposedCancellationSource = new CancellationTokenSource();
+            _disposedCancellation = _disposedCancellationSource.Token;
+
             _channel = channel;
             _channel.Shutdown += ChannelOnShutdown;
             _topology = new LinkTopology(linkConfiguration, _channel,
-                new LinkActionsTopologyHandler(TopologyConfigure, TopologyReady, TopologyConfigurationError), false);
+                new LinkActionsTopologyHandler(TopologyConfigure, TopologyReadyAsync, TopologyConfigurationErrorAsync), false);
             _topology.Disposed += TopologyOnDisposed;
 
             _logger.Debug($"Created(channelId: {_channel.Id})");
@@ -88,13 +91,15 @@ namespace RabbitLink.Consumer
 
                 _logger.Debug("Disposing");
 
-                _disposedCancellation.Cancel();
+                _disposedCancellationSource.Cancel();
+                _disposedCancellationSource.Dispose();
 
                 _topology.Disposed -= TopologyOnDisposed;
                 _topology.Dispose();
                 _channel.Dispose();
 
-                _initializeCancellation?.Cancel();
+                _initializeCancellationSource?.Cancel();
+                _initializeCancellationSource?.Dispose();
                 _initializeTask.WaitWithoutException();
 
                 _logger.Debug("Disposed");
@@ -106,7 +111,7 @@ namespace RabbitLink.Consumer
 
         #endregion
 
-        internal async Task<LinkConsumerMessageQueue.QueueMessage> PrivateGetRawMessageAsync(
+        private async Task<LinkConsumerMessageQueue.QueueMessage> PrivateGetRawMessageAsync(
             CancellationToken? cancellation = null)
         {
             if (_disposedCancellation.IsCancellationRequested)
@@ -119,7 +124,7 @@ namespace RabbitLink.Consumer
 
             try
             {
-                return await _messageQueue.GetMessage(cancellation.Value)
+                return await _messageQueue.GetMessageAsync(cancellation.Value)
                     .ConfigureAwait(false);
             }
             catch (ObjectDisposedException)
@@ -283,10 +288,11 @@ namespace RabbitLink.Consumer
         private Task _initializeTask;
         private readonly object _sync = new object();
 
-        private readonly CancellationTokenSource _disposedCancellation =
-            new CancellationTokenSource();
+        private readonly CancellationTokenSource _disposedCancellationSource;
+        private readonly CancellationToken _disposedCancellation;
 
-        private CancellationTokenSource _initializeCancellation;
+        private CancellationTokenSource _initializeCancellationSource;
+        private CancellationToken _initializeCancellation;
         private EventingBasicConsumer _consumer;
 
         #endregion
@@ -400,30 +406,34 @@ namespace RabbitLink.Consumer
         private async Task TopologyConfigure(ILinkTopologyConfig config)
         {
             _queue = await Task.Run(async () => await _topologyConfigHandler(config)
-                .ConfigureAwait(false), _disposedCancellation.Token)
+                .ConfigureAwait(false), _disposedCancellation)
                 .ConfigureAwait(false);
         }
 
-        private Task TopologyReady()
+        private Task TopologyReadyAsync()
         {
             return Task.Run(() =>
             {
                 lock (_sync)
                 {
                     _logger.Debug("Topology ready");
-                    _initializeCancellation?.Cancel();
+                    _initializeCancellationSource?.Cancel();
+                    _initializeCancellationSource?.Dispose();
                     _initializeTask?.WaitWithoutException();
+                    _initializeTask?.Dispose();
 
-                    _initializeCancellation = new CancellationTokenSource();
+                    _initializeCancellationSource = new CancellationTokenSource();
+                    _initializeCancellation = _initializeCancellationSource.Token;
+
                     _initializeTask = Task.Run(
-                        async () => await InitializeConsumer(_initializeCancellation.Token).ConfigureAwait(false),
-                        _initializeCancellation.Token
+                        async () => await InitializeConsumer(_initializeCancellation).ConfigureAwait(false),
+                        _initializeCancellation
                         );
                 }
             });
         }
 
-        private Task TopologyConfigurationError(Exception ex)
+        private Task TopologyConfigurationErrorAsync(Exception ex)
         {
             return Task.Run(async () =>
             {

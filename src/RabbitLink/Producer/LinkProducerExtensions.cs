@@ -14,29 +14,45 @@ namespace RabbitLink.Producer
     {
         #region Async
 
-        public static Task PublishAsync(this ILinkProducer @this, ILinkMessage<byte[]> message,
+        public static async Task PublishAsync(this ILinkProducer @this, ILinkMessage<byte[]> message,
             LinkPublishProperties properties,
             TimeSpan timeout)
         {
-            return @this.PublishAsync(message, properties, new CancellationTokenSource(timeout).Token);
+            using (var cts = new CancellationTokenSource(timeout))
+            {
+                await @this.PublishAsync(message, properties, cts.Token)
+                    .ConfigureAwait(false);
+            }
         }
 
-        public static Task PublishAsync<T>(this ILinkProducer @this, ILinkMessage<T> message,
+        public static async Task PublishAsync<T>(this ILinkProducer @this, ILinkMessage<T> message,
             LinkPublishProperties properties,
             TimeSpan timeout) where T : class
         {
-            return @this.PublishAsync(message, properties, new CancellationTokenSource(timeout).Token);
+            using (var cts = new CancellationTokenSource(timeout))
+            {
+                await @this.PublishAsync(message, properties, cts.Token)
+                    .ConfigureAwait(false);
+            }            
         }
 
-        public static Task PublishAsync(this ILinkProducer @this, ILinkMessage<byte[]> message, TimeSpan timeout)
+        public static async Task PublishAsync(this ILinkProducer @this, ILinkMessage<byte[]> message, TimeSpan timeout)
         {
-            return @this.PublishAsync(message, cancellation: new CancellationTokenSource(timeout).Token);
+            using (var cts = new CancellationTokenSource(timeout))
+            {
+                await @this.PublishAsync(message, cancellation: cts.Token)
+                    .ConfigureAwait(false);
+            }         
         }
 
-        public static Task PublishAsync<T>(this ILinkProducer @this, ILinkMessage<T> message, TimeSpan timeout)
+        public static async Task PublishAsync<T>(this ILinkProducer @this, ILinkMessage<T> message, TimeSpan timeout)
             where T : class
         {
-            return @this.PublishAsync(message, cancellation: new CancellationTokenSource(timeout).Token);
+            using (var cts = new CancellationTokenSource(timeout))
+            {
+                await @this.PublishAsync(message, cancellation: cts.Token)
+                    .ConfigureAwait(false);
+            }            
         }
 
         #endregion

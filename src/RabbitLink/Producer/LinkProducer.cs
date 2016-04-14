@@ -54,13 +54,16 @@ namespace RabbitLink.Producer
             _topologyConfigHandler = topologyConfigHandler;
             _topologyConfigErrorHandler = topologyConfigErrorHandler;
 
+            _disposedCancellationSource = new CancellationTokenSource();
+            _disposedCancellation = _disposedCancellationSource.Token;
+
             _channel = channel;
             _channel.Ack += ChannelOnAck;
             _channel.Nack += ChannelOnNack;
             _channel.Return += ChannelOnReturn;
 
             _topology = new LinkTopology(linkConfiguration, _channel,
-                new LinkActionsTopologyHandler(TopologyConfigure, TopologyReady, TopologyConfigurationError), false);
+                new LinkActionsTopologyHandler(TopologyConfigureAsync, TopologyReadyAsync, TopologyConfigurationErrorAsync), false);
             _topology.Disposed += TopologyOnDisposed;
 
             _logger.Debug($"Created(channelId: {_channel.Id})");
@@ -86,25 +89,30 @@ namespace RabbitLink.Producer
 
                 _logger.Debug("Disposing");
 
-                _disposedCancellation.Cancel();
+                _disposedCancellationSource.Cancel();
+                _disposedCancellationSource.Dispose();
 
                 _topology.Disposed -= TopologyOnDisposed;
                 _topology.Dispose();
                 _channel.Dispose();
 
-                _loopCancellation?.Cancel();
+                _loopCancellationSource?.Cancel();
+                _loopCancellationSource?.Dispose();
+
                 _publishQueue.CompleteAdding();
+                // ReSharper disable once MethodSupportsCancellation
                 _loopTask?.WaitAndUnwrapException();
+                _loopTask?.Dispose();                
 
                 // cancelling requests
                 Parallel.ForEach(_ackQueue,
-                    msg => { msg.Completion.TrySetException(new ObjectDisposedException(GetType().Name)); });
+                    msg => { msg.SetException(new ObjectDisposedException(GetType().Name)); });
 
                 Parallel.ForEach(_retryQueue,
-                    msg => { msg.Completion.TrySetException(new ObjectDisposedException(GetType().Name)); });
+                    msg => { msg.SetException(new ObjectDisposedException(GetType().Name)); });
 
                 Parallel.ForEach(_publishQueue.GetConsumingEnumerable(),
-                    msg => { msg.Completion.TrySetException(new ObjectDisposedException(GetType().Name)); });
+                    msg => { msg.SetException(new ObjectDisposedException(GetType().Name)); });
 
                 _ackQueue.Clear();
                 _retryQueue.Clear();
@@ -201,7 +209,7 @@ namespace RabbitLink.Producer
                 throw new ObjectDisposedException(GetType().Name);
             }
 
-            await holder.Completion.Task
+            await holder.Task
                 .ConfigureAwait(false);
         }
 
@@ -211,6 +219,9 @@ namespace RabbitLink.Producer
 
         private class MessageHolder
         {
+            private readonly IDisposable _cancellationRegistration;
+            private readonly TaskCompletionSource _completion = new TaskCompletionSource();
+
             public MessageHolder(byte[] body, LinkMessageProperties properties, LinkPublishProperties publishProperties,
                 CancellationToken cancellation)
             {
@@ -219,20 +230,38 @@ namespace RabbitLink.Producer
                 Properties = properties;
                 PublishProperties = publishProperties;
 
-                Cancellation.Register(() =>
+                _cancellationRegistration = Cancellation.Register(() =>
                 {
                     if (!Processing)
                     {
-                        Completion.TrySetCanceled();
+                        SetCanceled();
                     }
                 });
+            }
+
+            public void SetResult()
+            {
+                _completion.TrySetResult();
+                _cancellationRegistration.Dispose();
+            }
+
+            public void SetCanceled()
+            {
+                _completion.TrySetCanceled();
+                _cancellationRegistration.Dispose();
+            }
+
+            public void SetException(Exception exception)
+            {
+                _completion.TrySetException(exception);
+                _cancellationRegistration.Dispose();
             }
 
             public byte[] Body { get; }
             public LinkMessageProperties Properties { get; }
             public LinkPublishProperties PublishProperties { get; }
             public ulong Sequence { get; set; }
-            public TaskCompletionSource Completion { get; } = new TaskCompletionSource();
+            public Task Task => _completion.Task;
             public CancellationToken Cancellation { get; }
             public bool Processing { get; set; }
         }
@@ -241,7 +270,8 @@ namespace RabbitLink.Producer
 
         #region Fields
 
-        private readonly CancellationTokenSource _disposedCancellation = new CancellationTokenSource();
+        private readonly CancellationTokenSource _disposedCancellationSource;
+        private readonly CancellationToken _disposedCancellation;
 
         private readonly AsyncProducerConsumerQueue<MessageHolder> _publishQueue =
             new AsyncProducerConsumerQueue<MessageHolder>();
@@ -252,7 +282,8 @@ namespace RabbitLink.Producer
         private readonly Func<Exception, Task> _topologyConfigErrorHandler;
 
         private Task _loopTask;
-        private CancellationTokenSource _loopCancellation;
+        private CancellationTokenSource _loopCancellationSource;
+        private CancellationToken _loopCancellation;
 
         private readonly object _syncQueue = new object();
         private readonly object _sync = new object();
@@ -297,7 +328,7 @@ namespace RabbitLink.Producer
                     var msg = _ackQueue.Dequeue();
                     if (msg.Cancellation.IsCancellationRequested)
                     {
-                        msg.Completion.TrySetCanceled();
+                        msg.SetCanceled();
                         continue;
                     }
 
@@ -311,7 +342,7 @@ namespace RabbitLink.Producer
 
                     if (msg.Cancellation.IsCancellationRequested)
                     {
-                        msg.Completion.TrySetCanceled();
+                        msg.SetCanceled();
                         continue;
                     }
 
@@ -320,7 +351,7 @@ namespace RabbitLink.Producer
             }
         }
 
-        private async Task SendMessage(MessageHolder msg, CancellationToken cancellation)
+        private async Task SendMessageAsync(MessageHolder msg, CancellationToken cancellation)
         {
             await _channel.InvokeActionAsync(model =>
             {
@@ -344,7 +375,7 @@ namespace RabbitLink.Producer
                 .ConfigureAwait(false);
         }
 
-        private async Task<bool> SendRetryQueue(CancellationToken cancellation)
+        private async Task<bool> SendRetryQueueAsync(CancellationToken cancellation)
         {
             while (!cancellation.IsCancellationRequested && _retryQueue.Any())
             {
@@ -357,7 +388,7 @@ namespace RabbitLink.Producer
                 msg.Processing = true;
                 if (msg.Cancellation.IsCancellationRequested)
                 {
-                    msg.Completion.TrySetCanceled();
+                    msg.SetCanceled();
 
                     // removing message
                     _retryQueue.Dequeue();
@@ -366,14 +397,14 @@ namespace RabbitLink.Producer
 
                 try
                 {
-                    await SendMessage(msg, cancellation)
+                    await SendMessageAsync(msg, cancellation)
                         .ConfigureAwait(false);
 
                     // all ok, removing message
                     _retryQueue.Dequeue();
                     if (!ConfirmsMode)
                     {
-                        msg.Completion.TrySetResult();
+                        msg.SetResult();
                     }
 
                     msg.Processing = false;
@@ -403,7 +434,7 @@ namespace RabbitLink.Producer
             return true;
         }
 
-        private async Task<bool> SendPublishQueue(CancellationToken cancellation)
+        private async Task<bool> SendPublishQueueAsync(CancellationToken cancellation)
         {
             while (!cancellation.IsCancellationRequested)
             {
@@ -411,7 +442,7 @@ namespace RabbitLink.Producer
 
                 try
                 {
-                    msg = await _publishQueue.DequeueAsync(_loopCancellation.Token)
+                    msg = await _publishQueue.DequeueAsync(_loopCancellation)
                         .ConfigureAwait(false);
                 }
                 catch
@@ -422,19 +453,19 @@ namespace RabbitLink.Producer
                 msg.Processing = true;
                 if (msg.Cancellation.IsCancellationRequested)
                 {
-                    msg.Completion.TrySetCanceled();
+                    msg.SetCanceled();
                     msg.Processing = false;
                     continue;
                 }
 
                 try
                 {
-                    await SendMessage(msg, cancellation)
+                    await SendMessageAsync(msg, cancellation)
                         .ConfigureAwait(false);
 
                     if (!ConfirmsMode)
                     {
-                        msg.Completion.TrySetResult();
+                        msg.SetResult();
                     }
 
                     msg.Processing = false;
@@ -449,7 +480,7 @@ namespace RabbitLink.Producer
                         {
                             if (msg.Cancellation.IsCancellationRequested)
                             {
-                                msg.Completion.TrySetCanceled();
+                                msg.SetCanceled();
                             }
                             else
                             {
@@ -473,15 +504,15 @@ namespace RabbitLink.Producer
             return true;
         }
 
-        private async Task SendLoop()
+        private async Task SendLoopAsync()
         {
             if (ConfirmsMode)
             {
-                await _channel.InvokeActionAsync(model => model.ConfirmSelect(), _loopCancellation.Token)
+                await _channel.InvokeActionAsync(model => model.ConfirmSelect(), _loopCancellation)
                     .ConfigureAwait(false);
             }
 
-            if (!await SendRetryQueue(_loopCancellation.Token).ConfigureAwait(false))
+            if (!await SendRetryQueueAsync(_loopCancellation).ConfigureAwait(false))
             {
                 if (_loopCancellation.IsCancellationRequested)
                 {
@@ -496,7 +527,7 @@ namespace RabbitLink.Producer
                 RequeueUnacked();
             }
 
-            await SendPublishQueue(_loopCancellation.Token).ConfigureAwait(false);
+            await SendPublishQueueAsync(_loopCancellation).ConfigureAwait(false);
 
             RequeueUnacked();
         }
@@ -512,7 +543,7 @@ namespace RabbitLink.Producer
                 if (_ackQueue.Any())
                 {
                     var msg = _ackQueue.Dequeue();
-                    msg.Completion.TrySetException(new LinkMessageReturnedException(e.ReplyText));
+                    msg.SetException(new LinkMessageReturnedException(e.ReplyText));
                 }
             }
         }
@@ -524,7 +555,7 @@ namespace RabbitLink.Producer
                 while (_ackQueue.Any() && _ackQueue.Peek()?.Sequence <= e.DeliveryTag)
                 {
                     var msg = _ackQueue.Dequeue();
-                    msg.Completion.TrySetException(new LinkMessageNackedException());
+                    msg.SetException(new LinkMessageNackedException());
                 }
             }
         }
@@ -536,7 +567,7 @@ namespace RabbitLink.Producer
                 while (_ackQueue.Any() && _ackQueue.Peek()?.Sequence <= e.DeliveryTag)
                 {
                     var msg = _ackQueue.Dequeue();
-                    msg.Completion.TrySetResult();
+                    msg.SetResult();
                 }
             }
         }
@@ -545,31 +576,37 @@ namespace RabbitLink.Producer
 
         #region Topology handlers       
 
-        private async Task TopologyConfigure(ILinkTopologyConfig config)
+        private async Task TopologyConfigureAsync(ILinkTopologyConfig config)
         {
             _exchage = await Task.Run(async () => await _topologyConfigHandler(config)
-                .ConfigureAwait(false), _disposedCancellation.Token)
+                .ConfigureAwait(false), _disposedCancellation)
                 .ConfigureAwait(false);
         }
 
-        private Task TopologyReady()
+        private Task TopologyReadyAsync()
         {
+            // ReSharper disable once MethodSupportsCancellation
             return Task.Run(() =>
             {
                 lock (_sync)
                 {
                     _logger.Debug("Topology ready");
-                    _loopCancellation?.Cancel();
+                    _loopCancellationSource?.Cancel();
+                    _loopCancellationSource?.Dispose();
+                    // ReSharper disable once MethodSupportsCancellation                    
                     _loopTask?.WaitWithoutException();
+                    _loopTask?.Dispose();
 
-                    _loopCancellation = new CancellationTokenSource();
-                    _loopTask = Task.Run(async () => await SendLoop().ConfigureAwait(false), _loopCancellation.Token);
+                    _loopCancellationSource = new CancellationTokenSource();
+                    _loopCancellation = _disposedCancellationSource.Token;
+                    _loopTask = Task.Run(async () => await SendLoopAsync().ConfigureAwait(false), _loopCancellation);
                 }
             });
         }
 
-        private Task TopologyConfigurationError(Exception ex)
+        private Task TopologyConfigurationErrorAsync(Exception ex)
         {
+            // ReSharper disable once MethodSupportsCancellation
             return Task.Run(async () =>
             {
                 _logger.Warning("Cannot configure topology for producer: {0}", ex.Message);

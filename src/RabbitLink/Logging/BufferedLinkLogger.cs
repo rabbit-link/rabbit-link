@@ -45,7 +45,7 @@ namespace RabbitLink.Logging
 
         public void Write(LinkLoggerLevel level, string message)
         {
-            _eventLoop.Schedule(() => { UnderlyingLogger.Write(level, message); });
+            _eventLoop.ScheduleAsync(() => { UnderlyingLogger.Write(level, message); });
         }
     }
 }

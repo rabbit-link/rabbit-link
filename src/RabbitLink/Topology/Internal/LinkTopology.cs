@@ -37,6 +37,9 @@ namespace RabbitLink.Topology.Internal
             _handler = handler;
             _isOnce = once;
 
+            _disposedCancellationSource = new CancellationTokenSource();
+            _disposedCancellation = _disposedCancellationSource.Token;
+
             Channel = channel;
             Channel.Disposed += ChannelOnDisposed;
             Channel.Ready += ChannelOnReady;
@@ -44,7 +47,7 @@ namespace RabbitLink.Topology.Internal
             _logger.Debug($"Created(channelId: {Channel.Id}, once: {once})");
 
 #pragma warning disable 4014
-            ScheduleConfiguration();
+            ScheduleConfiguration(false);
 #pragma warning restore 4014           
         }
 
@@ -58,7 +61,7 @@ namespace RabbitLink.Topology.Internal
 
         #region Schedule configuration
 
-        public void ScheduleConfiguration(bool delay = false)
+        public void ScheduleConfiguration(bool delay)
         {
             if (!Channel.IsOpen || _disposedCancellation.IsCancellationRequested)
             {
@@ -72,23 +75,23 @@ namespace RabbitLink.Topology.Internal
 
             try
             {
-                _eventLoop.Schedule(async () =>
+                _eventLoop.ScheduleAsync(async () =>
                 {
                     if (delay)
                     {
                         _logger.Info($"Retrying in {_configuration.TopologyRecoveryInterval.TotalSeconds:0.###}s");
 
-                        await Task.Delay(_configuration.TopologyRecoveryInterval, _disposedCancellation.Token)
+                        await Task.Delay(_configuration.TopologyRecoveryInterval, _disposedCancellation)
                             .ConfigureAwait(false);
                     }
 
                     await Task.Run(async () =>
                     {
-                        await Configure()
+                        await ConfigureAsync()
                             .ConfigureAwait(false);
-                    }, _disposedCancellation.Token)
+                    }, _disposedCancellation)
                         .ConfigureAwait(false);
-                }, _disposedCancellation.Token)
+                }, _disposedCancellation)
                     .ConfigureAwait(false);
             }
             catch
@@ -103,10 +106,11 @@ namespace RabbitLink.Topology.Internal
 
         public void Dispose()
         {
-            if (_disposedCancellation.IsCancellationRequested) return;
+            if (_disposedCancellationSource.IsCancellationRequested) return;
 
             _logger.Debug("Disposing");
-            _disposedCancellation.Cancel();
+            _disposedCancellationSource.Cancel();
+            _disposedCancellationSource.Dispose();
             _eventLoop.Dispose();
 
             Channel.Ready -= ChannelOnReady;
@@ -124,7 +128,7 @@ namespace RabbitLink.Topology.Internal
 
         #region Configure
 
-        private async Task Configure()
+        private async Task ConfigureAsync()
         {
             if (_disposedCancellation.IsCancellationRequested)
                 return;
@@ -145,6 +149,7 @@ namespace RabbitLink.Topology.Internal
             {
                 _logger.Warning("Channel disposed, disposing");
 #pragma warning disable 4014
+                // ReSharper disable once MethodSupportsCancellation
                 Task.Run(() => Dispose());
 #pragma warning restore 4014
                 return;
@@ -186,6 +191,7 @@ namespace RabbitLink.Topology.Internal
             {
                 _logger.Info("Once topology configured, disposing");
 #pragma warning disable 4014
+                // ReSharper disable once MethodSupportsCancellation
                 Task.Run(() => Dispose());
 #pragma warning restore 4014
             }
@@ -195,7 +201,8 @@ namespace RabbitLink.Topology.Internal
 
         #region Fields
 
-        private readonly CancellationTokenSource _disposedCancellation = new CancellationTokenSource();
+        private readonly CancellationTokenSource _disposedCancellationSource;
+        private readonly CancellationToken _disposedCancellation;
         private readonly EventLoop _eventLoop = new EventLoop();
         private readonly ILinkTopologyHandler _handler;
         private readonly bool _isOnce;

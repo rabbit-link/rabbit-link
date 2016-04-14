@@ -28,7 +28,8 @@ namespace RabbitLink.Connection
                 if (_disposedCancellation.IsCancellationRequested)
                     return;
 
-                _disposedCancellation.Cancel();
+                _disposedCancellationSource.Cancel();
+                _disposedCancellationSource.Dispose();
             }
 
             _logger.Debug("Disposing");
@@ -57,7 +58,8 @@ namespace RabbitLink.Connection
 
         #region Fields
 
-        private readonly CancellationTokenSource _disposedCancellation = new CancellationTokenSource();
+        private readonly CancellationTokenSource _disposedCancellationSource;
+        private readonly CancellationToken _disposedCancellation;
         private readonly EventLoop _eventLoop = new EventLoop();
 
         private readonly LinkConfiguration _configuration;
@@ -82,6 +84,9 @@ namespace RabbitLink.Connection
 
             if (_logger == null)
                 throw new ArgumentException("Cannot create logger", nameof(configuration.LoggerFactory));
+
+            _disposedCancellationSource = new CancellationTokenSource();
+            _disposedCancellation = _disposedCancellationSource.Token;
 
             Connection = connection;
 
@@ -134,7 +139,7 @@ namespace RabbitLink.Connection
             if (_disposedCancellation.IsCancellationRequested)
                 throw new ObjectDisposedException(GetType().Name);
 
-            return _eventLoop.Schedule(() =>
+            return _eventLoop.ScheduleAsync(() =>
             {
                 if (_model?.IsOpen != true)
                     throw new InvalidOperationException("Channel closed");
@@ -202,17 +207,17 @@ namespace RabbitLink.Connection
 
             try
             {
-                _eventLoop.Schedule(async () =>
+                _eventLoop.ScheduleAsync(async () =>
                 {
                     if (delay)
                     {
                         _logger.Info($"Reopening in {_configuration.ChannelRecoveryInterval.TotalSeconds:0.###}s");
-                        await Task.Delay(_configuration.ChannelRecoveryInterval, _disposedCancellation.Token)
+                        await Task.Delay(_configuration.ChannelRecoveryInterval, _disposedCancellation)
                             .ConfigureAwait(false);
                     }
 
                     Open();
-                }, _disposedCancellation.Token);
+                }, _disposedCancellation);
             }
             catch
             {

@@ -42,6 +42,9 @@ namespace RabbitLink.Connection
 
             UserId = _connectionFactory.UserName;
 
+            _disposedCancellationSource = new CancellationTokenSource();
+            _disposedCancellation = _disposedCancellationSource.Token;
+
             _logger.Debug("Created");
             if (_configuration.AutoStart)
             {
@@ -65,7 +68,8 @@ namespace RabbitLink.Connection
 
                 _logger.Debug("Disposing");
 
-                _disposedCancellation.Cancel();
+                _disposedCancellationSource.Cancel();
+                _disposedCancellationSource.Dispose();
                 _eventLoop.Dispose();
                 Cleanup();
 
@@ -83,7 +87,8 @@ namespace RabbitLink.Connection
         private readonly object _sync = new object();
         private readonly object _connectionSync = new object();
         private readonly EventLoop _eventLoop = new EventLoop();
-        private readonly CancellationTokenSource _disposedCancellation = new CancellationTokenSource();
+        private readonly CancellationTokenSource _disposedCancellationSource;
+        private readonly CancellationToken _disposedCancellation;
         private readonly ConnectionFactory _connectionFactory;
         private readonly LinkConfiguration _configuration;
 
@@ -169,17 +174,17 @@ namespace RabbitLink.Connection
 
             try
             {
-                _eventLoop.Schedule(async () =>
+                _eventLoop.ScheduleAsync(async () =>
                 {
                     if (wait)
                     {
                         _logger.Info($"Reconnecting in {_configuration.ConnectionRecoveryInterval.TotalSeconds:0.###}s");
-                        await Task.Delay(_configuration.ConnectionRecoveryInterval, _disposedCancellation.Token)
+                        await Task.Delay(_configuration.ConnectionRecoveryInterval, _disposedCancellation)
                             .ConfigureAwait(false);
                     }
 
                     Connect();
-                }, _disposedCancellation.Token);
+                }, _disposedCancellation);
             }
             catch
             {
