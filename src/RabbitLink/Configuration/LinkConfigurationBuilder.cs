@@ -1,7 +1,6 @@
 ﻿#region Usings
 
 using System;
-using RabbitLink.Consumer;
 using RabbitLink.Logging;
 using RabbitLink.Messaging;
 using RabbitLink.Serialization;
@@ -101,12 +100,6 @@ namespace RabbitLink.Configuration
         public ILinkConfigurationBuilder ConsumerCancelOnHaFailover(bool value)
         {
             Configuration.ConsumerCancelOnHaFailover = value;
-            return this;
-        }
-
-        public ILinkConfigurationBuilder ConsumerErrorStrategy(ILinkConsumerErrorStrategy value)
-        {
-            Configuration.ConsumerErrorStrategy = value;
             return this;
         }
 

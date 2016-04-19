@@ -15,8 +15,7 @@ namespace RabbitLink.Configuration
     {
         private TimeSpan? _channelRecoveryInterval;
         private TimeSpan _connectionRecoveryInterval = TimeSpan.FromSeconds(10);
-        private TimeSpan _connectionTimeout = TimeSpan.FromSeconds(10);
-        private ILinkConsumerErrorStrategy _consumerErrorStrategy = new DefaultConsumerErrorStrategy();
+        private TimeSpan _connectionTimeout = TimeSpan.FromSeconds(10);        
         private TimeSpan? _consumerGetMessageTimeout;
         private ushort _consumerPrefetchCount = 1;
         private ILinkLoggerFactory _loggerFactory = new ActionLinkLoggerFactory(x => new LinkNullLogger());
@@ -158,19 +157,7 @@ namespace RabbitLink.Configuration
             }
         }
 
-        public bool ConsumerCancelOnHaFailover { get; set; }
-
-        public ILinkConsumerErrorStrategy ConsumerErrorStrategy
-        {
-            get { return _consumerErrorStrategy; }
-            set
-            {
-                if (value == null)
-                    throw new ArgumentNullException(nameof(value));
-
-                _consumerErrorStrategy = value;
-            }
-        }
+        public bool ConsumerCancelOnHaFailover { get; set; }        
 
         public ILinkMessageSerializer MessageSerializer
         {

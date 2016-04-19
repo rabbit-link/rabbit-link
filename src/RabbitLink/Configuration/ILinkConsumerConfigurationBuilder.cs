@@ -48,6 +48,12 @@ namespace RabbitLink.Configuration
         /// </summary>
         ILinkConsumerConfigurationBuilder MessageSerializer(ILinkMessageSerializer value);
 
+        /// <summary>
+        ///     GetMessageAsync operation timeout
+        ///     By default <see cref="ILinkConfigurationBuilder.ConsumerGetMessageTimeout" /> value
+        ///     null = infinite
+        /// </summary>
+        ILinkConsumerConfigurationBuilder GetMessageTimeout(TimeSpan? value);
 
         ILinkConsumerConfigurationBuilder TypeNameMap(IDictionary<Type, string> values);
         ILinkConsumerConfigurationBuilder TypeNameMap(Action<ILinkConfigurationTypeNameMapBuilder> map);

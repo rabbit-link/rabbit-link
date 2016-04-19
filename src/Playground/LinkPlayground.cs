@@ -28,40 +28,14 @@ namespace Playground
                 ))
             {
                 //TestTopology(link);
-                //Task.Run(async () => await TestPullConsumer(link).ConfigureAwait(false));
-                TestPushConsumer(link);
+                Task.Run(async () => await TestPullConsumer(link).ConfigureAwait(false));         
                 TestPublish(link);
 
 
                 ColorConsole.WriteLine("Running...");
                 Console.ReadLine();
             }
-        }
-
-        private static void TestPushConsumer(Link link)
-        {
-            Console.WriteLine("Creating consumer");
-            var consumer = link.CreatePushConsumer(
-                async cfg =>
-                {
-                    var exchange = await cfg.ExchangeDeclarePassive("link.consume");
-                    var queue = await cfg.QueueDeclare("link.consume");
-
-                    await cfg.Bind(queue, exchange);
-
-                    return queue;
-                },
-                cfg => cfg
-                    .Mapped<string>(PushConsumerOnStringMessage)
-                    .All<string>(PushConsumerOnMessage)
-                ,
-                config:
-                    cfg =>
-                        cfg.AutoAck(false)
-                            .PrefetchCount(1000)
-                            .TypeNameMap(map => map.Set<string>("string").Set<MyClass>("woot"))
-                );
-        }
+        }       
 
         private static void PushConsumerOnMessage(ILinkRecievedMessage<object> msg)
         {
@@ -78,7 +52,7 @@ namespace Playground
         private static async Task TestPullConsumer(Link link)
         {
             Console.WriteLine("Creating consumer");
-            using (var consumer = link.CreatePullConsumer(
+            using (var consumer = link.CreateConsumer(
                 async cfg =>
                 {
                     var exchange = await cfg.ExchangeDeclarePassive("link.consume");

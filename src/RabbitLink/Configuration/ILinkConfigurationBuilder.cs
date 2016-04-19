@@ -103,16 +103,7 @@ namespace RabbitLink.Configuration
         ///     See https://www.rabbitmq.com/ha.html for more details
         ///     By default false
         /// </summary>
-        ILinkConfigurationBuilder ConsumerCancelOnHaFailover(bool value);
-
-        /// <summary>
-        ///     Default error strategy for consumers
-        ///     By default <see cref="DefaultConsumerErrorStrategy" />
-        /// </summary>
-        /// <remarks>
-        ///     Error strategy not working if <see cref="ConsumerAutoAck" /> is set
-        /// </remarks>
-        ILinkConfigurationBuilder ConsumerErrorStrategy(ILinkConsumerErrorStrategy value);
+        ILinkConfigurationBuilder ConsumerCancelOnHaFailover(bool value);        
 
         /// <summary>
         ///     Default <see cref="ILinkMessageSerializer" /> for serialization / deserialization

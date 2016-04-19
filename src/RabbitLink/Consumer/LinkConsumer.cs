@@ -20,11 +20,11 @@ using RabbitMQ.Client.Events;
 
 namespace RabbitLink.Consumer
 {
-    internal class LinkPullConsumer : ILinkPullConsumerInternal
+    internal class LinkConsumer : ILinkConsumerInternal
     {
         #region .ctor
 
-        public LinkPullConsumer(
+        public LinkConsumer(
             LinkConsumerConfiguration configuration,
             LinkConfiguration linkConfiguration,
             ILinkChannel channel,

@@ -5,7 +5,6 @@ using System.Threading.Tasks;
 using RabbitLink.Configuration;
 using RabbitLink.Connection;
 using RabbitLink.Consumer;
-using RabbitLink.Messaging;
 using RabbitLink.Producer;
 using RabbitLink.Topology;
 using RabbitLink.Topology.Internal;
@@ -119,10 +118,10 @@ namespace RabbitLink
 
         #region Consumer 
 
-        public ILinkPullConsumer CreatePullConsumer(
+        public ILinkConsumer CreateConsumer(
             Func<ILinkTopologyConfig, Task<ILinkQueue>> topologyConfiguration,
             Func<Exception, Task> configurationError = null,
-            Action<ILinkPullConsumerConfigurationBuilder> config = null
+            Action<ILinkConsumerConfigurationBuilder> config = null
             )
         {
             if (topologyConfiguration == null)
@@ -136,58 +135,9 @@ namespace RabbitLink
             var configBuilder = new LinkConsumerConfigurationBuilder(_configuration);
             config?.Invoke(configBuilder);
 
-            return new LinkPullConsumer(configBuilder.Configuration, _configuration, CreateChannel(),
+            return new LinkConsumer(configBuilder.Configuration, _configuration, CreateChannel(),
                 topologyConfiguration, configurationError);
-        }
-
-        public ILinkPushConsumer CreatePushConsumer(
-            Func<ILinkTopologyConfig, Task<ILinkQueue>> topologyConfiguration,
-            Action<ILinkConsumerHandlerConfiguration> handlerConfiguration,
-            Func<Exception, Task> configurationError = null,
-            Action<Exception, ILinkRecievedMessage<byte[]>> serializationError = null,
-            Action<ILinkPushConsumerConfigurationBuilder> config = null
-            )
-        {
-            if (topologyConfiguration == null)
-                throw new ArgumentNullException(nameof(topologyConfiguration));
-
-            if (configurationError == null)
-            {
-                configurationError = ex => Task.FromResult((object) null);
-            }
-
-            if (serializationError == null)
-            {
-                serializationError = (exception, message) => { };
-            }
-
-            if (handlerConfiguration == null)
-                throw new ArgumentNullException(nameof(handlerConfiguration));
-
-            var configBuilder = new LinkConsumerConfigurationBuilder(_configuration);
-            config?.Invoke(configBuilder);
-
-            var handlerBuilder = new LinkConsumerHandlerConfiguration();
-            handlerConfiguration(handlerBuilder);
-
-            var handlerSearchFunc = handlerBuilder.Build();
-
-            var underlyingConsumer = new LinkPullConsumer(
-                configBuilder.Configuration,
-                _configuration,
-                CreateChannel(),
-                topologyConfiguration,
-                configurationError
-                );
-
-            return new LinkPushConsumer(
-                underlyingConsumer,
-                configBuilder.Configuration,
-                _configuration,
-                handlerSearchFunc,
-                serializationError
-                );
-        }
+        }      
 
         #endregion
 

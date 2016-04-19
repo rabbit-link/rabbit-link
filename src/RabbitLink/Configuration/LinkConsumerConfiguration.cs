@@ -1,7 +1,6 @@
 ﻿#region Usings
 
 using System;
-using RabbitLink.Consumer;
 using RabbitLink.Serialization;
 
 #endregion
@@ -9,9 +8,7 @@ using RabbitLink.Serialization;
 namespace RabbitLink.Configuration
 {
     internal class LinkConsumerConfiguration
-    {
-        private ILinkConsumerErrorStrategy _errorStrategy;
-
+    {        
         private TimeSpan? _getMessageTimeout;
         private ILinkMessageSerializer _messageSerializer;
         private ushort _prefetchCount;
@@ -46,19 +43,7 @@ namespace RabbitLink.Configuration
 
                 _getMessageTimeout = value;
             }
-        }
-
-        public ILinkConsumerErrorStrategy ErrorStrategy
-        {
-            get { return _errorStrategy; }
-            set
-            {
-                if (value == null)
-                    throw new ArgumentNullException(nameof(value));
-
-                _errorStrategy = value;
-            }
-        }
+        }       
 
         public LinkTypeNameMapping TypeNameMapping { get; } = new LinkTypeNameMapping();
 

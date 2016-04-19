@@ -2,7 +2,6 @@
 
 using System;
 using System.Collections.Generic;
-using RabbitLink.Consumer;
 using RabbitLink.Serialization;
 
 #endregion
@@ -10,16 +9,14 @@ using RabbitLink.Serialization;
 namespace RabbitLink.Configuration
 {
     internal class LinkConsumerConfigurationBuilder :
-        ILinkPullConsumerConfigurationBuilder,
-        ILinkPushConsumerConfigurationBuilder
+        ILinkConsumerConfigurationBuilder        
     {
         public LinkConsumerConfigurationBuilder(LinkConfiguration linkConfiguration)
         {
             Configuration.PrefetchCount = linkConfiguration.ConsumerPrefetchCount;
             Configuration.AutoAck = linkConfiguration.ConsumerAutoAck;
             Configuration.CancelOnHaFailover = linkConfiguration.ConsumerCancelOnHaFailover;
-            Configuration.GetMessageTimeout = linkConfiguration.ConsumerGetMessageTimeout;
-            Configuration.ErrorStrategy = linkConfiguration.ConsumerErrorStrategy;
+            Configuration.GetMessageTimeout = linkConfiguration.ConsumerGetMessageTimeout;            
             Configuration.MessageSerializer = linkConfiguration.MessageSerializer;
         }
 
@@ -93,12 +90,6 @@ namespace RabbitLink.Configuration
             Configuration.TypeNameMapping.Set(builder.Mapping);
 
             return this;
-        }
-
-        public ILinkConsumerConfigurationBuilder ErrorStrategy(ILinkConsumerErrorStrategy value)
-        {
-            Configuration.ErrorStrategy = value;
-            return this;
-        }
+        }       
     }
 }
