@@ -2,6 +2,7 @@
 
 using System;
 using System.Threading.Tasks;
+using Nito.AsyncEx.Synchronous;
 using RabbitLink.Exceptions;
 using RabbitLink.Messaging;
 using RabbitLink.Producer;
@@ -15,67 +16,41 @@ namespace RabbitLink.Tests
     public class ProducerTests
     {
         [Fact]
-        public void PublishTest()
-        {
-            var exchangeName = TestsOptions.TestExchangeName;
-            var queueName = TestsOptions.TestQueueName;
-
-            var link = new Link(TestsOptions.ConnectionString);
-
-            var producer = link.CreateProducer(async cfg =>
-            {
-                var ex = await cfg.ExchangeDeclare(exchangeName, LinkExchangeType.Fanout, autoDelete: true);
-                var q = await cfg.QueueDeclare(queueName, false, false, true);
-
-                await cfg.Bind(q, ex);
-
-                return ex;
-            }, config: cfg => cfg.ConfirmsMode(false));
-
-            producer.Publish(new LinkMessage<byte[]>(new byte[] {}));
-
-            link.ConfigureTopology(async cfg =>
-            {
-                var ex = await cfg.ExchangeDeclarePassive(exchangeName);
-                var q = await cfg.QueueDeclarePassive(queueName);
-
-                await cfg.ExchangeDelete(ex);
-                await cfg.QueueDelete(q);
-            });
-
-            link.Dispose();
-        }
-
-        [Fact]
         public void PublishConfirms()
         {
             var exchangeName = TestsOptions.TestExchangeName;
             var queueName = TestsOptions.TestQueueName;
 
-            var link = new Link(TestsOptions.ConnectionString);
-
-            var producer = link.CreateProducer(async cfg =>
+            using (var link = new Link(TestsOptions.ConnectionString))
             {
-                var ex = await cfg.ExchangeDeclare(exchangeName, LinkExchangeType.Fanout, autoDelete: true);
-                var q = await cfg.QueueDeclare(queueName, true, false, true);
+                try
+                {
+                    var producer = link.CreateProducer(async cfg =>
+                    {
+                        var ex = await cfg.ExchangeDeclare(exchangeName, LinkExchangeType.Fanout, autoDelete: true);
+                        var q = await cfg.QueueDeclare(queueName, true, false, true);
 
-                await cfg.Bind(q, ex);
+                        await cfg.Bind(q, ex);
 
-                return ex;
-            }, config: cfg => cfg.ConfirmsMode(true));
+                        return ex;
+                    }, config: cfg => cfg.ConfirmsMode(true));
 
-            producer.Publish(new LinkMessage<byte[]>(new byte[] {}));
+                    producer.PublishAsync(new byte[] {})
+                        .WaitAndUnwrapException();
+                }
+                finally
+                {
+                    link.ConfigureTopologyAsync(async cfg =>
+                    {
+                        var ex = await cfg.ExchangeDeclarePassive(exchangeName);
+                        var q = await cfg.QueueDeclarePassive(queueName);
 
-            link.ConfigureTopology(async cfg =>
-            {
-                var ex = await cfg.ExchangeDeclarePassive(exchangeName);
-                var q = await cfg.QueueDeclarePassive(queueName);
-
-                await cfg.ExchangeDelete(ex);
-                await cfg.QueueDelete(q);
-            });
-
-            link.Dispose();
+                        await cfg.ExchangeDelete(ex);
+                        await cfg.QueueDelete(q);
+                    })
+                        .WaitAndUnwrapException();
+                }
+            }
         }
 
         [Fact]
@@ -84,58 +59,106 @@ namespace RabbitLink.Tests
             var exchangeName = TestsOptions.TestExchangeName;
             var queueName = TestsOptions.TestQueueName;
 
-            var link = new Link(TestsOptions.ConnectionString);
-
-            var producer = link.CreateProducer(async cfg =>
+            using (var link = new Link(TestsOptions.ConnectionString))
             {
-                var ex = await cfg.ExchangeDeclare(exchangeName, LinkExchangeType.Fanout, autoDelete: true);
-                var q = await cfg.QueueDeclare(queueName, true, false, true);
-
-                await cfg.Bind(q, ex);
-
-                return ex;
-            }, config: cfg => cfg.ConfirmsMode(true));
-
-            producer.Publish(new LinkMessage<byte[]>(new byte[] {}), new LinkPublishProperties
-            {
-                Mandatory = true
-            });
-
-            link.ConfigureTopology(async cfg =>
-            {
-                var ex = await cfg.ExchangeDeclarePassive(exchangeName);
-                var q = await cfg.QueueDeclarePassive(queueName);
-
-                await cfg.QueueDelete(q);
-                await cfg.ExchangeDelete(ex);
-            });
-
-            producer.Dispose();
-
-            producer = link.CreateProducer(async cfg =>
-            {
-                var ex = await cfg.ExchangeDeclare(exchangeName, LinkExchangeType.Fanout, autoDelete: true);
-
-                return ex;
-            }, config: cfg => cfg.ConfirmsMode(true));
-
-            Assert.Throws<LinkMessageReturnedException>(() =>
-            {
-                producer.Publish(new LinkMessage<byte[]>(new byte[] {}), new LinkPublishProperties
+                try
                 {
-                    Mandatory = true
-                });
-            });
+                    using (var producer = link.CreateProducer(async cfg =>
+                    {
+                        var ex = await cfg.ExchangeDeclare(exchangeName, LinkExchangeType.Fanout, autoDelete: true);
+                        var q = await cfg.QueueDeclare(queueName, true, false, true);
 
-            link.ConfigureTopology(async cfg =>
+                        await cfg.Bind(q, ex);
+
+                        return ex;
+                    }, config: cfg => cfg.ConfirmsMode(true)))
+                    {
+                        producer.PublishAsync(new byte[] {}, publishProperties: new LinkPublishProperties
+                        {
+                            Mandatory = true
+                        })
+                            .WaitAndUnwrapException();
+                    }
+                }
+                finally
+                {
+                    link.ConfigureTopologyAsync(async cfg =>
+                    {
+                        var ex = await cfg.ExchangeDeclarePassive(exchangeName);
+                        var q = await cfg.QueueDeclarePassive(queueName);
+
+                        await cfg.QueueDelete(q);
+                        await cfg.ExchangeDelete(ex);
+                    })
+                        .WaitAndUnwrapException();
+                }
+
+                try
+                {
+                    using (var producer = link.CreateProducer(async cfg =>
+                    {
+                        var ex = await cfg.ExchangeDeclare(exchangeName, LinkExchangeType.Fanout, autoDelete: true);
+
+                        return ex;
+                    }, config: cfg => cfg.ConfirmsMode(true)))
+                    {
+                        Assert.Throws<LinkMessageReturnedException>(() =>
+                        {
+                            producer.PublishAsync(new byte[] {}, publishProperties: new LinkPublishProperties
+                            {
+                                Mandatory = true
+                            });
+                        });
+                    }
+                }
+                finally
+                {
+                    link.ConfigureTopologyAsync(async cfg =>
+                    {
+                        var ex = await cfg.ExchangeDeclarePassive(exchangeName);
+                        await cfg.ExchangeDelete(ex);
+                    })
+                        .WaitAndUnwrapException();
+                }
+            }
+        }
+
+        [Fact]
+        public void PublishTest()
+        {
+            var exchangeName = TestsOptions.TestExchangeName;
+            var queueName = TestsOptions.TestQueueName;
+
+            using (var link = new Link(TestsOptions.ConnectionString))
             {
-                var ex = await cfg.ExchangeDeclarePassive(exchangeName);
-                await cfg.ExchangeDelete(ex);
-            });
+                try
+                {
+                    var producer = link.CreateProducer(async cfg =>
+                    {
+                        var ex = await cfg.ExchangeDeclare(exchangeName, LinkExchangeType.Fanout, autoDelete: true);
+                        var q = await cfg.QueueDeclare(queueName, false, false, true);
 
-            producer.Dispose();
+                        await cfg.Bind(q, ex);
 
-            link.Dispose();
+                        return ex;
+                    }, config: cfg => cfg.ConfirmsMode(false));
+
+                    producer.PublishAsync(new byte[] {})
+                        .WaitAndUnwrapException();
+                }
+                finally
+                {
+                    link.ConfigureTopologyAsync(async cfg =>
+                    {
+                        var ex = await cfg.ExchangeDeclarePassive(exchangeName);
+                        var q = await cfg.QueueDeclarePassive(queueName);
+
+                        await cfg.ExchangeDelete(ex);
+                        await cfg.QueueDelete(q);
+                    })
+                        .WaitAndUnwrapException();
+                }
+            }
         }
 
         [Fact]
@@ -143,33 +166,30 @@ namespace RabbitLink.Tests
         {
             var exchangeName = TestsOptions.TestExchangeName;
 
-            var link = new Link(TestsOptions.ConnectionString);
-
-            var producer = link.CreateProducer(async cfg =>
+            using (var link = new Link(TestsOptions.ConnectionString))
             {
-                var ex = await cfg.ExchangeDeclare(exchangeName, LinkExchangeType.Fanout, autoDelete: true);
-
-                return ex;
-            }, config: cfg => cfg.ConfirmsMode(false));
-
-            Assert.Throws<TaskCanceledException>(
-                () => { producer.Publish(new LinkMessage<byte[]>(new byte[] {}), TimeSpan.Zero); });
-
-            producer.Dispose();
-
-            try
-            {
-                link.ConfigureTopology(async cfg =>
+                try
                 {
-                    var ex = await cfg.ExchangeDeclarePassive(exchangeName);
-                    await cfg.ExchangeDelete(ex);
-                });
-            }
-            catch
-            {
-            }
+                    using (var producer = link.CreateProducer(async cfg =>
+                    {
+                        var ex = await cfg.ExchangeDeclare(exchangeName, LinkExchangeType.Fanout, autoDelete: true);
 
-            link.Dispose();
+                        return ex;
+                    }, config: cfg => cfg.ConfirmsMode(false)))
+                    {
+                        Assert.Throws<TaskCanceledException>(
+                            () => { producer.PublishAsync(new byte[] {}, TimeSpan.Zero).WaitAndUnwrapException(); });
+                    }
+                }
+                finally
+                {
+                    link.ConfigureTopologyAsync(async cfg =>
+                    {
+                        var ex = await cfg.ExchangeDeclarePassive(exchangeName);
+                        await cfg.ExchangeDelete(ex);
+                    }).WaitAndUnwrapException();
+                }
+            }
         }
     }
 }

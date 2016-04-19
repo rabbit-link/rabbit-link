@@ -96,24 +96,6 @@ namespace RabbitLink
             return @this.ConfigureTopologyAsync(configure, CancellationToken.None);
         }
 
-        #endregion
-
-        #region Sync
-
-        public static void ConfigureTopology(this Link @this,
-            Func<ILinkTopologyConfig, Task> configure, TimeSpan timeout)
-        {
-            @this.ConfigureTopologyAsync(configure, timeout)
-                .WaitAndUnwrapException();
-        }
-
-        public static void ConfigureTopology(this Link @this,
-            Func<ILinkTopologyConfig, Task> configure)
-        {
-            @this.ConfigureTopologyAsync(configure)
-                .WaitAndUnwrapException();
-        }
-
-        #endregion
+        #endregion     
     }
 }

@@ -73,9 +73,9 @@ namespace RabbitLink.Configuration
             return this;
         }
 
-        public ILinkConfigurationBuilder ProducerMessageIdStrategy(ILinkMessageIdStrategy value)
+        public ILinkConfigurationBuilder ProducerMessageIdGenerator(ILinkMessageIdGenerator value)
         {
-            Configuration.ProducerMessageIdStrategy = value;
+            Configuration.ProducerMessageIdGenerator = value;
             return this;
         }
 

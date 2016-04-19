@@ -54,8 +54,9 @@ namespace RabbitLink.Producer
         /// <returns><see cref="Task" /> which completed when message acked by brocker</returns>
         /// <exception cref="LinkSerializationException">On serialization error</exception>
         Task PublishAsync<T>(
-            ILinkMessage<T> message,
-            LinkPublishProperties properties = null,
+            T body,
+            LinkMessageProperties properties = null,
+            LinkPublishProperties publishProperties = null,
             CancellationToken? cancellation = null
             ) where T : class;
     }

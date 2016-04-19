@@ -86,14 +86,12 @@
     <Compile Include="Exceptions\LinkTypeNameMappingException.cs" />
     <Compile Include="Helpers\DateTimeHelper.cs" />
     <Compile Include="Helpers\DictionaryHelpers.cs" />
-    <Compile Include="Messaging\ILinkAckableRecievedMessage.cs" />
     <Compile Include="Messaging\ILinkMessage.cs" />
     <Compile Include="Messaging\ILinkMessageIdGenerator.cs" />
-    <Compile Include="Messaging\ILinkRecievedMessage.cs" />
-    <Compile Include="Messaging\LinkAckableRecievedMessage.cs" />
     <Compile Include="Messaging\LinkGuidMessageIdGenerator.cs" />
     <Compile Include="Messaging\LinkMessage.cs" />
-    <Compile Include="Messaging\LinkRecievedMessage.cs" />
+    <Compile Include="Messaging\LinkMessageOnAckAsyncDelegate.cs" />
+    <Compile Include="Messaging\LinkMessageOnNackAsyncDelegate.cs" />
     <Compile Include="Messaging\LinkPublishProperties.cs" />
     <Compile Include="Messaging\LinkRecievedMessageProperties.cs" />
     <Compile Include="Producer\ILinkProducer.cs" />
@@ -101,7 +99,6 @@
     <Compile Include="Producer\ILinkProducerIntenal.cs" />
     <Compile Include="Serialization\ILinkMessageSerializer.cs" />
     <Compile Include="Serialization\JsonMessageSerializer.cs" />
-    <Compile Include="Messaging\LinkGenericMessageFactory.cs" />
     <Compile Include="Serialization\LinkMessageSerializerExtensions.cs" />
     <Compile Include="Serialization\TypeNameMapping.cs" />
     <Compile Include="Topology\Internal\ILinkTopology.cs" />

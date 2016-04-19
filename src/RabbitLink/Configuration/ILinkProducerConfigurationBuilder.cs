@@ -52,10 +52,10 @@ namespace RabbitLink.Configuration
         ILinkProducerConfigurationBuilder SetUserId(bool value);
 
         /// <summary>
-        ///     MessageId strategy
-        ///     By default <see cref="ILinkConfigurationBuilder.ProducerMessageIdStrategy" /> used
+        ///     MessageId generator
+        ///     By default <see cref="ILinkConfigurationBuilder.ProducerMessageIdGenerator" /> used
         /// </summary>
-        ILinkProducerConfigurationBuilder MessageIdStrategy(ILinkMessageIdStrategy value);
+        ILinkProducerConfigurationBuilder MessageIdGenerator(ILinkMessageIdGenerator value);
 
         ILinkProducerConfigurationBuilder TypeNameMap(IDictionary<Type, string> values);
         ILinkProducerConfigurationBuilder TypeNameMap(Action<ILinkConfigurationTypeNameMapBuilder> map);

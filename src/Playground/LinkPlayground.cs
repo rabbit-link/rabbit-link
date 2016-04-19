@@ -6,8 +6,8 @@ using System.Linq;
 using System.Threading.Tasks;
 using ColoredConsole;
 using Newtonsoft.Json;
+using Nito.AsyncEx.Synchronous;
 using RabbitLink;
-using RabbitLink.Consumer;
 using RabbitLink.Logging;
 using RabbitLink.Messaging;
 using RabbitLink.Topology;
@@ -28,25 +28,13 @@ namespace Playground
                 ))
             {
                 //TestTopology(link);
-                Task.Run(async () => await TestPullConsumer(link).ConfigureAwait(false));         
+                Task.Run(async () => await TestPullConsumer(link).ConfigureAwait(false));
                 TestPublish(link);
 
 
                 ColorConsole.WriteLine("Running...");
                 Console.ReadLine();
             }
-        }       
-
-        private static void PushConsumerOnMessage(ILinkRecievedMessage<object> msg)
-        {
-            ColorConsole.WriteLine("Message recieved(".Green(), msg.GetType().GenericTypeArguments[0].Name,
-                "):\n".Green(), JsonConvert.SerializeObject(msg, Formatting.Indented));
-        }
-
-        private static void PushConsumerOnStringMessage(ILinkRecievedMessage<string> msg)
-        {
-            ColorConsole.WriteLine("String message recieved:\n".Green(),
-                JsonConvert.SerializeObject(msg, Formatting.Indented));
         }
 
         private static async Task TestPullConsumer(Link link)
@@ -80,7 +68,7 @@ namespace Playground
                         ColorConsole.WriteLine("Message recieved(".Green(), msg.GetType().GenericTypeArguments[0].Name,
                             "):\n".Green(), JsonConvert.SerializeObject(msg, Formatting.Indented));
 
-                        msg.Ack();
+                        msg.AckAsync();
                     }
                     catch (Exception ex)
                     {
@@ -107,14 +95,12 @@ namespace Playground
 
                 var tasks = Enumerable
                     .Range(0, 100)
-                    .Select(i => new LinkMessage<string>(
-                        $"Item {i + 1}",
-                        new LinkMessageProperties
-                        {
-                            DeliveryMode = LinkMessageDeliveryMode.Persistent
-                        }
+                    .Select(i => $"Item {i + 1}")
+                    .Select(body => producer.PublishAsync(
+                        body,
+                        new LinkMessageProperties {DeliveryMode = LinkMessageDeliveryMode.Persistent},
+                        new LinkPublishProperties {Mandatory = false}
                         ))
-                    .Select(msg => producer.PublishAsync(msg, new LinkPublishProperties {Mandatory = false}))
                     .ToArray();
 
                 ColorConsole.WriteLine("Waiting for publish end...");
@@ -138,7 +124,8 @@ namespace Playground
             ColorConsole.WriteLine("Configuring topology");
             try
             {
-                link.ConfigureTopology(OnceConfigure, TimeSpan.FromSeconds(10));
+                link.ConfigureTopologyAsync(OnceConfigure, TimeSpan.FromSeconds(10))
+                    .WaitAndUnwrapException();
                 ColorConsole.WriteLine("Topology configured");
             }
             catch (Exception ex)

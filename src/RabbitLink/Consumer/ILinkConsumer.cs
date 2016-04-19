@@ -60,7 +60,7 @@ namespace RabbitLink.Consumer
         /// </param>
         /// <returns>Deserialied message</returns>
         /// <exception cref="LinkDeserializationException">On serialization error, which </exception>
-        Task<ILinkAckableRecievedMessage<object>> GetMessageAsync(CancellationToken? cancellation = null);
+        Task<ILinkMessage<object>> GetMessageAsync(CancellationToken? cancellation = null);
 
         /// <summary>
         ///     Wait for message to be recieved,
@@ -73,7 +73,7 @@ namespace RabbitLink.Consumer
         /// </param>
         /// <returns>Deserialied message</returns>
         /// <exception cref="LinkDeserializationException">On serialization error</exception>
-        Task<ILinkAckableRecievedMessage<T>> GetMessageAsync<T>(CancellationToken? cancellation = null)
+        Task<ILinkMessage<T>> GetMessageAsync<T>(CancellationToken? cancellation = null)
             where T : class;
     }
 }

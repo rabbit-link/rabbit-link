@@ -15,17 +15,15 @@ namespace RabbitLink.Serialization
         /// <summary>
         ///     Serialize message
         /// </summary>
-        /// <typeparam name="T">Message body <see cref="Type" /></typeparam>
-        /// <param name="message">Message</param>
+        /// <typeparam name="T">Message body <see cref="Type" /></typeparam>        
         /// <returns>Raw message</returns>
-        ILinkMessage<byte[]> Serialize<T>(ILinkMessage<T> message) where T : class;
+        byte[] Serialize<T>(T body, LinkMessageProperties properties) where T : class;
 
         /// <summary>
         ///     Deserialize messsage
         /// </summary>
-        /// <typeparam name="T">Message body <see cref="Type" /></typeparam>
-        /// <param name="message">Raw message</param>
+        /// <typeparam name="T">Message body <see cref="Type" /></typeparam>        
         /// <returns>Deserialized message</returns>
-        ILinkMessage<T> Deserialize<T>(ILinkMessage<byte[]> message) where T : class;
+        T Deserialize<T>(byte[] body, LinkMessageProperties properties) where T : class;
     }
 }

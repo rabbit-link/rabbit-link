@@ -3,7 +3,6 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using Nito.AsyncEx.Synchronous;
 using RabbitLink.Messaging;
 
 #endregion
@@ -11,109 +10,69 @@ using RabbitLink.Messaging;
 namespace RabbitLink.Producer
 {
     public static class LinkProducerExtensions
-    {
-        #region Async
-
-        public static async Task PublishAsync(this ILinkProducer @this, ILinkMessage<byte[]> message,
-            LinkPublishProperties properties,
+    {        
+        public static async Task PublishAsync(this ILinkProducer @this, byte[] body,
+            LinkMessageProperties properties,
+            LinkPublishProperties publishProperties,
             TimeSpan timeout)
         {
             using (var cts = new CancellationTokenSource(timeout))
             {
-                await @this.PublishAsync(message, properties, cts.Token)
+                await @this.PublishAsync(body, properties, publishProperties, cts.Token)
                     .ConfigureAwait(false);
             }
         }
 
-        public static async Task PublishAsync<T>(this ILinkProducer @this, ILinkMessage<T> message,
-            LinkPublishProperties properties,
+        public static async Task PublishAsync<T>(this ILinkProducer @this, T body,
+            LinkMessageProperties properties,
+            LinkPublishProperties publishProperties,
             TimeSpan timeout) where T : class
         {
             using (var cts = new CancellationTokenSource(timeout))
             {
-                await @this.PublishAsync(message, properties, cts.Token)
+                await @this.PublishAsync(body, properties, publishProperties, cts.Token)
                     .ConfigureAwait(false);
-            }            
+            }
         }
 
-        public static async Task PublishAsync(this ILinkProducer @this, ILinkMessage<byte[]> message, TimeSpan timeout)
-        {
-            using (var cts = new CancellationTokenSource(timeout))
-            {
-                await @this.PublishAsync(message, cancellation: cts.Token)
-                    .ConfigureAwait(false);
-            }         
-        }
-
-        public static async Task PublishAsync<T>(this ILinkProducer @this, ILinkMessage<T> message, TimeSpan timeout)
-            where T : class
-        {
-            using (var cts = new CancellationTokenSource(timeout))
-            {
-                await @this.PublishAsync(message, cancellation: cts.Token)
-                    .ConfigureAwait(false);
-            }            
-        }
-
-        #endregion
-
-        #region Sync
-
-        public static void Publish(this ILinkProducer @this, ILinkMessage<byte[]> message,
-            LinkPublishProperties properties,
+        public static Task PublishAsync(this ILinkProducer @this, byte[] body,
+            LinkMessageProperties properties,
             TimeSpan timeout)
         {
-            @this.PublishAsync(message, properties, timeout)
-                .WaitAndUnwrapException();
+            return @this.PublishAsync(body, properties, null, timeout);
         }
 
-        public static void Publish<T>(this ILinkProducer @this, ILinkMessage<T> message,
-            LinkPublishProperties properties,
+        public static Task PublishAsync<T>(this ILinkProducer @this, T body,
+            LinkMessageProperties properties,
             TimeSpan timeout) where T : class
         {
-            @this.PublishAsync(message, properties, timeout)
-                .WaitAndUnwrapException();
+            return @this.PublishAsync(body, properties, null, timeout);
         }
 
-        public static void Publish(this ILinkProducer @this, ILinkMessage<byte[]> message,
-            LinkPublishProperties properties)
+        public static Task PublishAsync(this ILinkProducer @this, byte[] body,
+            LinkPublishProperties publishProperties,
+            TimeSpan timeout)
         {
-            @this.PublishAsync(message, properties)
-                .WaitAndUnwrapException();
+            return @this.PublishAsync(body, null, publishProperties, timeout);
         }
 
-        public static void Publish<T>(this ILinkProducer @this, ILinkMessage<T> message,
-            LinkPublishProperties properties) where T : class
+        public static Task PublishAsync<T>(this ILinkProducer @this, T body,
+            LinkPublishProperties publishProperties,
+            TimeSpan timeout) where T : class
         {
-            @this.PublishAsync(message, properties)
-                .WaitAndUnwrapException();
+            return @this.PublishAsync(body, null, publishProperties, timeout);
         }
 
-        public static void Publish(this ILinkProducer @this, ILinkMessage<byte[]> message, TimeSpan timeout)
+        public static Task PublishAsync(this ILinkProducer @this, byte[] body,            
+            TimeSpan timeout)
         {
-            @this.PublishAsync(message, timeout)
-                .WaitAndUnwrapException();
+            return @this.PublishAsync(body, null, null, timeout);
         }
 
-        public static void Publish<T>(this ILinkProducer @this, ILinkMessage<T> message, TimeSpan timeout)
-            where T : class
+        public static Task PublishAsync<T>(this ILinkProducer @this, T body,            
+            TimeSpan timeout) where T : class
         {
-            @this.PublishAsync(message, timeout)
-                .WaitAndUnwrapException();
-        }
-
-        public static void Publish(this ILinkProducer @this, ILinkMessage<byte[]> message)
-        {
-            @this.PublishAsync(message)
-                .WaitAndUnwrapException();
-        }
-
-        public static void Publish<T>(this ILinkProducer @this, ILinkMessage<T> message) where T : class
-        {
-            @this.PublishAsync(message)
-                .WaitAndUnwrapException();
-        }
-
-        #endregion
+            return @this.PublishAsync(body, null, null, timeout);
+        }               
     }
 }

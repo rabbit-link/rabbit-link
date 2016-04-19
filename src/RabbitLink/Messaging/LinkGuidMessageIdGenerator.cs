@@ -9,11 +9,11 @@ namespace RabbitLink.Messaging
     /// <summary>
     ///     MessageId generator which uses <see cref="Guid.NewGuid" />
     /// </summary>
-    public class LinkGuidMessageIdStrategy : ILinkMessageIdStrategy
+    public class LinkGuidMessageIdGenerator : ILinkMessageIdGenerator
     {
-        public void SetMessageId(ILinkMessage<byte[]> message)
+        public void SetMessageId(byte[] body, LinkMessageProperties properties, LinkPublishProperties publishProperties)
         {
-            message.Properties.MessageId = Guid.NewGuid().ToString("D");
+            properties.MessageId = Guid.NewGuid().ToString("D");
         }
     }
 }

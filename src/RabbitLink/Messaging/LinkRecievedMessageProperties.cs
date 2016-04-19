@@ -7,9 +7,9 @@ using RabbitLink.Configuration;
 
 namespace RabbitLink.Messaging
 {
-    public class LinkRecievedMessageProperties : ICloneable
+    public class LinkRecieveMessageProperties : ICloneable
     {
-        public LinkRecievedMessageProperties(bool redelivered, string exchangeName, string routingKey, string queueName, bool isFromThisApp)
+        public LinkRecieveMessageProperties(bool redelivered, string exchangeName, string routingKey, string queueName, bool isFromThisApp)
         {
             Redelivered = redelivered;
             ExchangeName = exchangeName;
@@ -45,9 +45,9 @@ namespace RabbitLink.Messaging
             return Clone();
         }
 
-        public LinkRecievedMessageProperties Clone()
+        public LinkRecieveMessageProperties Clone()
         {
-            return (LinkRecievedMessageProperties) MemberwiseClone();
+            return (LinkRecieveMessageProperties) MemberwiseClone();
         }
     }
 }

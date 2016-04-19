@@ -28,7 +28,7 @@ namespace RabbitLink.Producer
             ILinkChannel channel,
             Func<ILinkTopologyConfig, Task<ILinkExchage>> topologyConfigHandler,
             Func<Exception, Task> topologyConfigErrorHandler)
-        {            
+        {
             if (linkConfiguration == null)
                 throw new ArgumentNullException(nameof(linkConfiguration));
 
@@ -102,7 +102,7 @@ namespace RabbitLink.Producer
                 _publishQueue.CompleteAdding();
                 // ReSharper disable once MethodSupportsCancellation
                 _loopTask?.WaitAndUnwrapException();
-                _loopTask?.Dispose();                
+                _loopTask?.Dispose();
 
                 // cancelling requests
                 Parallel.ForEach(_ackQueue,
@@ -129,21 +129,24 @@ namespace RabbitLink.Producer
 
         #region Public methods        
 
-        public Task PublishAsync<T>(ILinkMessage<T> message, LinkPublishProperties properties = null,
+        public Task PublishAsync<T>(T body, LinkMessageProperties properties = null, LinkPublishProperties publishProperties = null,
             CancellationToken? cancellation = null) where T : class
         {
-            var msg = new LinkMessage<T>(message.Body, message.Properties);
-
-            if (typeof (T) == typeof (byte[]))
+            var msgProperties = _configuration.MessageProperties.Clone();
+            if (properties != null)
             {
-                return PublishRawAsync((ILinkMessage<byte[]>) msg, properties, cancellation);
+                msgProperties.CopyFrom(properties);
             }
 
-            ILinkMessage<byte[]> rawMsg;
+            if (typeof(T) == typeof(byte[]))
+            {
+                return PublishRawAsync(body as byte[], msgProperties, publishProperties, cancellation);
+            }
 
+            byte[] rawBody;
             try
             {
-                rawMsg = _configuration.MessageSerializer.Serialize(msg);
+                rawBody = _configuration.MessageSerializer.Serialize(body, properties);
             }
             catch (Exception ex)
             {
@@ -153,51 +156,49 @@ namespace RabbitLink.Producer
             var typeName = _configuration.TypeNameMapping.Map<T>();
             if (typeName != null)
             {
-                rawMsg.Properties.Type = typeName;
+                msgProperties.Type = typeName;
             }
 
-            return PublishRawAsync(rawMsg, properties, cancellation);
+            return PublishRawAsync(rawBody, msgProperties, publishProperties, cancellation);
         }
 
         #endregion
 
         #region Private methods
 
-        private async Task PublishRawAsync(ILinkMessage<byte[]> message, LinkPublishProperties properties = null,
+        private async Task PublishRawAsync(byte[] body, LinkMessageProperties properties, LinkPublishProperties publishProperties = null,
             CancellationToken? cancellation = null)
         {
             if (_disposedCancellation.IsCancellationRequested)
                 throw new ObjectDisposedException(GetType().Name);
 
-            if (message == null)
-                throw new ArgumentNullException(nameof(message));
-
-            if (message.Properties == null)
-                throw new ArgumentNullException(nameof(message.Properties));
+            if (properties == null)
+                throw new ArgumentNullException(nameof(properties));
 
             if (cancellation == null)
             {
                 cancellation = _configuration.PublishTimeout != null
                     ? new CancellationTokenSource(_configuration.PublishTimeout.Value).Token
                     : CancellationToken.None;
-            }            
+            }
 
-            var publishProperties = _configuration.PublishProperties.Clone();
-            publishProperties.Extend(properties ?? new LinkPublishProperties());
+            var msgPublishProperties = _configuration.PublishProperties.Clone();
+            if (publishProperties != null)
+            {
+                msgPublishProperties.Extend(publishProperties);
+            }
 
-            var messageProperties = _configuration.MessageProperties.Clone();
-            messageProperties.CopyFrom(message.Properties);
-            messageProperties.AppId = _linkConfiguration.AppId;         
+            var msgProperties = properties.Clone();
+            msgProperties.AppId = _linkConfiguration.AppId;
 
             if (_configuration.SetUserId)
             {
-                messageProperties.UserId = _channel.Connection.UserId;
+                msgProperties.UserId = _channel.Connection.UserId;
             }
 
-            message = new LinkMessage<byte[]>(message.Body, messageProperties);
-            _configuration.MessageIdStrategy.SetMessageId(message);            
+            _configuration.MessageIdGenerator.SetMessageId(body, msgProperties, publishProperties);
 
-            var holder = new MessageHolder(message.Body, message.Properties, publishProperties, cancellation.Value);
+            var holder = new MessageHolder(body, msgProperties, publishProperties, cancellation.Value);
 
             try
             {

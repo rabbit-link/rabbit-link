@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using Nito.AsyncEx;
 using Nito.AsyncEx.Synchronous;
 using RabbitLink.Configuration;
 using RabbitLink.Connection;
@@ -111,7 +112,7 @@ namespace RabbitLink.Consumer
 
         #endregion
 
-        private async Task<LinkConsumerMessageQueue.QueueMessage> PrivateGetRawMessageAsync(
+        private async Task<LinkMessage<byte[]>> PrivateGetRawMessageAsync(
             CancellationToken? cancellation = null)
         {
             if (_disposedCancellation.IsCancellationRequested)
@@ -203,43 +204,39 @@ namespace RabbitLink.Consumer
 
         #region Public methods        
 
-        public async Task<ILinkAckableRecievedMessage<object>> GetMessageAsync(CancellationToken? cancellation = null)
+        public async Task<ILinkMessage<object>> GetMessageAsync(CancellationToken? cancellation = null)
         {
             var rawMessage = await PrivateGetRawMessageAsync(cancellation)
                 .ConfigureAwait(false);
 
-            var typeName = rawMessage.Message.Properties.Type?.Trim();
+            var typeName = rawMessage.Properties.Type?.Trim();
 
             if (!string.IsNullOrEmpty(typeName))
             {
                 var type = _configuration.TypeNameMapping.Map(typeName);
                 if (type != null)
                 {
-                    ILinkMessage<object> message;
+                    object body;
                     try
                     {
-                        message = _configuration.MessageSerializer.Deserialize(type, rawMessage.Message);
+                        body = _configuration.MessageSerializer.Deserialize(type, rawMessage.Body, rawMessage.Properties);
                     }
                     catch (Exception ex)
                     {
-                        rawMessage.Nack?.Invoke(false);
-                        throw new LinkDeserializationException(rawMessage.Message, ex);
+#pragma warning disable 4014
+                        rawMessage.Nack(CancellationToken.None);
+#pragma warning restore 4014
+                        throw new LinkDeserializationException(rawMessage.Body, rawMessage.Properties, rawMessage.RecieveProperties, ex);
                     }
 
-                    return LinkGenericMessageFactory.ConstructLinkAckableRecievedMessage(
-                        type,
-                        message,
-                        rawMessage.Message.RecievedProperties,
-                        rawMessage.Ack,
-                        rawMessage.Nack
-                        );
+                    return LinkMessage<object>.Create(type, body, rawMessage);
                 }
             }
 
-            return new LinkAckableRecievedMessage<byte[]>(rawMessage.Message, rawMessage.Ack, rawMessage.Nack);
+            return rawMessage;
         }
 
-        public async Task<ILinkAckableRecievedMessage<T>> GetMessageAsync<T>(CancellationToken? cancellation = null)
+        public async Task<ILinkMessage<T>> GetMessageAsync<T>(CancellationToken? cancellation = null)
             where T : class
         {
             var rawMessage = await PrivateGetRawMessageAsync(cancellation)
@@ -247,27 +244,25 @@ namespace RabbitLink.Consumer
 
             if (typeof(T) == typeof(byte[]))
             {
-                return new LinkAckableRecievedMessage<T>((ILinkRecievedMessage<T>)rawMessage.Message, rawMessage.Ack,
-                    rawMessage.Nack);
+                return rawMessage as ILinkMessage<T>;
             }
 
-            ILinkMessage<T> message;
-
+            T body;
             try
             {
-                message = _configuration.MessageSerializer.Deserialize<T>(rawMessage.Message);
+                body = _configuration.MessageSerializer.Deserialize<T>(rawMessage.Body, rawMessage.Properties);
             }
             catch (Exception ex)
             {
-                rawMessage.Nack?.Invoke(false);
-                throw new LinkDeserializationException(rawMessage.Message, ex);
+#pragma warning disable 4014
+                rawMessage.Nack(CancellationToken.None);
+#pragma warning restore 4014
+                throw new LinkDeserializationException(rawMessage.Body, rawMessage.Properties, rawMessage.RecieveProperties, ex);
             }
 
-            return new LinkAckableRecievedMessage<T>(
-                message,
-                rawMessage.Message.RecievedProperties,
-                rawMessage.Ack,
-                rawMessage.Nack
+            return new LinkMessage<T>(
+                body,
+                rawMessage
                 );
         }
 
@@ -332,40 +327,63 @@ namespace RabbitLink.Consumer
                 _logger.Debug(
                     $"Message recieved, deliveryTag: {e.DeliveryTag}, exchange: {e.Exchange}, routingKey: {e.RoutingKey}, redelivered: {e.Redelivered}");
 
-                Action<CancellationToken> ackAction;
-                Action<CancellationToken, bool> nackAction;
+                LinkMessageOnAckAsyncDelegate ackHandler;
+                LinkMessageOnNackAsyncDelegate nackHandler;                
 
 
                 if (AutoAck)
                 {
-                    ackAction = cancellation => { };
-                    nackAction = (cancellation, requeue) => { };
+                    ackHandler = cancellation =>
+                    {
+                        if (cancellation.IsCancellationRequested)
+                            return TaskConstants.Canceled;
+
+                        return TaskConstants.Completed;
+                    };
+
+                    nackHandler = (requeue, cancellation) =>
+                    {
+                        if (cancellation.IsCancellationRequested)
+                            return TaskConstants.Canceled;
+
+                        return TaskConstants.Completed;
+                    };
                 }
                 else
                 {
-                    ackAction = cancellation =>
-                    {
-                        if (cancellation.IsCancellationRequested)
-                            return;
+                    ackHandler = async cancellation =>
+                    {                                                                           
+                        cancellation.ThrowIfCancellationRequested();
 
                         try
                         {
-                            _channel.InvokeActionAsync(model => model.BasicAck(e.DeliveryTag, false), cancellation);
+                            await
+                                _channel.InvokeActionAsync(model => model.BasicAck(e.DeliveryTag, false), cancellation)
+                                    .ConfigureAwait(false);
                         }
-                        catch
+                        catch (OperationCanceledException)
+                        {
+                            throw;
+                        }                       
+                        catch                        
                         {
                             // no op
                         }
                     };
-                    nackAction = (cancellation, requeue) =>
+
+                    nackHandler = async (requeue, cancellation) =>
                     {
-                        if (cancellation.IsCancellationRequested)
-                            return;
+                        cancellation.ThrowIfCancellationRequested();
 
                         try
                         {
-                            _channel.InvokeActionAsync(model => model.BasicNack(e.DeliveryTag, false, requeue),
-                                cancellation);
+                            await _channel.InvokeActionAsync(model => model.BasicNack(e.DeliveryTag, false, requeue),
+                                cancellation)
+                                .ConfigureAwait(false);
+                        }
+                        catch (OperationCanceledException)
+                        {
+                            throw;
                         }
                         catch
                         {
@@ -374,24 +392,18 @@ namespace RabbitLink.Consumer
                     };
                 }
 
-                var msgProperties = new LinkMessageProperties(e.BasicProperties);
-                var msgRecievedProperties = new LinkRecievedMessageProperties(
+                var properties = new LinkMessageProperties(e.BasicProperties);
+                var recieveProperties = new LinkRecieveMessageProperties(
                     e.Redelivered,
                     e.Exchange,
                     e.RoutingKey,
                     _queue.Name,
                     _linkConfiguration.AppId != null && 
-                    msgProperties.AppId != null &&
-                    _linkConfiguration.AppId == msgProperties.AppId
-                );
+                    properties.AppId != null &&
+                    _linkConfiguration.AppId == properties.AppId
+                );                
 
-                var msg = new LinkRecievedMessage<byte[]>(
-                    e.Body,
-                    msgProperties,
-                    msgRecievedProperties
-                    );
-
-                _messageQueue.Enqueue(msg, ackAction, nackAction);
+                _messageQueue.Enqueue(e.Body, properties, recieveProperties, ackHandler, nackHandler);
             }
             catch (Exception ex)
             {

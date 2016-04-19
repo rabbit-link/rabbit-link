@@ -75,10 +75,10 @@ namespace RabbitLink.Configuration
         ILinkConfigurationBuilder ProducerSetUserId(bool value);
 
         /// <summary>
-        ///     Default MessageId strategy for producers
-        ///     By default <see cref="LinkGuidMessageIdStrategy" /> used
+        ///     Default MessageId generator for producers
+        ///     By default <see cref="LinkGuidMessageIdGenerator" /> used
         /// </summary>
-        ILinkConfigurationBuilder ProducerMessageIdStrategy(ILinkMessageIdStrategy value);
+        ILinkConfigurationBuilder ProducerMessageIdGenerator(ILinkMessageIdGenerator value);
 
         /// <summary>
         ///     Default consumer message prefetch count

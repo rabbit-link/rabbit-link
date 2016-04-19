@@ -3,13 +3,11 @@
     /// <summary>
     /// MessageId generator
     /// </summary>
-    public interface ILinkMessageIdStrategy
+    public interface ILinkMessageIdGenerator
     {
         /// <summary>
         /// Generate MessageId
-        /// </summary>
-        /// <param name="message">Message to generate id</param>
-        /// <returns>MessageId value</returns>
-        void SetMessageId(ILinkMessage<byte[]> message);
+        /// </summary>                
+        void SetMessageId(byte[] body, LinkMessageProperties properties, LinkPublishProperties publishProperties);
     }
 }

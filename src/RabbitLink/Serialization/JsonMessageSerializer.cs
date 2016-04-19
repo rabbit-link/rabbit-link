@@ -30,41 +30,36 @@ namespace RabbitLink.Serialization
             _settings = settings;
         }
 
-        public ILinkMessage<byte[]> Serialize<T>(ILinkMessage<T> message) where T : class
+        public byte[] Serialize<T>(T body, LinkMessageProperties properties) where T : class
         {
-            if (message == null)
-                throw new ArgumentNullException(nameof(message));
-
-            var properties = message.Properties.Clone();
+            if (properties == null)
+                throw new ArgumentNullException(nameof(properties));
+                        
             properties.ContentType = "application/json";
             properties.ContentEncoding = Encoding.UTF8.WebName;
 
-            if (message.Body == null)
+            if (body == null)
             {
-                return new LinkMessage<byte[]>(new byte[] {}, properties);
+                return null;
             }
 
-            var stringBody = JsonConvert.SerializeObject(message.Body, _settings);
+            var stringBody = JsonConvert.SerializeObject(body, _settings);
 
-            return new LinkMessage<byte[]>(Encoding.UTF8.GetBytes(stringBody), properties);
+            return Encoding.UTF8.GetBytes(stringBody);
         }
 
-        public ILinkMessage<T> Deserialize<T>(ILinkMessage<byte[]> message) where T : class
+        public T Deserialize<T>(byte[] body, LinkMessageProperties properties) where T : class
         {
-            if (message == null)
-                throw new ArgumentNullException(nameof(message));
+            if (properties == null)
+                throw new ArgumentNullException(nameof(properties));            
 
-            var properties = message.Properties.Clone();
-
-            if (message.Body == null || message.Body.Length == 0)
+            if (body == null)
             {
-                return new LinkMessage<T>(null, properties);
+                return null;
             }
 
-            var stringBody = Encoding.UTF8.GetString(message.Body);
-            var body = JsonConvert.DeserializeObject<T>(stringBody, _settings);
-
-            return new LinkMessage<T>(body, properties);
+            var stringBody = Encoding.UTF8.GetString(body);
+            return JsonConvert.DeserializeObject<T>(stringBody, _settings);            
         }
     }
 }

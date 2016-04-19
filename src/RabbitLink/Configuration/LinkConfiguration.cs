@@ -24,7 +24,7 @@ namespace RabbitLink.Configuration
         private TimeSpan? _producerPublishTimeout;
         private TimeSpan? _topologyRecoveryInterval;
         private string _appId = Guid.NewGuid().ToString("D");
-        private ILinkMessageIdStrategy _producerMessageIdStrategy = new LinkGuidMessageIdStrategy();
+        private ILinkMessageIdGenerator _producerMessageIdGenerator = new LinkGuidMessageIdGenerator();
 
         public bool AutoStart { get; set; } = true;
 
@@ -185,15 +185,15 @@ namespace RabbitLink.Configuration
 
         public bool ProducerSetUserId { get; set; }
 
-        public ILinkMessageIdStrategy ProducerMessageIdStrategy
+        public ILinkMessageIdGenerator ProducerMessageIdGenerator
         {
-            get { return _producerMessageIdStrategy; }
+            get { return _producerMessageIdGenerator; }
             set
             {
                 if (value == null)
                     throw new ArgumentNullException(nameof(value));
 
-                _producerMessageIdStrategy = value;
+                _producerMessageIdGenerator = value;
             }
         }
     }

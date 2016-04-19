@@ -2,6 +2,7 @@
 
 using System;
 using System.Linq;
+using Nito.AsyncEx.Synchronous;
 using RabbitLink.Topology;
 using Xunit;
 
@@ -55,7 +56,7 @@ namespace RabbitLink.Tests
 
                     rabbitModel = rabbitConneciton.CreateModel();
 
-                    link.ConfigureTopology(async cfg =>
+                    link.ConfigureTopologyAsync(async cfg =>
                     {
                         var e1 =
                             await
@@ -72,19 +73,21 @@ namespace RabbitLink.Tests
 
                         await cfg.Bind(e2, e1);
                         await cfg.Bind(e2, e1, "test");
-                    });
+                    })
+                    .WaitAndUnwrapException();
 
                     rabbitModel.ExchangeDeclarePassive(exchangeName);
                     rabbitModel.ExchangeDeclarePassive(exchangeName + "-second");
 
-                    link.ConfigureTopology(async cfg =>
+                    link.ConfigureTopologyAsync(async cfg =>
                     {
                         var e1 = await cfg.ExchangeDeclarePassive(exchangeName);
                         var e2 = await cfg.ExchangeDeclarePassive(exchangeName + "-second");
 
                         await cfg.ExchangeDelete(e1);
                         await cfg.ExchangeDelete(e2);
-                    });
+                    })
+                    .WaitAndUnwrapException();
 
                     Assert.ThrowsAny<Exception>(() => { rabbitModel.ExchangeDeclarePassive(exchangeName); });
                 }

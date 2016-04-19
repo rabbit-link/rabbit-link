@@ -22,9 +22,9 @@ namespace RabbitLink.Consumer
         private readonly AsyncProducerConsumerQueue<MessageHolder> _messageQueue =
             new AsyncProducerConsumerQueue<MessageHolder>();
 
-        private readonly Task _loopTask;        
+        private readonly Task _loopTask;
 
-        private CancellationTokenSource _messageCancellationSource;            
+        private CancellationTokenSource _messageCancellationSource;
         private CancellationToken _messageCancellation;
 
         public LinkConsumerMessageQueue()
@@ -60,7 +60,7 @@ namespace RabbitLink.Consumer
             {
                 handlerHolder.SetException(new ObjectDisposedException(GetType().Name));
             }
-            
+
             _handlersQueue.Dispose();
             _messageQueue.Dispose();
         }
@@ -112,7 +112,7 @@ namespace RabbitLink.Consumer
 
         #endregion
 
-        public async Task<QueueMessage> GetMessageAsync(CancellationToken cancellation)
+        public async Task<LinkMessage<byte[]>> GetMessageAsync(CancellationToken cancellation)
         {
             if (_disposedCancellation.IsCancellationRequested)
                 throw new ObjectDisposedException(GetType().Name);
@@ -121,7 +121,7 @@ namespace RabbitLink.Consumer
 
             using (var compositeCancellation = CancellationTokenHelpers
                 .Normalize(_disposedCancellation, cancellation))
-            {                                
+            {
                 try
                 {
                     await _handlersQueue.EnqueueAsync(holder, compositeCancellation.Token)
@@ -140,8 +140,8 @@ namespace RabbitLink.Consumer
                 .ConfigureAwait(false);
         }
 
-        public void Enqueue(ILinkRecievedMessage<byte[]> msg, Action<CancellationToken> onAck,
-            Action<CancellationToken, bool> onNack)
+        public void Enqueue(byte[] body, LinkMessageProperties properties, LinkRecieveMessageProperties recieveProperties, LinkMessageOnAckAsyncDelegate onAck,
+            LinkMessageOnNackAsyncDelegate onNack)
         {
             if (_disposedCancellation.IsCancellationRequested)
                 throw new ObjectDisposedException(GetType().Name);
@@ -150,23 +150,26 @@ namespace RabbitLink.Consumer
 
             try
             {
-                Action ackHandler = () =>
+                LinkMessageOnAckAsyncDelegate ackHandler = async token =>
                 {
-                    if (cancellation.IsCancellationRequested)
-                        return;
-
-                    onAck(_messageCancellation);
+                    using (var compositeCancellation = CancellationTokenHelpers.Normalize(cancellation, token))
+                    {
+                        await onAck(compositeCancellation.Token)
+                            .ConfigureAwait(false);
+                    }
                 };
 
-                Action<bool> nackHandler = requeue =>
+                LinkMessageOnNackAsyncDelegate nackHandler = async (requeue, token) =>
                 {
-                    if (cancellation.IsCancellationRequested)
-                        return;
-
-                    onNack(_messageCancellation, requeue);
+                    using (var compositeCancellation = CancellationTokenHelpers.Normalize(cancellation, token))
+                    {
+                        await onNack(requeue, compositeCancellation.Token)
+                            .ConfigureAwait(false);
+                    }
                 };
 
-                var holder = new MessageHolder(new QueueMessage(msg, ackHandler, nackHandler), cancellation);
+                var message = new LinkMessage<byte[]>(body, properties, recieveProperties, ackHandler, nackHandler);
+                var holder = new MessageHolder(message, cancellation);
                 _messageQueue.Enqueue(holder, cancellation);
             }
             catch
@@ -188,37 +191,23 @@ namespace RabbitLink.Consumer
             oldCancellation.Dispose();
         }
 
-        internal class QueueMessage
-        {
-            public QueueMessage(ILinkRecievedMessage<byte[]> message, Action ack, Action<bool> nack)
-            {
-                Message = message;
-                Ack = ack;
-                Nack = nack;
-            }
-
-            public Action Ack { get; }
-            public Action<bool> Nack { get; }
-            public ILinkRecievedMessage<byte[]> Message { get; }
-        }
-
         #region Private classes
 
         private class MessageHolder
         {
-            public MessageHolder(QueueMessage message, CancellationToken cancellation)
+            public MessageHolder(LinkMessage<byte[]> message, CancellationToken cancellation)
             {
                 Message = message;
                 Cancellation = cancellation;
             }
 
-            public QueueMessage Message { get; }
+            public LinkMessage<byte[]> Message { get; }
             public CancellationToken Cancellation { get; }
         }
 
         private class HandlerHolder
         {
-            private readonly TaskCompletionSource<QueueMessage> _completion = new TaskCompletionSource<QueueMessage>();
+            private readonly TaskCompletionSource<LinkMessage<byte[]>> _completion = new TaskCompletionSource<LinkMessage<byte[]>>();
             private readonly IDisposable _cancellationRegistration;
 
             public HandlerHolder(CancellationToken cancellation)
@@ -231,7 +220,7 @@ namespace RabbitLink.Consumer
                 _completion.SetCanceled();
             }
 
-            public bool SetMessage(QueueMessage message)
+            public bool SetMessage(LinkMessage<byte[]> message)
             {
                 var ret = _completion.TrySetResult(message);
                 _cancellationRegistration.Dispose();
@@ -243,7 +232,7 @@ namespace RabbitLink.Consumer
                 _completion.TrySetException(exception);
             }
 
-            public Task<QueueMessage> Task => _completion.Task;
+            public Task<LinkMessage<byte[]>> Task => _completion.Task;
         }
 
         #endregion
