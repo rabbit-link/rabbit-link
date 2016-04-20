@@ -102,7 +102,10 @@ namespace RabbitLink.Messaging
 
         public bool MessageIdPresent => _properties.ContainsKey(nameof(MessageId));
 
-        public DateTime? TimeStamp
+        /// <summary>
+        /// Timestamp in UNIX time
+        /// </summary>
+        public long? TimeStamp
         {
             get { return _properties.GetOrDefault(nameof(TimeStamp)); }
             set { _properties[(nameof(TimeStamp))] = value; }
@@ -234,7 +237,7 @@ namespace RabbitLink.Messaging
             if (from.IsReplyToPresent()) ReplyTo = from.ReplyTo;
             if (from.IsExpirationPresent()) Expiration = TimeSpan.FromMilliseconds(int.Parse(from.Expiration));
             if (from.IsMessageIdPresent()) MessageId = from.MessageId;
-            if (from.IsTimestampPresent()) TimeStamp = from.Timestamp.UnixTime.FromUnixTime();
+            if (from.IsTimestampPresent()) TimeStamp = from.Timestamp.UnixTime;
             if (from.IsTypePresent()) Type = from.Type;
             if (from.IsUserIdPresent()) UserId = from.UserId;
             if (from.IsPriorityPresent()) Priority = from.Priority;
@@ -262,7 +265,7 @@ namespace RabbitLink.Messaging
             if (ReplyToPresent) to.ReplyTo = ReplyTo;
             if (ExpirationPresent) to.Expiration = ((int) Expiration.Value.TotalMilliseconds).ToString();
             if (MessageIdPresent) to.MessageId = MessageId;
-            if (TimeStampPresent) to.Timestamp = new AmqpTimestamp(TimeStamp.Value.ToUnixTime());
+            if (TimeStampPresent) to.Timestamp = new AmqpTimestamp(TimeStamp.Value);
             if (TypePresent) to.Type = Type;
             if (UserIdPresent) to.UserId = UserId;
             if (PriorityPresent) to.Priority = Priority.Value;

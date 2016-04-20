@@ -2,6 +2,7 @@
 
 using System;
 using RabbitLink.Messaging;
+using RabbitLink.Tests.Helpers;
 using Xunit;
 
 #endregion
@@ -181,9 +182,9 @@ namespace RabbitLink.Tests.Messaging
             Assert.False(props.TimeStampPresent);
             Assert.Null(props.TimeStamp);
 
-            props.TimeStamp = new DateTime(2015, 01, 01);
+            props.TimeStamp = new DateTime(2015, 01, 01).ToUnixTime();
 
-            Assert.Equal(new DateTime(2015, 01, 01), props.TimeStamp);
+            Assert.Equal(new DateTime(2015, 01, 01), props.TimeStamp.Value.FromUnixTime());
             Assert.True(props.TimeStampPresent);
         }
 

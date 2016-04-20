@@ -79,6 +79,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Helpers\DateTimeHelper.cs" />
     <Compile Include="TopologyTests.cs" />
     <Compile Include="Messaging\LinkMessagePropertiesTests.cs" />
     <Compile Include="ProducerTests.cs" />

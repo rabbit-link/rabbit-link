@@ -84,7 +84,6 @@
     <Compile Include="Exceptions\LinkMessageReturnedException.cs" />
     <Compile Include="Exceptions\LinkSerializationException.cs" />
     <Compile Include="Exceptions\LinkTypeNameMappingException.cs" />
-    <Compile Include="Helpers\DateTimeHelper.cs" />
     <Compile Include="Helpers\DictionaryHelpers.cs" />
     <Compile Include="Messaging\ILinkMessage.cs" />
     <Compile Include="Messaging\ILinkMessageIdGenerator.cs" />
