@@ -217,7 +217,7 @@ namespace RabbitLink.Consumer
 
             private void OnCancellationCancelled()
             {
-                _completion.SetCanceled();
+                _completion.TrySetCanceled();
             }
 
             public bool SetMessage(LinkMessage<byte[]> message)

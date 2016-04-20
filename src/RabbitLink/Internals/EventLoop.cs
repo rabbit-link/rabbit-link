@@ -63,16 +63,8 @@ namespace RabbitLink.Internals
                     break;
                 }
 
-                job.Processing = true;
-                if (job.CancellationToken.IsCancellationRequested)
-                {
-                    job.SetCancelled();
-                    continue;
-                }
-
-
                 await job.RunAsync()
-                    .ConfigureAwait(false);                
+                    .ConfigureAwait(false);
             }
 
             while (true)
@@ -88,14 +80,7 @@ namespace RabbitLink.Internals
                     break;
                 }
 
-                if (job.CancellationToken.IsCancellationRequested)
-                {
-                    job.SetCancelled();
-                }
-                else
-                {
-                    job.SetException(new ObjectDisposedException(GetType().Name));
-                }
+                job.SetException(new ObjectDisposedException(GetType().Name));
             }
         }
 
@@ -108,49 +93,52 @@ namespace RabbitLink.Internals
             private readonly IDisposable _cancellationRegistration;
             private readonly TaskCompletionSource<object> _completion = new TaskCompletionSource<object>();
             private readonly Func<Task<object>> _action;
+            private readonly CancellationToken _cancellation;
 
             public JobItem(Func<Task<object>> action, CancellationToken cancellationToken)
             {
                 _action = action;
-                CancellationToken = cancellationToken;
-
-                _cancellationRegistration = cancellationToken.Register(() =>
-                {
-                    if (!Processing)
-                    {
-                        _completion.TrySetCanceled();
-                    }
-                });
-            }
-
-            public bool Processing { get; set; }
-            public CancellationToken CancellationToken { get; }
+                _cancellation = cancellationToken;
+                _cancellationRegistration = _cancellation.Register(() => _completion.TrySetCanceled());
+            }            
 
             public Task<object> Task => _completion.Task;
 
             public async Task RunAsync()
             {
-                try
+                using (_cancellationRegistration)
                 {
-                    _completion.TrySetResult(await _action().ConfigureAwait(false));
-                    _cancellationRegistration.Dispose();
+                    if (_cancellation.IsCancellationRequested)
+                    {
+                        _completion.TrySetCanceled();
+                    }
+                    else
+                    {
+                        try
+                        {                 
+                            _completion.TrySetResult(await _action().ConfigureAwait(false));
+                        }
+                        catch (Exception ex)
+                        {
+                            _completion.TrySetException(ex);
+                        }
+                    }
                 }
-                catch (Exception ex)
-                {
-                    SetException(ex);
-                }
-            }
-
-            public void SetCancelled()
-            {
-                _completion.TrySetCanceled();
-                _cancellationRegistration.Dispose();
-            }
+            }            
 
             public void SetException(Exception exception)
             {
-                _completion.TrySetException(exception);
-                _cancellationRegistration.Dispose();
+                using (_cancellationRegistration)
+                {
+                    if (_cancellation.IsCancellationRequested)
+                    {
+                        _completion.TrySetCanceled();
+                    }
+                    else
+                    {
+                        _completion.TrySetException(exception);
+                    }
+                }
             }
         }
 
