@@ -4,7 +4,6 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using Nito.AsyncEx;
 using Nito.AsyncEx.Synchronous;
 using RabbitLink.Configuration;
 using RabbitLink.Connection;
@@ -101,6 +100,8 @@ namespace RabbitLink.Consumer
 
                 _initializeCancellationSource?.Cancel();
                 _initializeCancellationSource?.Dispose();
+                                
+                // ReSharper disable once MethodSupportsCancellation
                 _initializeTask.WaitWithoutException();
 
                 _logger.Debug("Disposed");
@@ -172,7 +173,9 @@ namespace RabbitLink.Consumer
             {
                 _logger.Warning("Channel disposed, disposing");
 #pragma warning disable 4014
+                // ReSharper disable MethodSupportsCancellation                
                 Task.Run(() => Dispose());
+                // ReSharper restore MethodSupportsCancellation
 #pragma warning restore 4014                
             }
             catch (Exception ex)
@@ -327,57 +330,47 @@ namespace RabbitLink.Consumer
                 _logger.Debug(
                     $"Message recieved, deliveryTag: {e.DeliveryTag}, exchange: {e.Exchange}, routingKey: {e.RoutingKey}, redelivered: {e.Redelivered}");
 
-                LinkMessageOnAckAsyncDelegate ackHandler;
-                LinkMessageOnNackAsyncDelegate nackHandler;                
+                LinkMessageOnAckAsyncDelegate ackHandler = null;
+                LinkMessageOnNackAsyncDelegate nackHandler = null;
 
-
-                if (AutoAck)
-                {
-                    ackHandler = cancellation =>
+                if (!AutoAck)
+                {                    
+                    ackHandler = async (onSuccess, cancellation) =>
                     {
-                        if (cancellation.IsCancellationRequested)
-                            return TaskConstants.Canceled;
-
-                        return TaskConstants.Completed;
-                    };
-
-                    nackHandler = (requeue, cancellation) =>
-                    {
-                        if (cancellation.IsCancellationRequested)
-                            return TaskConstants.Canceled;
-
-                        return TaskConstants.Completed;
-                    };
-                }
-                else
-                {
-                    ackHandler = async cancellation =>
-                    {                                                                           
                         cancellation.ThrowIfCancellationRequested();
 
                         try
                         {
                             await
-                                _channel.InvokeActionAsync(model => model.BasicAck(e.DeliveryTag, false), cancellation)
+                                _channel.InvokeActionAsync(model =>
+                                {
+                                    model.BasicAck(e.DeliveryTag, false);
+                                    onSuccess?.Invoke();
+                                },
+                                    cancellation)
                                     .ConfigureAwait(false);
                         }
                         catch (OperationCanceledException)
                         {
                             throw;
-                        }                       
-                        catch                        
+                        }
+                        catch (Exception ex)
                         {
-                            // no op
+                            throw new LinkMessageOperationException("Cannot complete message operation, see inner exception", ex);
                         }
                     };
 
-                    nackHandler = async (requeue, cancellation) =>
+                    nackHandler = async (requeue, onSuccess, cancellation) =>
                     {
                         cancellation.ThrowIfCancellationRequested();
 
                         try
                         {
-                            await _channel.InvokeActionAsync(model => model.BasicNack(e.DeliveryTag, false, requeue),
+                            await _channel.InvokeActionAsync(model =>
+                            {
+                                model.BasicNack(e.DeliveryTag, false, requeue);
+                                onSuccess?.Invoke();
+                            },
                                 cancellation)
                                 .ConfigureAwait(false);
                         }
@@ -385,9 +378,9 @@ namespace RabbitLink.Consumer
                         {
                             throw;
                         }
-                        catch
+                        catch (Exception ex)
                         {
-                            //no op
+                            throw new LinkMessageOperationException("Cannot complete message operation, see inner exception", ex);
                         }
                     };
                 }
@@ -398,17 +391,17 @@ namespace RabbitLink.Consumer
                     e.Exchange,
                     e.RoutingKey,
                     _queue.Name,
-                    _linkConfiguration.AppId != null && 
+                    _linkConfiguration.AppId != null &&
                     properties.AppId != null &&
                     _linkConfiguration.AppId == properties.AppId
-                );                
+                );
 
                 _messageQueue.Enqueue(e.Body, properties, recieveProperties, ackHandler, nackHandler);
             }
             catch (Exception ex)
             {
                 _logger.Warning("Cannot add recieved message to queue: {0}", ex);
-            }            
+            }
         }
 
         #endregion
@@ -424,7 +417,8 @@ namespace RabbitLink.Consumer
 
         private Task TopologyReadyAsync()
         {
-            return Task.Run(() =>
+            // ReSharper disable MethodSupportsCancellation
+            return Task.Run(() =>                
             {
                 lock (_sync)
                 {
@@ -443,16 +437,19 @@ namespace RabbitLink.Consumer
                         );
                 }
             });
+            // ReSharper restore MethodSupportsCancellation
         }
 
         private Task TopologyConfigurationErrorAsync(Exception ex)
         {
+            // ReSharper disable MethodSupportsCancellation
             return Task.Run(async () =>
             {
                 _logger.Warning("Cannot configure topology: {0}", ex.Message);
                 await _topologyConfigErrorHandler(ex)
                     .ConfigureAwait(false);
             });
+            // ReSharper restore MethodSupportsCancellation
         }
 
         private void TopologyOnDisposed(object sender, EventArgs e)

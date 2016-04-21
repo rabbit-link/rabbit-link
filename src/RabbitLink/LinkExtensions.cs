@@ -50,7 +50,7 @@ namespace RabbitLink
             return
                 @this.CreatePersistentTopologyConfigurator(new LinkActionsTopologyHandler(configure, ready,
                     configurationError));
-        }        
+        }
 
         #endregion
 
@@ -58,26 +58,52 @@ namespace RabbitLink
 
         public static async Task ConfigureTopologyAsync(this Link @this,
             Func<ILinkTopologyConfig, Task> configure, CancellationToken cancellationToken)
-        {
+        {            
             var completion = new TaskCompletionSource();
-            var configurator = @this.CreateTopologyConfigurator(configure, () =>
+            if (cancellationToken.IsCancellationRequested)
+            {
+                completion.TrySetCanceled();
+                await completion.Task;
+                return;                
+            }
+
+            using (@this.CreateTopologyConfigurator(configure, () =>
             {
                 completion.TrySetResult();
-                return Task.FromResult((object)null);
+                return Task.FromResult((object) null);
             }, ex =>
             {
                 completion.TrySetException(ex);
-                return Task.FromResult((object)null);
-            });
-
-            using (cancellationToken.Register(() =>
-            {
-                configurator.Dispose();
-                completion.TrySetCanceled();
+                return Task.FromResult((object) null);
             }))
             {
-                await completion.Task
-                    .ConfigureAwait(false);
+                IDisposable registration = null;
+                try
+                {
+                    registration = cancellationToken.Register(() =>
+                    {
+                        completion.TrySetCanceled();                    
+                    });
+                }
+                catch (ObjectDisposedException)
+                {
+                    // Cancellation source already disposed                  
+                }
+
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    completion.TrySetCanceled();
+                }
+
+                try
+                {
+                    await completion.Task
+                        .ConfigureAwait(false);
+                }
+                finally
+                {
+                    registration?.Dispose();
+                }
             }
         }
 
@@ -88,7 +114,7 @@ namespace RabbitLink
             {
                 await @this.ConfigureTopologyAsync(configure, cts.Token)
                     .ConfigureAwait(false);
-            }            
+            }
         }
 
         public static Task ConfigureTopologyAsync(this Link @this, Func<ILinkTopologyConfig, Task> configure)

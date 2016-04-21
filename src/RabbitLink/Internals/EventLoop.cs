@@ -99,14 +99,31 @@ namespace RabbitLink.Internals
             {
                 _action = action;
                 _cancellation = cancellationToken;
-                _cancellationRegistration = _cancellation.Register(() => _completion.TrySetCanceled());
+
+                try
+                {
+                    _cancellationRegistration = _cancellation.Register(() =>
+                    {
+                        _completion.TrySetCanceled();                        
+                    });
+                }
+                catch (ObjectDisposedException)
+                {
+                    // Cancellation source already disposed                    
+                }
+
+                if (_cancellation.IsCancellationRequested)
+                {
+                    _completion.TrySetCanceled();
+                    _cancellationRegistration?.Dispose();
+                }
             }            
 
             public Task<object> Task => _completion.Task;
 
             public async Task RunAsync()
             {
-                using (_cancellationRegistration)
+                try
                 {
                     if (_cancellation.IsCancellationRequested)
                     {
@@ -115,7 +132,7 @@ namespace RabbitLink.Internals
                     else
                     {
                         try
-                        {                 
+                        {
                             _completion.TrySetResult(await _action().ConfigureAwait(false));
                         }
                         catch (Exception ex)
@@ -124,11 +141,15 @@ namespace RabbitLink.Internals
                         }
                     }
                 }
+                finally
+                {
+                    _cancellationRegistration?.Dispose();
+                }
             }            
 
             public void SetException(Exception exception)
             {
-                using (_cancellationRegistration)
+                try
                 {
                     if (_cancellation.IsCancellationRequested)
                     {
@@ -138,6 +159,10 @@ namespace RabbitLink.Internals
                     {
                         _completion.TrySetException(exception);
                     }
+                }
+                finally
+                {
+                    _cancellationRegistration?.Dispose();
                 }
             }
         }

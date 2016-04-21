@@ -146,33 +146,15 @@ namespace RabbitLink.Consumer
             if (_disposedCancellation.IsCancellationRequested)
                 throw new ObjectDisposedException(GetType().Name);
 
-            var cancellation = _messageCancellation;
+            var cancellation = _messageCancellation;            
 
             try
-            {
-                LinkMessageOnAckAsyncDelegate ackHandler = async token =>
-                {
-                    using (var compositeCancellation = CancellationTokenHelpers.Normalize(cancellation, token))
-                    {
-                        await onAck(compositeCancellation.Token)
-                            .ConfigureAwait(false);
-                    }
-                };
-
-                LinkMessageOnNackAsyncDelegate nackHandler = async (requeue, token) =>
-                {
-                    using (var compositeCancellation = CancellationTokenHelpers.Normalize(cancellation, token))
-                    {
-                        await onNack(requeue, compositeCancellation.Token)
-                            .ConfigureAwait(false);
-                    }
-                };
-
-                var message = new LinkMessage<byte[]>(body, properties, recieveProperties, ackHandler, nackHandler);
+            {                                              
+                var message = new LinkMessage<byte[]>(body, properties, recieveProperties, onAck, onNack, cancellation);
                 var holder = new MessageHolder(message, cancellation);
                 _messageQueue.Enqueue(holder, cancellation);
             }
-            catch
+            catch(InvalidOperationException)
             {
                 throw new ObjectDisposedException(GetType().Name);
             }

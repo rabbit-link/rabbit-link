@@ -196,9 +196,8 @@ namespace RabbitLink.Producer
                 msgProperties.UserId = _channel.Connection.UserId;
             }
 
-            _configuration.MessageIdGenerator.SetMessageId(body, msgProperties, publishProperties);
-
-            var holder = new MessageHolder(body, msgProperties, publishProperties, cancellation.Value);
+            _configuration.MessageIdGenerator.SetMessageId(body, msgProperties, msgPublishProperties);
+            var holder = new MessageHolder(body, msgProperties, msgPublishProperties, cancellation.Value);            
 
             try
             {
@@ -231,31 +230,44 @@ namespace RabbitLink.Producer
                 Properties = properties;
                 PublishProperties = publishProperties;
 
-                _cancellationRegistration = Cancellation.Register(() =>
+                try
                 {
-                    if (!Processing)
+                    _cancellationRegistration = Cancellation.Register(() =>
                     {
-                        SetCanceled();
-                    }
-                });
+                        Interlocked.MemoryBarrier();
+                        if (!Processing)
+                        {
+                            SetCanceled();
+                        }
+                    });                    
+                }
+                catch (ObjectDisposedException)
+                {
+                    // Cancellation source already disposed
+                }
+
+                if (Cancellation.IsCancellationRequested)
+                {
+                    SetCanceled();
+                }
             }
 
             public void SetResult()
             {
                 _completion.TrySetResult();
-                _cancellationRegistration.Dispose();
+                _cancellationRegistration?.Dispose();
             }
 
             public void SetCanceled()
             {
                 _completion.TrySetCanceled();
-                _cancellationRegistration.Dispose();
+                _cancellationRegistration?.Dispose();
             }
 
             public void SetException(Exception exception)
             {
                 _completion.TrySetException(exception);
-                _cancellationRegistration.Dispose();
+                _cancellationRegistration?.Dispose();
             }
 
             public byte[] Body { get; }
@@ -385,8 +397,9 @@ namespace RabbitLink.Producer
                 if (msg == null)
                     // no messages, exitting
                     break;
-
+                
                 msg.Processing = true;
+                Interlocked.MemoryBarrier();
                 if (msg.Cancellation.IsCancellationRequested)
                 {
                     msg.SetCanceled();
@@ -409,12 +422,14 @@ namespace RabbitLink.Producer
                     }
 
                     msg.Processing = false;
+                    Interlocked.MemoryBarrier();
                 }
                 catch (Exception ex)
                 {
                     _logger.Error($"Cannot publish message: {ex.Message}");
 
                     msg.Processing = false;
+                    Interlocked.MemoryBarrier();
 
                     lock (_syncQueue)
                     {
@@ -452,10 +467,12 @@ namespace RabbitLink.Producer
                 }
 
                 msg.Processing = true;
+                Interlocked.MemoryBarrier();
                 if (msg.Cancellation.IsCancellationRequested)
                 {
                     msg.SetCanceled();
                     msg.Processing = false;
+                    Interlocked.MemoryBarrier();
                     continue;
                 }
 
@@ -470,6 +487,7 @@ namespace RabbitLink.Producer
                     }
 
                     msg.Processing = false;
+                    Interlocked.MemoryBarrier();
                 }
                 catch (Exception ex)
                 {
@@ -496,6 +514,7 @@ namespace RabbitLink.Producer
                             RequeueUnacked();
                         }
                         msg.Processing = false;
+                        Interlocked.MemoryBarrier();
                     }
 
                     return false;

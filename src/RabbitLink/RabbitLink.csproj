@@ -81,6 +81,7 @@
     <Compile Include="Exceptions\LinkConsumerNackMessageException.cs" />
     <Compile Include="Exceptions\LinkDeserializationException.cs" />
     <Compile Include="Exceptions\LinkMessageNackedException.cs" />
+    <Compile Include="Exceptions\LinkMessageOperationException.cs" />
     <Compile Include="Exceptions\LinkMessageReturnedException.cs" />
     <Compile Include="Exceptions\LinkSerializationException.cs" />
     <Compile Include="Exceptions\LinkTypeNameMappingException.cs" />
