@@ -104,7 +104,7 @@ namespace RabbitLink.Internals
                 {
                     _cancellationRegistration = _cancellation.Register(() =>
                     {
-                        _completion.TrySetCanceled();                        
+                        _completion.TrySetCanceled();
                     });
                 }
                 catch (ObjectDisposedException)
@@ -117,7 +117,7 @@ namespace RabbitLink.Internals
                     _completion.TrySetCanceled();
                     _cancellationRegistration?.Dispose();
                 }
-            }            
+            }
 
             public Task<object> Task => _completion.Task;
 
@@ -145,7 +145,7 @@ namespace RabbitLink.Internals
                 {
                     _cancellationRegistration?.Dispose();
                 }
-            }            
+            }
 
             public void SetException(Exception exception)
             {
@@ -212,7 +212,13 @@ namespace RabbitLink.Internals
             var job =
                 new JobItem(
                     async () =>
-                        await Task.Run(async () => await action().ConfigureAwait(false), token).ConfigureAwait(false),
+                    {
+                        await Task.Delay(0)
+                            .ConfigureAwait(false);
+
+                        return await action()
+                            .ConfigureAwait(false);
+                    },                        
                     token);
 
             try
@@ -239,9 +245,14 @@ namespace RabbitLink.Internals
         }
 
         public Task<T> ScheduleAsync<T>(Func<T> action, CancellationToken token)
-        {
-            return ScheduleAsync(async () => await Task.Run(action, token)
-                .ConfigureAwait(false), token);
+        {            
+            return ScheduleAsync(async () =>
+            {
+                await Task.Delay(0)
+                    .ConfigureAwait(false);
+
+                return action();
+            }, token);
         }
 
         public Task ScheduleAsync(Action action, CancellationToken token)

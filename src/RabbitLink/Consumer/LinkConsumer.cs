@@ -232,7 +232,7 @@ namespace RabbitLink.Consumer
                         throw new LinkDeserializationException(rawMessage.Body, rawMessage.Properties, rawMessage.RecieveProperties, ex);
                     }
 
-                    return LinkMessage<object>.Create(type, body, rawMessage);
+                    return LinkMessage<object>.Create(type, body, rawMessage);                    
                 }
             }
 

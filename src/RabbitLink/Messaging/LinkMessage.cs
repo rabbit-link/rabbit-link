@@ -1,6 +1,7 @@
 #region Usings
 
 using System;
+using System.CodeDom;
 using System.Threading;
 using System.Threading.Tasks;
 using Nito.AsyncEx;
@@ -53,10 +54,11 @@ namespace RabbitLink.Messaging
 
         #region Factory
 
-        public static LinkMessage<object> Create(Type bodyType, object body, LinkMessage<byte[]> rawMessage)
+        public static ILinkMessage<object> Create(Type bodyType, object body, LinkMessage<byte[]> rawMessage)
         {
             var genericType = typeof(LinkMessage<>).MakeGenericType(bodyType);
-            return (LinkMessage<object>)Activator.CreateInstance(genericType, body, rawMessage);
+            var ret =  Activator.CreateInstance(genericType, body, rawMessage);
+            return ret as ILinkMessage<object>;
         }
 
         #endregion
@@ -156,6 +158,6 @@ namespace RabbitLink.Messaging
             return DoMessageOperationAsync(operation, cancellation);
         }
 
-        #endregion
+        #endregion               
     }
 }

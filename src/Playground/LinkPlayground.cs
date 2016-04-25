@@ -28,7 +28,9 @@ namespace Playground
                 ))
             {
                 //TestTopology(link);
-                Task.Run(async () => await TestPullConsumer(link).ConfigureAwait(false));
+#pragma warning disable 4014
+                //TestPullConsumer(link);
+#pragma warning restore 4014
                 TestPublish(link);
 
 
@@ -39,6 +41,9 @@ namespace Playground
 
         private static async Task TestPullConsumer(Link link)
         {
+            await Task.Delay(0)
+                .ConfigureAwait(false);
+
             Console.WriteLine("Creating consumer");
             using (var consumer = link.CreateConsumer(
                 async cfg =>
@@ -68,7 +73,8 @@ namespace Playground
                         ColorConsole.WriteLine("Message recieved(".Green(), msg.GetType().GenericTypeArguments[0].Name,
                             "):\n".Green(), JsonConvert.SerializeObject(msg, Formatting.Indented));
 
-                        msg.AckAsync();
+                        await msg.AckAsync()
+                            .ConfigureAwait(false);
                     }
                     catch (Exception ex)
                     {

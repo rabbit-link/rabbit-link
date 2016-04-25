@@ -4,6 +4,7 @@ using System;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using Nito.AsyncEx;
 using RabbitLink.Configuration;
 using RabbitLink.Internals;
 using RabbitLink.Logging;
@@ -134,19 +135,37 @@ namespace RabbitLink.Connection
 
         #region Public methods
 
-        public Task InvokeActionAsync(Action<IModel> action, CancellationToken cancellation)
+        public async Task InvokeActionAsync(Action<IModel> action, CancellationToken cancellation)
         {
+            await Task.Delay(0)
+                .ConfigureAwait(false);
+
             if (_disposedCancellation.IsCancellationRequested)
                 throw new ObjectDisposedException(GetType().Name);
 
-            return _eventLoop.ScheduleAsync(() =>
+            using (var compositeCancellation = CancellationTokenHelpers.Normalize(_disposedCancellation, cancellation))
             {
-                if (_model?.IsOpen != true)
-                    throw new InvalidOperationException("Channel closed");
+                try
+                {
+                    await _eventLoop.ScheduleAsync(() =>
+                    {
+                        if (_model?.IsOpen != true)
+                            throw new InvalidOperationException("Channel closed");
 
-                action(_model);
-            },
-                cancellation);
+                        action(_model);
+                    }, compositeCancellation.Token)
+                        .ConfigureAwait(false);
+                }
+                catch (OperationCanceledException)
+                {
+                    if (_disposedCancellation.IsCancellationRequested)
+                    {
+                        throw new ObjectDisposedException(GetType().Name);
+                    }
+
+                    throw;
+                }
+            }
         }
 
         public Task InvokeActionAsync(Action<IModel> action)
