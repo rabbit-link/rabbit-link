@@ -87,7 +87,7 @@ namespace RabbitLink.Tests
                     }
                 }
                 finally
-                {
+                {                    
                     link.ConfigureTopologyAsync(async cfg =>
                     {
                         try
@@ -103,7 +103,7 @@ namespace RabbitLink.Tests
                             // No-op
                         }
                     })
-                        .WaitAndUnwrapException();
+                    .WaitAndUnwrapException();
                 }
 
                 try

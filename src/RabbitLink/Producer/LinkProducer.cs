@@ -98,16 +98,23 @@ namespace RabbitLink.Producer
 
                 _loopCancellationSource?.Cancel();
                 _loopCancellationSource?.Dispose();
-                                
+
                 // ReSharper disable once MethodSupportsCancellation
                 _loopTask?.WaitAndUnwrapException();
                 _loopTask?.Dispose();
 
                 // cancelling requests
-                Parallel.ForEach(_ackQueue,
-                    msg => { msg.SetException(new ObjectDisposedException(GetType().Name)); });                
+                var ex = new ObjectDisposedException(GetType().Name);
 
-                _ackQueue.Clear();
+                using(_ackQueueLock.Lock())
+                {
+                    while (_ackQueue.Last != null)
+                    {
+                        _ackQueue.Last.Value.SetException(ex);
+                        _ackQueue.RemoveLast();
+                    }
+                }
+                                
                 _messageQueue.Dispose();
 
                 _logger.Debug("Disposed");
@@ -189,7 +196,7 @@ namespace RabbitLink.Producer
             }
 
             _configuration.MessageIdGenerator.SetMessageId(body, msgProperties, msgPublishProperties);
-            var msg = new LinkProducerQueueMessage(body, msgProperties, msgPublishProperties, cancellation.Value);            
+            var msg = new LinkProducerQueueMessage(body, msgProperties, msgPublishProperties, cancellation.Value);
 
             try
             {
@@ -213,6 +220,8 @@ namespace RabbitLink.Producer
         private readonly CancellationToken _disposedCancellation;
 
         private readonly LinkedList<LinkProducerQueueMessage> _ackQueue = new LinkedList<LinkProducerQueueMessage>();
+        private readonly AsyncLock _ackQueueLock = new AsyncLock();
+
         private readonly LinkProducerQueue _messageQueue = new LinkProducerQueue();
 
         private readonly Func<ILinkTopologyConfig, Task<ILinkExchage>> _topologyConfigHandler;
@@ -248,15 +257,16 @@ namespace RabbitLink.Producer
 
         #region Send
 
-        private void RequeueUnacked()
+        private async Task RequeueUnackedAsync()
         {
-            lock (_ackQueue)
+            using (await _ackQueueLock.LockAsync().ConfigureAwait(false))
             {
                 if (!_ackQueue.Any())
                     return;
 
                 _logger.Warning($"Requeuing {_ackQueue.Count} not ACKed or NACKed messages");
-                _messageQueue.EnqueueRetry(_ackQueue, true);
+                await _messageQueue.EnqueueRetryAsync(_ackQueue, true)
+                    .ConfigureAwait(false);
             }
         }
 
@@ -264,7 +274,7 @@ namespace RabbitLink.Producer
         {
             await _channel.InvokeActionAsync(model =>
             {
-                lock (_ackQueue)
+                using (_ackQueueLock.Lock())
                 {
                     msg.Sequence = model.NextPublishSeqNo;
 
@@ -300,12 +310,6 @@ namespace RabbitLink.Producer
                     break;
                 }
 
-                if (msg.Cancellation.IsCancellationRequested)
-                {
-                    msg.SetCancelled();
-                    continue;
-                }
-
                 try
                 {
                     using (var compositeCancellation = CancellationTokenHelpers.Normalize(cancellation, msg.Cancellation))
@@ -323,7 +327,7 @@ namespace RabbitLink.Producer
                 {
                     _logger.Error($"Cannot publish message: {ex.Message}");
 
-                    lock (_ackQueue)
+                    using(await _ackQueueLock.LockAsync().ConfigureAwait(false))
                     {
                         if (_channel.IsOpen)
                         {
@@ -333,15 +337,19 @@ namespace RabbitLink.Producer
                             }
                             else
                             {
-                                _messageQueue.EnqueueRetry(msg);
+                                await _messageQueue.EnqueueRetryAsync(msg)
+                                    .ConfigureAwait(false);
                             }
 
                             _topology.ScheduleConfiguration(true);
                         }
                         else
                         {
-                            _messageQueue.EnqueueRetry(msg);
-                            RequeueUnacked();
+                            await _messageQueue.EnqueueRetryAsync(msg)
+                                .ConfigureAwait(false);
+
+                            await RequeueUnackedAsync()
+                                .ConfigureAwait(false);
                         }
                     }
 
@@ -351,11 +359,7 @@ namespace RabbitLink.Producer
         }
 
         private async Task SendLoopAsync()
-        {
-            // ReSharper disable once MethodSupportsCancellation
-            await Task.Delay(0)
-                .ConfigureAwait(false);
-
+        {            
             if (ConfirmsMode)
             {
                 await _channel.InvokeActionAsync(model => model.ConfirmSelect(), _loopCancellation)
@@ -363,7 +367,7 @@ namespace RabbitLink.Producer
             }
 
             await SendPublishQueueAsync(_loopCancellation).ConfigureAwait(false);
-            RequeueUnacked();
+            await RequeueUnackedAsync().ConfigureAwait(false);
         }
 
         #endregion
@@ -372,7 +376,7 @@ namespace RabbitLink.Producer
 
         private void ChannelOnReturn(object sender, BasicReturnEventArgs e)
         {
-            lock (_ackQueue)
+            using(_ackQueueLock.Lock())
             {
                 if (_ackQueue.Last != null)
                 {
@@ -385,7 +389,7 @@ namespace RabbitLink.Producer
 
         private void ChannelOnNack(object sender, BasicNackEventArgs e)
         {
-            lock (_ackQueue)
+            using(_ackQueueLock.Lock())
             {
                 while (_ackQueue.Last != null && _ackQueue.Last.Value.Sequence <= e.DeliveryTag)
                 {
@@ -398,7 +402,7 @@ namespace RabbitLink.Producer
 
         private void ChannelOnAck(object sender, BasicAckEventArgs e)
         {
-            lock (_ackQueue)
+            using(_ackQueueLock.Lock())
             {
                 while (_ackQueue.Last != null && _ackQueue.Last.Value.Sequence <= e.DeliveryTag)
                 {
@@ -440,7 +444,9 @@ namespace RabbitLink.Producer
 
                 _loopCancellationSource = new CancellationTokenSource();
                 _loopCancellation = _disposedCancellationSource.Token;
-                _loopTask = SendLoopAsync();
+
+                // ReSharper disable once MethodSupportsCancellation
+                _loopTask = Task.Run(async () => await SendLoopAsync().ConfigureAwait(false));
             }
         }
 

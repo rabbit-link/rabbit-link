@@ -1,7 +1,6 @@
 #region Usings
 
 using System;
-using System.CodeDom;
 using System.Threading;
 using System.Threading.Tasks;
 using Nito.AsyncEx;
@@ -134,7 +133,7 @@ namespace RabbitLink.Messaging
             return DoMessageOperationAsync(operation, cancellation);
         }
 
-        public virtual Task Nack(CancellationToken? cancellation)
+        public virtual Task NackAsync(CancellationToken? cancellation)
         {
             Func<Action, CancellationToken, Task> operation = null;
 
@@ -146,7 +145,7 @@ namespace RabbitLink.Messaging
             return DoMessageOperationAsync(operation, cancellation);            
         }
 
-        public virtual Task Requeue(CancellationToken? cancellation)
+        public virtual Task RequeueAsync(CancellationToken? cancellation)
         {
             Func<Action, CancellationToken, Task> operation = null;
 

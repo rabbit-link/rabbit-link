@@ -29,7 +29,7 @@ namespace Playground
             {
                 //TestTopology(link);
 #pragma warning disable 4014
-                //TestPullConsumer(link);
+                TestPullConsumer(link);
 #pragma warning restore 4014
                 TestPublish(link);
 
@@ -64,22 +64,43 @@ namespace Playground
             {
                 //Console.ReadLine();
 
+                ILinkMessage<object> msg;
+                ILinkMessage<object> oldMsg = null;
+
                 while (true)
                 {
                     try
                     {
-                        var msg = await consumer.GetMessageAsync();
+                        msg = await consumer.GetMessageAsync();
+
+                        if (msg == oldMsg)
+                        {
+                            ColorConsole.WriteLine("DUPE MESSAGE".Red());
+                        }
+
+                        oldMsg = msg;
 
                         ColorConsole.WriteLine("Message recieved(".Green(), msg.GetType().GenericTypeArguments[0].Name,
                             "):\n".Green(), JsonConvert.SerializeObject(msg, Formatting.Indented));
 
-                        await msg.AckAsync()
-                            .ConfigureAwait(false);
+                        try
+                        {
+                            await msg.AckAsync()
+                                .ConfigureAwait(false);
+                        }
+                        catch (Exception ex)
+                        {
+                            ColorConsole.WriteLine("Consume ACK exception:".Red(), ex.ToString());
+                        }
+                    }
+                    catch (ObjectDisposedException)
+                    {
+                        break;
                     }
                     catch (Exception ex)
                     {
                         ColorConsole.WriteLine("Consume exception:".Red(), ex.ToString());
-                    }
+                    }                    
                 }
             }
         }

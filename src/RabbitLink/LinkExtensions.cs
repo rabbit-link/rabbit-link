@@ -69,11 +69,11 @@ namespace RabbitLink
 
             using (@this.CreateTopologyConfigurator(configure, () =>
             {
-                completion.TrySetResult();
+                completion.TrySetResultWithBackgroundContinuations();
                 return Task.FromResult((object) null);
             }, ex =>
             {
-                completion.TrySetException(ex);
+                completion.TrySetExceptionWithBackgroundContinuations(ex);
                 return Task.FromResult((object) null);
             }))
             {
@@ -82,7 +82,7 @@ namespace RabbitLink
                 {
                     registration = cancellationToken.Register(() =>
                     {
-                        completion.TrySetCanceled();                    
+                        completion.TrySetCanceledWithBackgroundContinuations();                    
                     });
                 }
                 catch (ObjectDisposedException)
@@ -92,7 +92,7 @@ namespace RabbitLink
 
                 if (cancellationToken.IsCancellationRequested)
                 {
-                    completion.TrySetCanceled();
+                    completion.TrySetCanceledWithBackgroundContinuations();
                 }
 
                 try

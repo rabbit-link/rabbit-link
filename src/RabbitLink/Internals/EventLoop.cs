@@ -63,8 +63,9 @@ namespace RabbitLink.Internals
                     break;
                 }
 
+                // ReSharper disable once MethodSupportsCancellation
                 await job.RunAsync()
-                    .ConfigureAwait(false);
+                .ConfigureAwait(false);
             }
 
             while (true)
@@ -88,81 +89,27 @@ namespace RabbitLink.Internals
 
         #region Private classes
 
-        private class JobItem
+        private class JobItem : LinkQueueMessage<object>
         {
-            private readonly IDisposable _cancellationRegistration;
-            private readonly TaskCompletionSource<object> _completion = new TaskCompletionSource<object>();
             private readonly Func<Task<object>> _action;
-            private readonly CancellationToken _cancellation;
 
-            public JobItem(Func<Task<object>> action, CancellationToken cancellationToken)
+            public JobItem(Func<Task<object>> action, CancellationToken cancellation) : base(cancellation)
             {
+                if (action == null)
+                    throw new ArgumentNullException(nameof(action));
+
                 _action = action;
-                _cancellation = cancellationToken;
-
-                try
-                {
-                    _cancellationRegistration = _cancellation.Register(() =>
-                    {
-                        _completion.TrySetCanceled();
-                    });
-                }
-                catch (ObjectDisposedException)
-                {
-                    // Cancellation source already disposed                    
-                }
-
-                if (_cancellation.IsCancellationRequested)
-                {
-                    _completion.TrySetCanceled();
-                    _cancellationRegistration?.Dispose();
-                }
             }
-
-            public Task<object> Task => _completion.Task;
 
             public async Task RunAsync()
             {
                 try
                 {
-                    if (_cancellation.IsCancellationRequested)
-                    {
-                        _completion.TrySetCanceled();
-                    }
-                    else
-                    {
-                        try
-                        {
-                            _completion.TrySetResult(await _action().ConfigureAwait(false));
-                        }
-                        catch (Exception ex)
-                        {
-                            _completion.TrySetException(ex);
-                        }
-                    }
+                    SetResult(await _action().ConfigureAwait(false));
                 }
-                finally
+                catch (Exception ex)
                 {
-                    _cancellationRegistration?.Dispose();
-                }
-            }
-
-            public void SetException(Exception exception)
-            {
-                try
-                {
-                    if (_cancellation.IsCancellationRequested)
-                    {
-                        _completion.TrySetCanceled();
-                    }
-                    else
-                    {
-                        _completion.TrySetException(exception);
-                    }
-                }
-                finally
-                {
-                    _cancellationRegistration?.Dispose();
+                    SetException(ex);
                 }
             }
         }
@@ -177,14 +124,14 @@ namespace RabbitLink.Internals
             _cancellation = _cancellationSource.Token;
             _strategy = strategy;
             _jobQueue = new AsyncProducerConsumerQueue<JobItem>();
-            _loopTask = LoopAsync();
+            _loopTask = Task.Run(async () => await LoopAsync().ConfigureAwait(false));
         }
 
         public EventLoop(int maxEvents, DisposingStrategy strategy = DisposingStrategy.Throw)
         {
             _strategy = strategy;
             _jobQueue = new AsyncProducerConsumerQueue<JobItem>(maxEvents);
-            _loopTask = LoopAsync();
+            _loopTask = Task.Run(async () => await LoopAsync().ConfigureAwait(false));
         }
 
         #endregion
@@ -211,14 +158,7 @@ namespace RabbitLink.Internals
 
             var job =
                 new JobItem(
-                    async () =>
-                    {
-                        await Task.Delay(0)
-                            .ConfigureAwait(false);
-
-                        return await action()
-                            .ConfigureAwait(false);
-                    },                        
+                    async () => await Task.Run(async ()=> await action().ConfigureAwait(false), token).ConfigureAwait(false),
                     token);
 
             try
@@ -245,14 +185,10 @@ namespace RabbitLink.Internals
         }
 
         public Task<T> ScheduleAsync<T>(Func<T> action, CancellationToken token)
-        {            
-            return ScheduleAsync(async () =>
-            {
-                await Task.Delay(0)
-                    .ConfigureAwait(false);
-
-                return action();
-            }, token);
+        {
+#pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously
+            return ScheduleAsync(async () => action(), token);
+#pragma warning restore CS1998 // Async method lacks 'await' operators and will run synchronously
         }
 
         public Task ScheduleAsync(Action action, CancellationToken token)

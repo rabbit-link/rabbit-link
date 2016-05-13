@@ -8,7 +8,7 @@ using RabbitLink.Messaging;
 
 namespace RabbitLink.Producer
 {
-    internal class LinkProducerQueueMessage : LinkAbstractQueueMessage
+    internal class LinkProducerQueueMessage : LinkQueueMessage
     {
         public LinkProducerQueueMessage(byte[] body, LinkMessageProperties properties,
             LinkPublishProperties publishProperties, CancellationToken cancellation) : base(cancellation)

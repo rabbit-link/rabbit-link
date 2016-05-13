@@ -5,88 +5,58 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Nito.AsyncEx;
+using Nito.AsyncEx.Synchronous;
+using RabbitLink.Internals;
 
 #endregion
 
 namespace RabbitLink.Producer
 {
-    internal class LinkProducerQueue : IDisposable
+    internal class LinkProducerQueue : LinkQueue<LinkProducerQueueMessage>
     {
-        private readonly CancellationToken _disposedCancellation;
-        private readonly CancellationTokenSource _disposedCancellationSource = new CancellationTokenSource();
-
         private readonly LinkedList<LinkProducerQueueMessage> _retryQueue =
             new LinkedList<LinkProducerQueueMessage>();
 
-        private readonly AsyncProducerConsumerQueue<LinkProducerQueueMessage> _sendQueue =
-            new AsyncProducerConsumerQueue<LinkProducerQueueMessage>();
+        private readonly AsyncLock _retryQueueLock = new AsyncLock();
 
-        public LinkProducerQueue()
+        protected override void OnDispose()
         {
-            _disposedCancellation = _disposedCancellationSource.Token;
-        }
+            var ex = new ObjectDisposedException(GetType().Name);
 
-        public void Dispose()
-        {
-            if (_disposedCancellation.IsCancellationRequested)
-                return;
-
-            lock (_disposedCancellationSource)
+            using (_retryQueueLock.Lock())
             {
-                if (_disposedCancellation.IsCancellationRequested)
-                    return;
-
-                _disposedCancellationSource.Cancel();
-
-                _sendQueue.CompleteAdding();
-                Interlocked.MemoryBarrier();
-
-                var ex = new ObjectDisposedException(GetType().Name);
-
-                foreach (var message in _sendQueue.GetConsumingEnumerable())
+                while (_retryQueue.Count > 0)
                 {
-                    message.DisableCancellation();
-                    message.SetException(ex);
+                    _retryQueue.Last.Value.DisableCancellationAsync().WaitWithoutException();
+                    Interlocked.MemoryBarrier();
+                    _retryQueue.Last.Value.SetException(ex);
+                    _retryQueue.RemoveLast();
                 }
-
-                lock (_retryQueue)
-                {
-                    while (_retryQueue.Count > 0)
-                    {
-                        _retryQueue.Last.Value.DisableCancellation();
-                        _retryQueue.Last.Value.SetException(ex);
-                        _retryQueue.RemoveLast();
-                    }
-                }
-
-                _disposedCancellationSource.Dispose();
             }
         }
 
-        public async Task EnqueueAsync(LinkProducerQueueMessage message)
+        public async Task EnqueueRetryAsync(LinkProducerQueueMessage message, bool prepend = false)
         {
-            // ReSharper disable once MethodSupportsCancellation
-            await Task.Delay(0)
-                .ConfigureAwait(false);
-
-            if (_disposedCancellation.IsCancellationRequested)
+            if (DisposedCancellation.IsCancellationRequested)
                 throw new ObjectDisposedException(GetType().Name);
 
-            message.EnableCancellation();
-
-            await _sendQueue.EnqueueAsync(message, message.Cancellation);
-        }
-
-        public void EnqueueRetry(LinkProducerQueueMessage message, bool prepend = false)
-        {
-            if (_disposedCancellation.IsCancellationRequested)
-                throw new ObjectDisposedException(GetType().Name);
-
-            lock (_retryQueue)
+            if (message.Cancellation.IsCancellationRequested)
             {
-                if (_disposedCancellation.IsCancellationRequested)
+                message.SetCancelled();
+                return;
+            }
+
+            using (await _retryQueueLock.LockAsync().ConfigureAwait(false))
+            {
+                if (DisposedCancellation.IsCancellationRequested)
                     throw new ObjectDisposedException(GetType().Name);
 
+                if (message.Cancellation.IsCancellationRequested)
+                {
+                    message.SetCancelled();
+                    return;
+                }
+                
                 if (prepend)
                 {
                     _retryQueue.AddLast(message);
@@ -95,17 +65,18 @@ namespace RabbitLink.Producer
                 {
                     _retryQueue.AddFirst(message);
                 }
+                await message.EnableCancellationAsync().ConfigureAwait(false);
             }
         }
 
-        public void EnqueueRetry(IEnumerable<LinkProducerQueueMessage> messages, bool prepend = false)
+        public async Task EnqueueRetryAsync(IEnumerable<LinkProducerQueueMessage> messages, bool prepend = false)
         {
-            if (_disposedCancellation.IsCancellationRequested)
+            if (DisposedCancellation.IsCancellationRequested)
                 throw new ObjectDisposedException(GetType().Name);
 
-            lock (_retryQueue)
+            using (await _retryQueueLock.LockAsync().ConfigureAwait(false))
             {
-                if (_disposedCancellation.IsCancellationRequested)
+                if (DisposedCancellation.IsCancellationRequested)
                     throw new ObjectDisposedException(GetType().Name);
 
                 if (prepend)
@@ -113,77 +84,46 @@ namespace RabbitLink.Producer
                     var lastItem = _retryQueue.Last;
                     foreach (var message in messages)
                     {
+                        if (message.Cancellation.IsCancellationRequested)
+                        {
+                            message.SetCancelled();
+                            continue;
+                        }
+
                         _retryQueue.AddAfter(lastItem, message);
+                        await message.EnableCancellationAsync().ConfigureAwait(false);
                     }
                 }
                 else
                 {
                     foreach (var message in messages)
                     {
+                        if (message.Cancellation.IsCancellationRequested)
+                        {
+                            message.SetCancelled();
+                            continue;
+                        }
+
                         _retryQueue.AddFirst(message);
+                        await message.EnableCancellationAsync().ConfigureAwait(false);
                     }
                 }
             }
         }
 
-        public async Task<LinkProducerQueueMessage> DequeueAsync(CancellationToken cancellation)
+        protected override async Task<LinkProducerQueueMessage> OnDequeueAsync(CancellationToken cancellation)
         {
-            // ReSharper disable once MethodSupportsCancellation
-            await Task.Delay(0)
-                .ConfigureAwait(false);
-
-            if (_disposedCancellation.IsCancellationRequested)
-                throw new ObjectDisposedException(GetType().Name);
-
-            using (
-                var compositeCancelaltionSource = CancellationTokenHelpers.Normalize(_disposedCancellation, cancellation)
-                )
+            using (await _retryQueueLock.LockAsync(cancellation).ConfigureAwait(false))
             {
-                LinkProducerQueueMessage message;
-
-                while (!compositeCancelaltionSource.Token.IsCancellationRequested)
+                if (_retryQueue.Count > 0)
                 {
-                    lock (_retryQueue)
-                    {
-                        if (_retryQueue.Count == 0)
-                            break;
-
-                        message = _retryQueue.Last.Value;
-                        _retryQueue.RemoveLast();
-                    }
-
-                    message.DisableCancellation();
-                    Interlocked.MemoryBarrier();
-                    if (!message.Cancellation.IsCancellationRequested)
-                    {
-                        return message;
-                    }
-                }
-
-                while (!compositeCancelaltionSource.Token.IsCancellationRequested)
-                {
-                    try
-                    {
-                        message = await _sendQueue.DequeueAsync(compositeCancelaltionSource.Token)
-                            .ConfigureAwait(false);
-                    }
-                    catch (InvalidOperationException)
-                    {
-                        // Queue complete adding and empty
-                        break;
-                    }
-
-                    message.DisableCancellation();
-                    Interlocked.MemoryBarrier();
-                    if (!message.Cancellation.IsCancellationRequested)
-                    {
-                        return message;
-                    }
+                    var ret = _retryQueue.Last.Value;
+                    _retryQueue.RemoveLast();
+                    return ret;
                 }
             }
 
-            cancellation.ThrowIfCancellationRequested();
-            throw new ObjectDisposedException(GetType().Name);
+            return null;
         }
     }
 }

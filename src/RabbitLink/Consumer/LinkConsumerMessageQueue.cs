@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Nito.AsyncEx;
 using Nito.AsyncEx.Synchronous;
+using RabbitLink.Internals;
 using RabbitLink.Messaging;
 
 #endregion
@@ -16,8 +17,8 @@ namespace RabbitLink.Consumer
         private readonly CancellationTokenSource _disposedCancellationSource;
         private readonly CancellationToken _disposedCancellation;
 
-        private readonly AsyncProducerConsumerQueue<HandlerHolder> _handlersQueue =
-            new AsyncProducerConsumerQueue<HandlerHolder>();
+        private readonly LinkQueue<LinkQueueMessage<LinkMessage<byte[]>>> _handlersQueue =
+            new LinkQueue<LinkQueueMessage<LinkMessage<byte[]>>>();
 
         private readonly AsyncProducerConsumerQueue<MessageHolder> _messageQueue =
             new AsyncProducerConsumerQueue<MessageHolder>();
@@ -50,16 +51,10 @@ namespace RabbitLink.Consumer
             _messageCancellationSource.Dispose();
 
             _messageQueue.CompleteAdding();
-            _handlersQueue.CompleteAdding();
 
             // ReSharper disable once MethodSupportsCancellation
             _loopTask.WaitWithoutException();
             _loopTask.Dispose();
-
-            foreach (var handlerHolder in _handlersQueue.GetConsumingEnumerable())
-            {
-                handlerHolder.SetException(new ObjectDisposedException(GetType().Name));
-            }
 
             _handlersQueue.Dispose();
             _messageQueue.Dispose();
@@ -72,6 +67,7 @@ namespace RabbitLink.Consumer
             while (!_disposedCancellation.IsCancellationRequested)
             {
                 MessageHolder messageHolder;
+                LinkQueueMessage<LinkMessage<byte[]>> handlerHolder;
 
                 try
                 {
@@ -85,28 +81,20 @@ namespace RabbitLink.Consumer
 
                 using (var compositeCancellation = CancellationTokenHelpers
                     .Normalize(_disposedCancellation, messageHolder.Cancellation))
-                {
-                    var cancellationToken = compositeCancellation.Token;
-                    while (!cancellationToken.IsCancellationRequested)
+                {                    
+                    try
                     {
-                        HandlerHolder handlerHolder;
-                        try
-                        {
-                            handlerHolder = await _handlersQueue.DequeueAsync(cancellationToken)
-                                .ConfigureAwait(false);
-                        }
-                        catch
-                        {
-                            // message cancelled
-                            continue;
-                        }
-
-                        if (handlerHolder.SetMessage(messageHolder.Message))
-                        {
-                            break;
-                        }
+                        handlerHolder = await _handlersQueue.DequeueAsync(compositeCancellation.Token)
+                            .ConfigureAwait(false);
                     }
+                    catch
+                    {
+                        // message cancelled
+                        continue;
+                    }                    
                 }
+
+                handlerHolder.SetResult(messageHolder.Message);
             }
         }
 
@@ -117,27 +105,30 @@ namespace RabbitLink.Consumer
             if (_disposedCancellation.IsCancellationRequested)
                 throw new ObjectDisposedException(GetType().Name);
 
-            var holder = new HandlerHolder(cancellation);
+            var holder = new LinkQueueMessage<LinkMessage<byte[]>>(cancellation);
 
-            using (var compositeCancellation = CancellationTokenHelpers
-                .Normalize(_disposedCancellation, cancellation))
+            try
             {
-                try
-                {
-                    await _handlersQueue.EnqueueAsync(holder, compositeCancellation.Token)
-                        .ConfigureAwait(false);
-                }
-                catch
-                {
-                    if (_disposedCancellation.IsCancellationRequested)
-                        throw new ObjectDisposedException(GetType().Name);
+                await _handlersQueue.EnqueueAsync(holder)
+                    .ConfigureAwait(false);
+            }
+            catch
+            {
+                if (_disposedCancellation.IsCancellationRequested)
+                    throw new ObjectDisposedException(GetType().Name);
 
-                    throw;
-                }
+                throw;
             }
 
-            return await holder.Task
-                .ConfigureAwait(false);
+            try
+            {
+                return await holder.Task
+                    .ConfigureAwait(false);
+            }
+            catch (ObjectDisposedException)
+            {
+                throw new ObjectDisposedException(GetType().Name);
+            }
         }
 
         public void Enqueue(byte[] body, LinkMessageProperties properties, LinkRecieveMessageProperties recieveProperties, LinkMessageOnAckAsyncDelegate onAck,
@@ -146,15 +137,15 @@ namespace RabbitLink.Consumer
             if (_disposedCancellation.IsCancellationRequested)
                 throw new ObjectDisposedException(GetType().Name);
 
-            var cancellation = _messageCancellation;            
+            var cancellation = _messageCancellation;
 
             try
-            {                                              
+            {
                 var message = new LinkMessage<byte[]>(body, properties, recieveProperties, onAck, onNack, cancellation);
                 var holder = new MessageHolder(message, cancellation);
                 _messageQueue.Enqueue(holder, cancellation);
             }
-            catch(InvalidOperationException)
+            catch (InvalidOperationException)
             {
                 throw new ObjectDisposedException(GetType().Name);
             }
@@ -185,36 +176,6 @@ namespace RabbitLink.Consumer
 
             public LinkMessage<byte[]> Message { get; }
             public CancellationToken Cancellation { get; }
-        }
-
-        private class HandlerHolder
-        {
-            private readonly TaskCompletionSource<LinkMessage<byte[]>> _completion = new TaskCompletionSource<LinkMessage<byte[]>>();
-            private readonly IDisposable _cancellationRegistration;
-
-            public HandlerHolder(CancellationToken cancellation)
-            {
-                _cancellationRegistration = cancellation.Register(OnCancellationCancelled);
-            }
-
-            private void OnCancellationCancelled()
-            {
-                _completion.TrySetCanceled();
-            }
-
-            public bool SetMessage(LinkMessage<byte[]> message)
-            {
-                var ret = _completion.TrySetResult(message);
-                _cancellationRegistration.Dispose();
-                return ret;
-            }
-
-            public void SetException(Exception exception)
-            {
-                _completion.TrySetException(exception);
-            }
-
-            public Task<LinkMessage<byte[]>> Task => _completion.Task;
         }
 
         #endregion

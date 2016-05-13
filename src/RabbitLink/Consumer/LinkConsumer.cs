@@ -227,7 +227,7 @@ namespace RabbitLink.Consumer
                     catch (Exception ex)
                     {
 #pragma warning disable 4014
-                        rawMessage.Nack(CancellationToken.None);
+                        rawMessage.NackAsync(CancellationToken.None);
 #pragma warning restore 4014
                         throw new LinkDeserializationException(rawMessage.Body, rawMessage.Properties, rawMessage.RecieveProperties, ex);
                     }
@@ -258,7 +258,7 @@ namespace RabbitLink.Consumer
             catch (Exception ex)
             {
 #pragma warning disable 4014
-                rawMessage.Nack(CancellationToken.None);
+                rawMessage.NackAsync(CancellationToken.None);
 #pragma warning restore 4014
                 throw new LinkDeserializationException(rawMessage.Body, rawMessage.Properties, rawMessage.RecieveProperties, ex);
             }
@@ -324,7 +324,7 @@ namespace RabbitLink.Consumer
         }
 
         private void ConsumerOnReceived(object sender, BasicDeliverEventArgs e)
-        {
+        {           
             try
             {
                 _logger.Debug(
@@ -344,6 +344,7 @@ namespace RabbitLink.Consumer
                             await
                                 _channel.InvokeActionAsync(model =>
                                 {
+                                    _logger.Debug($"Sending ACK for message with delivery tag: {e.DeliveryTag}");
                                     model.BasicAck(e.DeliveryTag, false);
                                     onSuccess?.Invoke();
                                 },
