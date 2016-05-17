@@ -32,11 +32,11 @@ namespace RabbitLink.Messaging
         /// <summary>
         ///     NACK message
         /// </summary>
-        Task Nack(CancellationToken? cancellation = null);
+        Task NackAsync(CancellationToken? cancellation = null);
 
         /// <summary>
         ///     Requeue message
         /// </summary>
-        Task Requeue(CancellationToken? cancellation = null);
+        Task RequeueAsync(CancellationToken? cancellation = null);
     }
 }

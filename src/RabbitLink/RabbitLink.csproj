@@ -81,11 +81,13 @@
     <Compile Include="Exceptions\LinkConsumerNackMessageException.cs" />
     <Compile Include="Exceptions\LinkDeserializationException.cs" />
     <Compile Include="Exceptions\LinkMessageNackedException.cs" />
+    <Compile Include="Exceptions\LinkMessageOperationException.cs" />
     <Compile Include="Exceptions\LinkMessageReturnedException.cs" />
     <Compile Include="Exceptions\LinkSerializationException.cs" />
     <Compile Include="Exceptions\LinkTypeNameMappingException.cs" />
-    <Compile Include="Helpers\DateTimeHelper.cs" />
     <Compile Include="Helpers\DictionaryHelpers.cs" />
+    <Compile Include="Internals\LinkQueue.cs" />
+    <Compile Include="Internals\LinkAbstractQueueMessage.cs" />
     <Compile Include="Messaging\ILinkMessage.cs" />
     <Compile Include="Messaging\ILinkMessageIdGenerator.cs" />
     <Compile Include="Messaging\LinkGuidMessageIdGenerator.cs" />
@@ -97,6 +99,8 @@
     <Compile Include="Producer\ILinkProducer.cs" />
     <Compile Include="Producer\LinkProducerExtensions.cs" />
     <Compile Include="Producer\ILinkProducerIntenal.cs" />
+    <Compile Include="Producer\LinkProducerQueue.cs" />
+    <Compile Include="Producer\LinkProducerQueueMessage.cs" />
     <Compile Include="Serialization\ILinkMessageSerializer.cs" />
     <Compile Include="Serialization\JsonMessageSerializer.cs" />
     <Compile Include="Serialization\LinkMessageSerializerExtensions.cs" />

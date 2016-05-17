@@ -4,7 +4,7 @@ using System;
 
 #endregion
 
-namespace RabbitLink.Helpers
+namespace RabbitLink.Tests.Helpers
 {
     internal static class DateTimeHelper
     {

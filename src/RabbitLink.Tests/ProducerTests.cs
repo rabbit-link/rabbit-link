@@ -1,7 +1,6 @@
 ﻿#region Usings
 
 using System;
-using System.Threading.Tasks;
 using Nito.AsyncEx.Synchronous;
 using RabbitLink.Exceptions;
 using RabbitLink.Messaging;
@@ -25,28 +24,36 @@ namespace RabbitLink.Tests
             {
                 try
                 {
-                    var producer = link.CreateProducer(async cfg =>
+                    using (var producer = link.CreateProducer(async cfg =>
                     {
                         var ex = await cfg.ExchangeDeclare(exchangeName, LinkExchangeType.Fanout, autoDelete: true);
-                        var q = await cfg.QueueDeclare(queueName, true, false, true);
+                        var q = await cfg.QueueDeclare(queueName, true, false, true, expires: TimeSpan.FromMinutes(1));
 
                         await cfg.Bind(q, ex);
 
                         return ex;
-                    }, config: cfg => cfg.ConfirmsMode(true));
-
-                    producer.PublishAsync(new byte[] {})
-                        .WaitAndUnwrapException();
+                    }, config: cfg => cfg.ConfirmsMode(true)))
+                    {
+                        producer.PublishAsync(new byte[] {})
+                            .WaitAndUnwrapException();
+                    }
                 }
                 finally
                 {
                     link.ConfigureTopologyAsync(async cfg =>
                     {
-                        var ex = await cfg.ExchangeDeclarePassive(exchangeName);
-                        var q = await cfg.QueueDeclarePassive(queueName);
+                        try
+                        {
+                            var ex = await cfg.ExchangeDeclarePassive(exchangeName);
+                            var q = await cfg.QueueDeclarePassive(queueName);
 
-                        await cfg.ExchangeDelete(ex);
-                        await cfg.QueueDelete(q);
+                            await cfg.ExchangeDelete(ex);
+                            await cfg.QueueDelete(q);
+                        }
+                        catch
+                        {
+                            // No-op
+                        }
                     })
                         .WaitAndUnwrapException();
                 }
@@ -66,7 +73,7 @@ namespace RabbitLink.Tests
                     using (var producer = link.CreateProducer(async cfg =>
                     {
                         var ex = await cfg.ExchangeDeclare(exchangeName, LinkExchangeType.Fanout, autoDelete: true);
-                        var q = await cfg.QueueDeclare(queueName, true, false, true);
+                        var q = await cfg.QueueDeclare(queueName, true, false, true, expires: TimeSpan.FromMinutes(1));
 
                         await cfg.Bind(q, ex);
 
@@ -81,16 +88,23 @@ namespace RabbitLink.Tests
                     }
                 }
                 finally
-                {
+                {                    
                     link.ConfigureTopologyAsync(async cfg =>
                     {
-                        var ex = await cfg.ExchangeDeclarePassive(exchangeName);
-                        var q = await cfg.QueueDeclarePassive(queueName);
+                        try
+                        {
+                            var ex = await cfg.ExchangeDeclarePassive(exchangeName);
+                            var q = await cfg.QueueDeclarePassive(queueName);
 
-                        await cfg.QueueDelete(q);
-                        await cfg.ExchangeDelete(ex);
+                            await cfg.QueueDelete(q);
+                            await cfg.ExchangeDelete(ex);
+                        }
+                        catch
+                        {
+                            // No-op
+                        }
                     })
-                        .WaitAndUnwrapException();
+                    .WaitAndUnwrapException();
                 }
 
                 try
@@ -107,7 +121,8 @@ namespace RabbitLink.Tests
                             producer.PublishAsync(new byte[] {}, publishProperties: new LinkPublishProperties
                             {
                                 Mandatory = true
-                            });
+                            })
+                            .WaitAndUnwrapException();
                         });
                     }
                 }
@@ -115,8 +130,15 @@ namespace RabbitLink.Tests
                 {
                     link.ConfigureTopologyAsync(async cfg =>
                     {
-                        var ex = await cfg.ExchangeDeclarePassive(exchangeName);
-                        await cfg.ExchangeDelete(ex);
+                        try
+                        {
+                            var ex = await cfg.ExchangeDeclarePassive(exchangeName);
+                            await cfg.ExchangeDelete(ex);
+                        }
+                        catch
+                        {
+                            // No-op
+                        }
                     })
                         .WaitAndUnwrapException();
                 }
@@ -133,28 +155,37 @@ namespace RabbitLink.Tests
             {
                 try
                 {
-                    var producer = link.CreateProducer(async cfg =>
+                    using (var producer = link.CreateProducer(async cfg =>
                     {
                         var ex = await cfg.ExchangeDeclare(exchangeName, LinkExchangeType.Fanout, autoDelete: true);
-                        var q = await cfg.QueueDeclare(queueName, false, false, true);
+                        var q = await cfg.QueueDeclare(queueName, false, false, true, expires: TimeSpan.FromMinutes(1));
 
                         await cfg.Bind(q, ex);
 
                         return ex;
-                    }, config: cfg => cfg.ConfirmsMode(false));
-
-                    producer.PublishAsync(new byte[] {})
-                        .WaitAndUnwrapException();
+                    }, config: cfg => cfg.ConfirmsMode(false)))
+                    {
+                        producer.PublishAsync(new byte[] {})
+                            .WaitAndUnwrapException();
+                    }
                 }
                 finally
                 {
                     link.ConfigureTopologyAsync(async cfg =>
                     {
-                        var ex = await cfg.ExchangeDeclarePassive(exchangeName);
-                        var q = await cfg.QueueDeclarePassive(queueName);
+                        try
+                        {
+                            var ex = await cfg.ExchangeDeclarePassive(exchangeName);
 
-                        await cfg.ExchangeDelete(ex);
-                        await cfg.QueueDelete(q);
+                            var q = await cfg.QueueDeclarePassive(queueName);
+
+                            await cfg.ExchangeDelete(ex);
+                            await cfg.QueueDelete(q);
+                        }
+                        catch
+                        {
+                            // No-op
+                        }
                     })
                         .WaitAndUnwrapException();
                 }
@@ -177,16 +208,26 @@ namespace RabbitLink.Tests
                         return ex;
                     }, config: cfg => cfg.ConfirmsMode(false)))
                     {
-                        Assert.Throws<TaskCanceledException>(
-                            () => { producer.PublishAsync(new byte[] {}, TimeSpan.Zero).WaitAndUnwrapException(); });
+                        Assert.ThrowsAny<OperationCanceledException>(
+                            () =>
+                            {
+                                producer.PublishAsync(new byte[] {}, TimeSpan.Zero).WaitAndUnwrapException();
+                            });
                     }
                 }
                 finally
                 {
                     link.ConfigureTopologyAsync(async cfg =>
                     {
-                        var ex = await cfg.ExchangeDeclarePassive(exchangeName);
-                        await cfg.ExchangeDelete(ex);
+                        try
+                        {
+                            var ex = await cfg.ExchangeDeclarePassive(exchangeName);
+                            await cfg.ExchangeDelete(ex);
+                        }
+                        catch
+                        {
+                            // No-op
+                        }
                     }).WaitAndUnwrapException();
                 }
             }
