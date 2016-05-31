@@ -145,7 +145,7 @@ namespace RabbitLink.Producer
             byte[] rawBody;
             try
             {
-                rawBody = _configuration.MessageSerializer.Serialize(body, properties);
+                rawBody = _configuration.MessageSerializer.Serialize(body, msgProperties);
             }
             catch (Exception ex)
             {
