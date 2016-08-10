@@ -25,7 +25,7 @@ namespace RabbitLink.Connection
                 throw new ArgumentNullException(nameof(configuration));
 
             _configuration = configuration;
-            _logger = _configuration.LoggerFactory.CreateLogger(GetType().Name);
+            _logger = _configuration.LoggerFactory.CreateLogger($"{GetType().Name}({Id:D})");
 
             if (_logger == null)
                 throw new ArgumentException("Cannot create logger", nameof(configuration.LoggerFactory));
@@ -108,6 +108,8 @@ namespace RabbitLink.Connection
 
         #region Properties        
 
+        public Guid Id { get; } = Guid.NewGuid();
+
         public bool IsConnected => !_disposedCancellation.IsCancellationRequested &&
                                    Initialized &&
                                    _connection?.IsOpen == true;
@@ -144,14 +146,14 @@ namespace RabbitLink.Connection
 
                 try
                 {
-                    _logger.Debug($"Opening");
+                    _logger.Debug("Opening");
 
                     _connection = _connectionFactory.CreateConnection();
                     _connection.ConnectionShutdown += ConnectionOnConnectionShutdown;
                     _connection.CallbackException += ConnectionOnCallbackException;
                     _connection.ConnectionBlocked += ConnectionOnConnectionBlocked;
                     _connection.ConnectionUnblocked += ConnectionOnConnectionUnblocked;
-
+                                        
                     _logger.Debug("Sucessfully opened");
                 }
                 catch (Exception ex)
@@ -163,7 +165,7 @@ namespace RabbitLink.Connection
 
                 Connected?.Invoke(this, EventArgs.Empty);
 
-                _logger.Info("Connected");
+                _logger.Info($"Connected (Host: {_connection.Endpoint.HostName}, Port: {_connection.Endpoint.Port}, LocalPort: {_connection.LocalPort})");
             }
         }
 

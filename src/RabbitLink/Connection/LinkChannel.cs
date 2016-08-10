@@ -94,7 +94,7 @@ namespace RabbitLink.Connection
             Connection.Disposed += ConnectionOnDisposed;
             Connection.Connected += ConnectionOnConnected;
 
-            _logger.Debug("Created");
+            _logger.Debug($"Created(connectionId: {Connection.Id:D})");
 
             ScheduleReopen(false);
         }
@@ -214,7 +214,7 @@ namespace RabbitLink.Connection
 
             Ready?.Invoke(this, EventArgs.Empty);
 
-            _logger.Info("Opened");
+            _logger.Info($"Opened(channelNumber: {_model.ChannelNumber})");
         }
 
         private void ScheduleReopen(bool delay)
