@@ -10,6 +10,9 @@ stages:
 - pack
 - publish
 
+before_script:
+- chcp 65001
+
 restore:
   tags:
   - windows
@@ -69,8 +72,5 @@ publish:
   dependencies:
   - pack
   script:
-  -  echo "Publishing nuget package"
-  - cd artifacts
-  - dir  
-  - '"%NugetPath%" push *.nupkg "%NUGET_API_KEY%" -NonInteractive'
-  - cd ..
+  -  echo "Publishing nuget package"  
+  - for /f %%l in ('dir /b /s artifacts/*.nupkg') do ( '"%NugetPath%" push "%%l" "%NUGET_API_KEY%" -NonInteractive' )  
