@@ -49,6 +49,7 @@ pack:
     - build
   script:
   -  echo "Making nuget package"
+  - md artifacts
   - '"%NugetPath%" pack src/RabbitLink/RabbitLink.csproj -OutputDirectory artifacts -Properties Configuration=%Configuration%'
   artifacts:
     expire_in: 31d
