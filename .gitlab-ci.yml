@@ -25,4 +25,4 @@ publish:nuget:
 #    - triggers
     dependencies:
     - build:nuget
-    script: utils/nuget.exe push artifacts/*.nupkg "$NUGET_API_KEY"
+    script: publish.cmd
