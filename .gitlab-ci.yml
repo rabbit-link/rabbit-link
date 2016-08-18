@@ -43,10 +43,10 @@ pack:
   tags: 
   - windows
   stage: pack
-#  only:
-#  - /^v([0-9]+)\.([0-9]+)\.([0-9]+).*$/
-#  except:
-#  - branches
+  only:
+  - /^v([0-9]+)\.([0-9]+)\.([0-9]+).*$/
+  except:
+  - branches
 #  - triggers  
   dependencies:
     - build
@@ -60,14 +60,14 @@ pack:
     - artifacts/*.nupkg
 
 publish:
-  when: manual
+#  when: manual
   tags:
   - windows
   stage: publish
-#  only:
-#  - /^v([0-9]+)\.([0-9]+)\.([0-9]+).*$/
-#  except:
-#  - branches
+  only:
+  - /^v([0-9]+)\.([0-9]+)\.([0-9]+).*$/
+  except:
+  - branches
 #  - triggers
   dependencies:
   - pack
