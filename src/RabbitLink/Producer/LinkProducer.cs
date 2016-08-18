@@ -258,11 +258,7 @@ namespace RabbitLink.Producer
         #region Send
 
         private async Task RequeueUnackedAsync()
-        {
-            // Skip requeue when dispose called
-            if(_disposedCancellation.IsCancellationRequested)
-                return;            
-
+        {            
             using (await _ackQueueLock.LockAsync().ConfigureAwait(false))
             {
                 if (!_ackQueue.Any())
@@ -338,16 +334,9 @@ namespace RabbitLink.Producer
 
                     // Error on publish
                     _logger.Error($"Cannot publish message: {ex.Message}");
-
                     _logger.Debug("Queuing message for retry");
                     await _messageQueue.EnqueueRetryAsync(msg)
                         .ConfigureAwait(false);
-
-                    if (_channel.IsOpen)
-                    {
-                        _logger.Info("Channel is open while publish message error, scheduling reconfiguration.");
-                        _topology.ScheduleConfiguration(true);
-                    }
 
                     return;
                 }
@@ -363,7 +352,17 @@ namespace RabbitLink.Producer
             }
 
             await SendPublishQueueAsync(_loopCancellation).ConfigureAwait(false);
-            await RequeueUnackedAsync().ConfigureAwait(false);
+
+            if (!_disposedCancellation.IsCancellationRequested)
+            {
+                await RequeueUnackedAsync().ConfigureAwait(false);
+
+                if (!_loopCancellation.IsCancellationRequested && _channel.IsOpen)
+                {
+                    _logger.Info("Channel is open and publish loop ends, scheduling reconfiguration.");
+                    _topology.ScheduleConfiguration(true);
+                }
+            }            
         }
 
         #endregion
