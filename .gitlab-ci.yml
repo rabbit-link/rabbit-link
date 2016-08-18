@@ -1,13 +1,27 @@
 stages:
 - build
+- publish
 
 build:
   tags: 
   - windows
   - vs2015
   stage: build
-  script: build.cmd
+  script: build.cmd  
   artifacts:
     expire_in: 31d
     paths:
     - artifacts/*.nupkg
+
+publish:nuget:
+    tags:
+    - windows
+    stage: publish
+    only:
+    - /^v([0-9]+)\.([0-9]+)\.([0-9]+).*$/
+    except:
+    - branches
+    - triggers
+    dependencies:
+    - build
+    script: utils/nuget.exe push artifacts/*.nupkg "$NUGET_API_KEY"
