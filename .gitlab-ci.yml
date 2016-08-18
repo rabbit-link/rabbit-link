@@ -1,28 +1,72 @@
+variables:
+  Configuration: "Release"
+  Solution: "src/RabbitLink.sln"
+  MsBuildPath: "C:/Program Files (x86)/MSBuild/14.0/Bin/msbuild.exe"
+  NugetPath: "util/nuget.exe"    
+
 stages:
+- restore
 - build
+- pack
 - publish
 
-build:nuget:
+restore:
+  tags:
+  - windows
+  stage: restore
+  script:
+  - echo "Restoring Packages..."
+  - '"%NugetPath%" restore "%Solution%"'
+  artifacts:        
+    expire_in: 3d
+    paths:
+    - src/packages/
+
+build:
   tags: 
   - windows
   - vs2015
   stage: build
-  script: build.cmd  
+  dependencies:
+    - restore
+  script:
+  - echo "Building Solution %Solution% using '%MsBuildPath%"
+  - '"%MsBuildPath%" /consoleloggerparameters:ErrorsOnly /m /nologo /property:Configuration=%Configuration% /verbosity:quiet "%Solution%"'
+  artifacts:    
+    expire_in: 3d
+    untracked: true
+
+pack:
+  tags: 
+  - windows
+  stage: pack
+#  only:
+#  - /^v([0-9]+)\.([0-9]+)\.([0-9]+).*$/
+#  except:
+#  - branches
+#  - triggers  
+  dependencies:
+    - build
+  script:
+  -  echo "Making nuget package"
+  - '"%NugetPath%" pack src/RabbitLink/RabbitLink.csproj -OutputDirectory artifacts -Properties Configuration=%Configuration%'
   artifacts:
     expire_in: 31d
     paths:
     - artifacts/*.nupkg
 
-publish:nuget:
-    when: manual
-    tags:
-    - windows
-    stage: publish
-#    only:
-#    - /^v([0-9]+)\.([0-9]+)\.([0-9]+).*$/
-#    except:
-#    - branches
-#    - triggers
-    dependencies:
-    - build:nuget
-    script: publish.cmd
+publish:
+  when: manual
+  tags:
+  - windows
+  stage: publish
+#  only:
+#  - /^v([0-9]+)\.([0-9]+)\.([0-9]+).*$/
+#  except:
+#  - branches
+#  - triggers
+  dependencies:
+  - pack
+  script:
+  -  echo "Publishing nuget package"
+  - '"%NugetPath%" push artifacts/*.nupkg "%NUGET_API_KEY%" -NonInteractive'
