@@ -71,5 +71,5 @@ publish:
   script:
   -  echo "Publishing nuget package"
   - dir
-  - dir artifacts/
+  - dir artifacts
   - '"%NugetPath%" push "artifacts/*.nupkg" "%NUGET_API_KEY%" -NonInteractive'
