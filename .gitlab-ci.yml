@@ -31,7 +31,7 @@ build:
     - restore
   script:
   - echo "Building Solution %Solution% using '%MsBuildPath%"
-  - '"%MsBuildPath%" /consoleloggerparameters:ErrorsOnly /m /nologo /property:Configuration=%Configuration% /verbosity:quiet "%Solution%"'
+  - '"%MsBuildPath%" /m /nologo /property:Configuration=%Configuration% "%Solution%"'
   artifacts:    
     expire_in: 3d
     untracked: true
