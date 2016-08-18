@@ -14,14 +14,15 @@ build:
     - artifacts/*.nupkg
 
 publish:nuget:
+    when: manual
     tags:
     - windows
     stage: publish
     only:
     - /^v([0-9]+)\.([0-9]+)\.([0-9]+).*$/
-    except:
-    - branches
-    - triggers
+#    except:
+#    - branches
+#    - triggers
     dependencies:
     - build
     script: utils/nuget.exe push artifacts/*.nupkg "$NUGET_API_KEY"
