@@ -1,0 +1,11 @@
+stages:
+- build
+
+build:
+  tags: windows vs2015
+  stage: build
+  script: build.cmd
+  artifacts:
+    expire_in: 31d
+    paths:
+    - artifacts/*.nupkg
