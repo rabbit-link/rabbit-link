@@ -4,7 +4,7 @@ md %~dp0artifacts
 
 @if %errorlevel% neq 0 ( pause & exit /b %errorlevel%)
 
-"C:\Program Files (x86)\MSBuild\14.0\bin\msbuild.exe" /m /p:Configuration=Release "src\RabbitLink.sln"
+"C:\Program Files (x86)\MSBuild\14.0\bin\msbuild.exe" /m /nologo "/consoleloggerparameters:PerformanceSummary;Summary" /verbosity:minimal /p:Configuration=Release "src\RabbitLink.sln"
 
 @if %errorlevel% neq 0 ( pause & exit /b %errorlevel%)
 
