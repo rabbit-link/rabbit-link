@@ -104,6 +104,8 @@ namespace RabbitLink.Consumer
                 // ReSharper disable once MethodSupportsCancellation
                 _initializeTask.WaitWithoutException();
 
+                _messageQueue.Dispose();
+
                 _logger.Debug("Disposed");
                 _logger.Dispose();
             }

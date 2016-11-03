@@ -42,6 +42,8 @@ namespace RabbitLink.Internals
             // ReSharper disable once MethodSupportsCancellation
             _loopTask.WaitAndUnwrapException();
             _loopTask.Dispose();
+
+            _jobQueue.Dispose();
         }
 
         #endregion
