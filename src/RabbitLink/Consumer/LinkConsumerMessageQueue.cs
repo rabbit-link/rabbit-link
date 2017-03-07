@@ -53,11 +53,9 @@ namespace RabbitLink.Consumer
             _messageQueue.CompleteAdding();
 
             // ReSharper disable once MethodSupportsCancellation
-            _loopTask.WaitWithoutException();
-            _loopTask.Dispose();
+            _loopTask.WaitWithoutException();            
 
-            _handlersQueue.Dispose();
-            _messageQueue.Dispose();
+            _handlersQueue.Dispose();            
         }
 
         #region Loop
@@ -79,8 +77,7 @@ namespace RabbitLink.Consumer
                     return;
                 }
 
-                using (var compositeCancellation = CancellationTokenHelpers
-                    .Normalize(_disposedCancellation, messageHolder.Cancellation))
+                using (var compositeCancellation = CancellationTokenSource.CreateLinkedTokenSource(_disposedCancellation, messageHolder.Cancellation))
                 {                    
                     try
                     {

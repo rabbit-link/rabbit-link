@@ -100,8 +100,7 @@ namespace RabbitLink.Producer
                 _loopCancellationSource?.Dispose();
 
                 // ReSharper disable once MethodSupportsCancellation
-                _loopTask?.WaitAndUnwrapException();
-                _loopTask?.Dispose();
+                _loopTask?.WaitAndUnwrapException();                
 
                 // cancelling requests
                 var ex = new ObjectDisposedException(GetType().Name);
@@ -312,7 +311,7 @@ namespace RabbitLink.Producer
 
                 try
                 {
-                    using (var compositeCancellation = CancellationTokenHelpers.Normalize(cancellation, msg.Cancellation))
+                    using (var compositeCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellation, msg.Cancellation))
                     {
                         await SendMessageAsync(msg, compositeCancellation.Token)
                             .ConfigureAwait(false);
@@ -434,8 +433,7 @@ namespace RabbitLink.Producer
                 _loopCancellationSource?.Cancel();
                 _loopCancellationSource?.Dispose();
                 // ReSharper disable once MethodSupportsCancellation                    
-                _loopTask?.WaitWithoutException();
-                _loopTask?.Dispose();
+                _loopTask?.WaitWithoutException();                
 
                 _loopCancellationSource = new CancellationTokenSource();
                 _loopCancellation = _loopCancellationSource.Token;

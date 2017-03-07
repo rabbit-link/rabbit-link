@@ -4,7 +4,6 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Nito.AsyncEx;
-using Nito.AsyncEx.Synchronous;
 using RabbitLink.Topology;
 using RabbitLink.Topology.Internal;
 
@@ -58,22 +57,22 @@ namespace RabbitLink
 
         public static async Task ConfigureTopologyAsync(this Link @this,
             Func<ILinkTopologyConfig, Task> configure, CancellationToken cancellationToken)
-        {            
-            var completion = new TaskCompletionSource();
+        {
+            var completion = TaskCompletionSourceExtensions.CreateAsyncTaskSource<object>();
             if (cancellationToken.IsCancellationRequested)
             {
                 completion.TrySetCanceled();
-                await completion.Task;
+                await completion.Task.ConfigureAwait(false);
                 return;                
             }
 
             using (@this.CreateTopologyConfigurator(configure, () =>
             {
-                completion.TrySetResultWithBackgroundContinuations();
+                completion.TrySetResult(null);
                 return Task.FromResult((object) null);
             }, ex =>
             {
-                completion.TrySetExceptionWithBackgroundContinuations(ex);
+                completion.TrySetException(ex);
                 return Task.FromResult((object) null);
             }))
             {
@@ -82,7 +81,7 @@ namespace RabbitLink
                 {
                     registration = cancellationToken.Register(() =>
                     {
-                        completion.TrySetCanceledWithBackgroundContinuations();                    
+                        completion.TrySetCanceled();                    
                     });
                 }
                 catch (ObjectDisposedException)
@@ -92,7 +91,7 @@ namespace RabbitLink
 
                 if (cancellationToken.IsCancellationRequested)
                 {
-                    completion.TrySetCanceledWithBackgroundContinuations();
+                    completion.TrySetCanceled();
                 }
 
                 try

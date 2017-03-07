@@ -48,7 +48,6 @@ namespace RabbitLink.Internals
                     message.DisableCancellationAsync().WaitWithoutException();
                     message.SetException(ex);
                 }
-                _queue.Dispose();
 
                 OnDispose();                
                 _disposedCancellationSource.Dispose();
@@ -97,7 +96,7 @@ namespace RabbitLink.Internals
                 throw new ObjectDisposedException(GetType().Name);
 
             using (
-                var compositeCancelaltionSource = CancellationTokenHelpers.Normalize(DisposedCancellation, cancellation)
+                var compositeCancelaltionSource = CancellationTokenSource.CreateLinkedTokenSource(DisposedCancellation, cancellation)
                 )
             {
                 TMessage message;

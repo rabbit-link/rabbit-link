@@ -4,7 +4,6 @@ using System;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
-using Nito.AsyncEx;
 using RabbitLink.Configuration;
 using RabbitLink.Internals;
 using RabbitLink.Logging;
@@ -143,7 +142,7 @@ namespace RabbitLink.Connection
             if (_disposedCancellation.IsCancellationRequested)
                 throw new ObjectDisposedException(GetType().Name);
 
-            using (var compositeCancellation = CancellationTokenHelpers.Normalize(_disposedCancellation, cancellation))
+            using (var compositeCancellation = CancellationTokenSource.CreateLinkedTokenSource(_disposedCancellation, cancellation))
             {
                 try
                 {

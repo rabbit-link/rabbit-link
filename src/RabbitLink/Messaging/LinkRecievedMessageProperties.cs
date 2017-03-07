@@ -1,13 +1,12 @@
 ﻿#region Usings
 
-using System;
 using RabbitLink.Configuration;
 
 #endregion
 
 namespace RabbitLink.Messaging
 {
-    public class LinkRecieveMessageProperties : ICloneable
+    public class LinkRecieveMessageProperties 
     {
         public LinkRecieveMessageProperties(bool redelivered, string exchangeName, string routingKey, string queueName, bool isFromThisApp)
         {
@@ -39,12 +38,7 @@ namespace RabbitLink.Messaging
         /// Message was published from this application ( <see cref="ILinkConfigurationBuilder.AppId"/> == <see cref="LinkMessageProperties.AppId" /> )
         /// </summary>
         public bool IsFromThisApp { get; }
-
-        object ICloneable.Clone()
-        {
-            return Clone();
-        }
-
+        
         public LinkRecieveMessageProperties Clone()
         {
             return (LinkRecieveMessageProperties) MemberwiseClone();

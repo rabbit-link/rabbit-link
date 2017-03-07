@@ -11,7 +11,8 @@ namespace RabbitLink.Internals
 {
     internal class LinkQueueMessage : LinkAbstractQueueMessage
     {
-        private readonly TaskCompletionSource _completion = new TaskCompletionSource();
+        private readonly TaskCompletionSource<object> _completion =
+            TaskCompletionSourceExtensions.CreateAsyncTaskSource<object>();
 
         public LinkQueueMessage(CancellationToken cancellation) : base(cancellation)
         {
@@ -19,17 +20,17 @@ namespace RabbitLink.Internals
 
         public override void SetException(Exception exception)
         {
-            _completion.TrySetExceptionWithBackgroundContinuations(exception);
+            _completion.TrySetException(exception);
         }
 
         public override void SetCancelled()
         {
-            _completion.TrySetCanceledWithBackgroundContinuations();
+            _completion.TrySetCanceled();
         }
 
         public void SetResult()
         {
-            _completion.TrySetResultWithBackgroundContinuations();
+            _completion.TrySetResult(null);
         }
 
         public Task Task => _completion.Task;
@@ -37,7 +38,8 @@ namespace RabbitLink.Internals
 
     internal class LinkQueueMessage<TResult> : LinkAbstractQueueMessage
     {
-        private readonly TaskCompletionSource<TResult> _completion = new TaskCompletionSource<TResult>();
+        private readonly TaskCompletionSource<TResult> _completion =
+            TaskCompletionSourceExtensions.CreateAsyncTaskSource<TResult>();
 
         public LinkQueueMessage(CancellationToken cancellation) : base(cancellation)
         {
@@ -45,17 +47,17 @@ namespace RabbitLink.Internals
 
         public override void SetException(Exception exception)
         {
-            _completion.TrySetExceptionWithBackgroundContinuations(exception);
+            _completion.TrySetException(exception);
         }
 
         public override void SetCancelled()
         {
-            _completion.TrySetCanceledWithBackgroundContinuations();
+            _completion.TrySetCanceled();
         }
 
         public void SetResult(TResult result)
         {            
-            _completion.TrySetResultWithBackgroundContinuations(result);
+            _completion.TrySetResult(result);
         }
 
         public Task<TResult> Task => _completion.Task;
@@ -66,7 +68,7 @@ namespace RabbitLink.Internals
         private readonly AsyncLock _cancellationRegistrationSync = new AsyncLock();
         private CancellationTokenRegistration? _cancellationRegistration;
 
-        public LinkAbstractQueueMessage(CancellationToken cancellation)
+        protected LinkAbstractQueueMessage(CancellationToken cancellation)
         {
             Cancellation = cancellation;            
         }

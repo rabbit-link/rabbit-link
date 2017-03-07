@@ -10,7 +10,7 @@ using RabbitMQ.Client;
 
 namespace RabbitLink.Messaging
 {
-    public class LinkMessageProperties : ICloneable
+    public class LinkMessageProperties 
     {
         private readonly Dictionary<string, dynamic> _properties = new Dictionary<string, dynamic>();
 
@@ -139,12 +139,7 @@ namespace RabbitLink.Messaging
 
         public IDictionary<string, object> Headers { get; } = new Dictionary<string, object>();
 
-        public bool HeadersPresent => Headers?.Any() == true;
-
-        object ICloneable.Clone()
-        {
-            return Clone();
-        }
+        public bool HeadersPresent => Headers?.Any() == true;        
 
         public void CopyFrom(LinkMessageProperties from)
         {

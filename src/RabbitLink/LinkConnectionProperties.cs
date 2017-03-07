@@ -6,24 +6,14 @@ using System;
 
 namespace RabbitLink
 {
-    public sealed class LinkConnectionProperties : ICloneable
+    public sealed class LinkConnectionProperties
     {
         public string ConnectionString { get; set; }
         public TimeSpan ConnectionTimeout { get; set; } = TimeSpan.FromSeconds(3);
         public TimeSpan RecoveryInterval { get; set; } = TimeSpan.FromSeconds(3);
 
         public bool AutoStart { get; set; } = true;
-
-        object ICloneable.Clone()
-        {
-            return new LinkConnectionProperties
-            {
-                RecoveryInterval = RecoveryInterval,
-                ConnectionTimeout = ConnectionTimeout,
-                ConnectionString = ConnectionString
-            };
-        }
-
+        
         public void Validate()
         {
             if (string.IsNullOrWhiteSpace(ConnectionString))
@@ -47,7 +37,7 @@ namespace RabbitLink
 
         public LinkConnectionProperties Clone()
         {
-            return (LinkConnectionProperties) ((ICloneable) this).Clone();
+            return (LinkConnectionProperties) MemberwiseClone();
         }
     }
 }

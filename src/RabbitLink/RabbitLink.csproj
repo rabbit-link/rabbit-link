@@ -11,13 +11,13 @@
   </PropertyGroup>
 
   <PropertyGroup>    
-    <TargetFrameworks>net46</TargetFrameworks>    
+    <TargetFrameworks>netstandard1.5;net46</TargetFrameworks>    
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.CSharp" Version="4.3.0" />
     <PackageReference Include="Newtonsoft.Json" Version="9.0.1" />
-    <PackageReference Include="Nito.AsyncEx" Version="3.0.1" />
+    <PackageReference Include="Nito.AsyncEx.Coordination" Version="1.0.2" />
     <PackageReference Include="RabbitMQ.Client" Version="4.1.1" />
   </ItemGroup>  
   

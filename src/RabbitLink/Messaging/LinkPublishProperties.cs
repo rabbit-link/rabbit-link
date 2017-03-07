@@ -6,23 +6,14 @@ using System;
 
 namespace RabbitLink.Messaging
 {
-    public class LinkPublishProperties : ICloneable
+    public class LinkPublishProperties 
     {
         public string RoutingKey { get; set; }
         public bool? Mandatory { get; set; }
-
-        object ICloneable.Clone()
-        {
-            return Clone();
-        }
-
+        
         public LinkPublishProperties Clone()
         {
-            return new LinkPublishProperties
-            {
-                RoutingKey = RoutingKey,
-                Mandatory = Mandatory
-            };
+            return (LinkPublishProperties) MemberwiseClone();
         }
 
         public virtual void Extend(LinkPublishProperties properties)

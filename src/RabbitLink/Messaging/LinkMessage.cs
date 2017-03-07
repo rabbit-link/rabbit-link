@@ -90,7 +90,7 @@ namespace RabbitLink.Messaging
                 cancellation = CancellationToken.None;
             }
 
-            using (var compositeCancellation = CancellationTokenHelpers.Normalize(_messageCancellation, _messageOperationCancellation, cancellation.Value))
+            using (var compositeCancellation = CancellationTokenSource.CreateLinkedTokenSource(_messageCancellation, _messageOperationCancellation, cancellation.Value))
             {
                 try
                 {

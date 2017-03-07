@@ -428,8 +428,7 @@ namespace RabbitLink.Consumer
                     _logger.Debug("Topology ready");
                     _initializeCancellationSource?.Cancel();
                     _initializeCancellationSource?.Dispose();
-                    _initializeTask?.WaitWithoutException();
-                    _initializeTask?.Dispose();
+                    _initializeTask?.WaitWithoutException();                    
 
                     _initializeCancellationSource = new CancellationTokenSource();
                     _initializeCancellation = _initializeCancellationSource.Token;

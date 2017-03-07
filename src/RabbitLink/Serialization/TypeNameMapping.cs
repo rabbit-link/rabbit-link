@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 
 #endregion
 
@@ -14,7 +15,7 @@ namespace RabbitLink.Serialization
         Type Map(string name);
     }
 
-    internal class LinkTypeNameMapping : ICloneable, ILinkTypeNameMapping
+    internal class LinkTypeNameMapping : ILinkTypeNameMapping
     {
         private readonly IDictionary<string, Type> _nameTypeMap = new Dictionary<string, Type>();
         private readonly IDictionary<Type, string> _typeNameMap = new Dictionary<Type, string>();
@@ -31,12 +32,7 @@ namespace RabbitLink.Serialization
         public LinkTypeNameMapping(LinkTypeNameMapping mapping)
         {
             Set(mapping);
-        }
-
-        object ICloneable.Clone()
-        {
-            return Clone();
-        }
+        }        
 
         public string Map(Type type)
         {
@@ -78,7 +74,7 @@ namespace RabbitLink.Serialization
             if (type == typeof (object))
                 throw new ArgumentException("Object not supported, please use concrete type");
 
-            if (!type.IsClass)
+            if (!type.GetTypeInfo().IsClass)
                 throw new ArgumentException("Type must be a class", nameof(type));
 
 
