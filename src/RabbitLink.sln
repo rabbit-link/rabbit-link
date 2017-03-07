@@ -1,13 +1,13 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 14
-VisualStudioVersion = 14.0.23107.0
+# Visual Studio 15
+VisualStudioVersion = 15.0.26228.4
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RabbitLink", "RabbitLink\RabbitLink.csproj", "{B2148830-A507-44A5-BC99-EFDA7F36E21D}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Playground", "Playground\Playground.csproj", "{16AE2437-FF71-4D0B-888E-5A59E7E4F6E5}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RabbitLink.Tests", "RabbitLink.Tests\RabbitLink.Tests.csproj", "{C57D661D-6F56-476B-A063-CC929C8AEF46}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RabbitLink", "RabbitLink\RabbitLink.csproj", "{C2948199-17DA-4847-B203-2B4E6F96BAAF}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -15,10 +15,6 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{B2148830-A507-44A5-BC99-EFDA7F36E21D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{B2148830-A507-44A5-BC99-EFDA7F36E21D}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{B2148830-A507-44A5-BC99-EFDA7F36E21D}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{B2148830-A507-44A5-BC99-EFDA7F36E21D}.Release|Any CPU.Build.0 = Release|Any CPU
 		{16AE2437-FF71-4D0B-888E-5A59E7E4F6E5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{16AE2437-FF71-4D0B-888E-5A59E7E4F6E5}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{16AE2437-FF71-4D0B-888E-5A59E7E4F6E5}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -27,6 +23,10 @@ Global
 		{C57D661D-6F56-476B-A063-CC929C8AEF46}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C57D661D-6F56-476B-A063-CC929C8AEF46}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C57D661D-6F56-476B-A063-CC929C8AEF46}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C2948199-17DA-4847-B203-2B4E6F96BAAF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C2948199-17DA-4847-B203-2B4E6F96BAAF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C2948199-17DA-4847-B203-2B4E6F96BAAF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C2948199-17DA-4847-B203-2B4E6F96BAAF}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
