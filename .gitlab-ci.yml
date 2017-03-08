@@ -1,11 +1,4 @@
-variables:
-  Configuration: "Release"
-  Solution: "src/RabbitLink.sln"
-  MsBuildPath: "C:/Program Files (x86)/MSBuild/14.0/Bin/msbuild.exe"
-  NugetPath: "util/nuget.exe"    
-
 stages:
-- restore
 - build
 - pack
 - publish
@@ -13,35 +6,21 @@ stages:
 before_script:
 - chcp 65001
 
-restore:
-  tags:
-  - windows
-  stage: restore
-  script:
-  - echo "Restoring Packages..."
-  - '"%NugetPath%" restore "%Solution%"'
-  artifacts:        
-    expire_in: 3d
-    paths:
-    - src/packages/
-
 build:
   tags: 
   - windows
-  - vs2015
-  stage: build
-  dependencies:
-    - restore
+  - dotnet
+  stage: build  
   script:
-  - echo "Building Solution %Solution% using '%MsBuildPath%"
-  - '"%MsBuildPath%" /m /nologo /nr:false "/consoleloggerparameters:PerformanceSummary;Summary;ForceConsoleColor" /verbosity:minimal /property:Configuration=%Configuration% "%Solution%"'
-  artifacts:    
-    expire_in: 3d
-    untracked: true
+  - echo Restoring packages
+  - dotnet restore "%cd%\src\RabbitLink"
+  - echo Building
+  - dotnet build "%cd%\src\RabbitLink" -c Release
 
 pack:
   tags: 
   - windows
+  - dotnet
   stage: pack
   only:
   - /^v([0-9]+)\.([0-9]+)\.([0-9]+).*$/
@@ -51,18 +30,20 @@ pack:
   dependencies:
     - build
   script:
-  -  echo "Making nuget package"
-  - md artifacts
-  - '"%NugetPath%" pack src/RabbitLink/RabbitLink.csproj -OutputDirectory artifacts -Properties Configuration=%Configuration%'
+  - echo Restoring packages
+  - dotnet restore "%cd%\src\RabbitLink"
+  - echo Building
+  - dotnet pack "%cd%\src\RabbitLink" -c Release -o "%cd%\artifacts\"
   artifacts:
     expire_in: 31d
     paths:
-    - artifacts/*.nupkg
+    - artifacts/*
 
 publish:
 #  when: manual
   tags:
   - windows
+  - dotnet
   stage: publish
   only:
   - /^v([0-9]+)\.([0-9]+)\.([0-9]+).*$/
@@ -73,4 +54,4 @@ publish:
   - pack
   script:
   - echo "Publishing nuget package"  
-  - '"%NugetPath%" push artifacts\*.nupkg "%NUGET_API_KEY%" -NonInteractive'
+  - dotnet nuget push --force-english-output -s https://api.nuget.org/v3/index.json -k "%NUGET_API_KEY%" artifacts\*.nupkg 
