@@ -1,13 +1,14 @@
-md %~dp0artifacts
+@echo off
+setlocal
 
-%~dp0util\nuget.exe restore %~dp0src\RabbitLink.sln
+cd "%~dp0"
 
+echo Restoring packages
+dotnet restore "%~dp0src\RabbitLink"
 @if %errorlevel% neq 0 ( pause & exit /b %errorlevel%)
 
-"C:\Program Files (x86)\MSBuild\14.0\bin\msbuild.exe" /m /nologo "/consoleloggerparameters:PerformanceSummary;Summary" /verbosity:minimal /p:Configuration=Release "src\RabbitLink.sln"
-
+echo Building package
+dotnet pack "%~dp0src\RabbitLink" --configuration Release -o "%~dp0artifacts\" 
 @if %errorlevel% neq 0 ( pause & exit /b %errorlevel%)
-
-%~dp0util\nuget.exe pack %~dp0src\RabbitLink\RabbitLink.csproj -OutputDirectory %~dp0artifacts -Properties Configuration=Release
 
 pause
