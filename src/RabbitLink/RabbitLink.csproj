@@ -7,7 +7,7 @@
     <PackageProjectUrl>https://github.com/rabbit-link/rabbit-link</PackageProjectUrl>
     <PackageLicenseUrl>https://raw.githubusercontent.com/rabbit-link/rabbit-link/master/LICENSE</PackageLicenseUrl>
     <PackageTags>RabbitMQ Messaging AMQP</PackageTags>
-    <Version>0.3.5-beta</Version>
+    <Version>0.4</Version>
     <PackageReleaseNotes>* Moved to .Net Core.
 * Now targets to 4.6 and NetStandard 1.5.
 * Updated dependencies to lastest versions.
