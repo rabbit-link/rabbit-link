@@ -1,21 +1,25 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <Authors>Artur Kraev</Authors>    
+    <Authors>Artur Kraev</Authors>
     <Description>Advanced .Net API for RabbitMQ</Description>
     <Copyright>Artur Kraev 2015-2017</Copyright>
     <PackageProjectUrl>https://github.com/rabbit-link/rabbit-link</PackageProjectUrl>
-    <PackageLicenseUrl>https://raw.githubusercontent.com/rabbit-link/rabbit-link/master/LICENSE</PackageLicenseUrl>    
+    <PackageLicenseUrl>https://raw.githubusercontent.com/rabbit-link/rabbit-link/master/LICENSE</PackageLicenseUrl>
     <PackageTags>RabbitMQ Messaging AMQP</PackageTags>
-    <Version>0.3.5-alpha</Version>    
+    <Version>0.3.5-beta</Version>
+    <PackageReleaseNotes>* Moved to .Net Core.
+* Now targets to 4.6 and NetStandard 1.5.
+* Updated dependencies to lastest versions.
+</PackageReleaseNotes>
   </PropertyGroup>
 
   <PropertyGroup>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
 
-  <PropertyGroup>    
-    <TargetFrameworks>netstandard1.5;net46</TargetFrameworks>    
+  <PropertyGroup>
+    <TargetFrameworks>netstandard1.5;net46</TargetFrameworks>
   </PropertyGroup>
 
   <ItemGroup>
@@ -23,6 +27,6 @@
     <PackageReference Include="Newtonsoft.Json" Version="9.0.1" />
     <PackageReference Include="Nito.AsyncEx.Coordination" Version="1.0.2" />
     <PackageReference Include="RabbitMQ.Client" Version="4.1.1" />
-  </ItemGroup>  
-  
+  </ItemGroup>
+
 </Project>
