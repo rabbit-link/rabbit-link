@@ -32,12 +32,3 @@ TestsResult.html
 [Bb]uild[Ll]og.*
 *.[Pp]ublish.xml
 [Tt]humbs.db
-
-# Idea
-.idea
-
-# NuGet
-/packages/
-
-# Build
-/artifacts/
