@@ -10,6 +10,10 @@
     <Version>0.3.5-alpha</Version>    
   </PropertyGroup>
 
+  <PropertyGroup>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+
   <PropertyGroup>    
     <TargetFrameworks>netstandard1.5;net46</TargetFrameworks>    
   </PropertyGroup>
