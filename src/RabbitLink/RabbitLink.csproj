@@ -7,10 +7,9 @@
     <PackageProjectUrl>https://github.com/rabbit-link/rabbit-link</PackageProjectUrl>
     <PackageLicenseUrl>https://raw.githubusercontent.com/rabbit-link/rabbit-link/master/LICENSE</PackageLicenseUrl>
     <PackageTags>RabbitMQ Messaging AMQP</PackageTags>
-    <Version>0.4</Version>
-    <PackageReleaseNotes>* Moved to .Net Core.
-* Now targets to 4.6 and NetStandard 1.5.
-* Updated dependencies to lastest versions.
+    <Version>0.4.1</Version>
+    <PackageReleaseNotes>* Changed dependency tree.
+* Removed loggers
 </PackageReleaseNotes>
   </PropertyGroup>
 
@@ -26,6 +25,7 @@
     <PackageReference Include="Microsoft.CSharp" Version="4.3.0" />
     <PackageReference Include="Newtonsoft.Json" Version="9.0.1" />
     <PackageReference Include="Nito.AsyncEx.Coordination" Version="1.0.2" />
+    <PackageReference Include="Nito.AsyncEx.Tasks" Version="1.1.0" />    
     <PackageReference Include="RabbitMQ.Client" Version="4.1.1" />
   </ItemGroup>
 

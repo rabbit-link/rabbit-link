@@ -19,12 +19,10 @@ namespace Playground
     internal class LinkPlayground
     {
         public static void Run()
-        {
-            var loggerFactory = new ActionLinkLoggerFactory(x => new ColoredConsoleLinkLogger(x));
-
+        {            
             using (var link = new Link("amqp://localhost", cfg => cfg
                 .AutoStart(false)
-                .LoggerFactory(loggerFactory)
+                .LoggerFactory(new ColoredConsoleLinkLoggerFactory())
                 ))
             {
                 //TestTopology(link);

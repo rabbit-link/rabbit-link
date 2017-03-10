@@ -1,8 +1,6 @@
 ﻿#region Usings
 
 using System;
-using System.Threading;
-using RabbitLink.Consumer;
 using RabbitLink.Logging;
 using RabbitLink.Messaging;
 using RabbitLink.Serialization;
@@ -18,7 +16,7 @@ namespace RabbitLink.Configuration
         private TimeSpan _connectionTimeout = TimeSpan.FromSeconds(10);        
         private TimeSpan? _consumerGetMessageTimeout;
         private ushort _consumerPrefetchCount = 1;
-        private ILinkLoggerFactory _loggerFactory = new ActionLinkLoggerFactory(x => new LinkNullLogger());
+        private ILinkLoggerFactory _loggerFactory = new LinkNullLoggingFactory();
         private ILinkMessageSerializer _messageSerializer = new JsonMessageSerializer();
         private LinkMessageProperties _producerMessageProperties = new LinkMessageProperties();
         private TimeSpan? _producerPublishTimeout;

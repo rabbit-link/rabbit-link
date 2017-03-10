@@ -6,7 +6,7 @@ using System;
 
 namespace RabbitLink.Logging
 {
-    public static class LinkLoggerExtenions
+    internal static class LinkLoggerExtenions
     {
         public static void Error(this ILinkLogger logger, string format, params object[] args)
         {
