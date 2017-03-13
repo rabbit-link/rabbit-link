@@ -3,10 +3,8 @@
 using System;
 using System.IO;
 using System.Threading;
-using System.Threading.Tasks;
 using RabbitLink.Configuration;
 using RabbitLink.Exceptions;
-using RabbitLink.Internals;
 using RabbitLink.Logging;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
@@ -69,8 +67,7 @@ namespace RabbitLink.Connection
                 _logger.Debug("Disposing");
 
                 _disposedCancellationSource.Cancel();
-                _disposedCancellationSource.Dispose();
-                _eventLoop.Dispose();
+                _disposedCancellationSource.Dispose();                
                 Cleanup();
 
                 _logger.Debug("Disposed");
@@ -82,11 +79,11 @@ namespace RabbitLink.Connection
 
         #endregion
 
-        #region Fields
+        #region .fields
 
-        private readonly object _sync = new object();
-        private readonly object _connectionSync = new object();
-        private readonly EventLoop _eventLoop = new EventLoop();
+        private readonly object _sync = new object();        
+        private readonly object _timerSync = new object();
+
         private readonly CancellationTokenSource _disposedCancellationSource;
         private readonly CancellationToken _disposedCancellation;
         private readonly ConnectionFactory _connectionFactory;
@@ -95,6 +92,7 @@ namespace RabbitLink.Connection
         private readonly ILinkLogger _logger;
 
         private IConnection _connection;
+        private Timer _reconnectTimer;
 
         #endregion
 
@@ -129,7 +127,7 @@ namespace RabbitLink.Connection
             if (IsConnected || _disposedCancellation.IsCancellationRequested)
                 return;
 
-            lock (_connectionSync)
+            lock (_sync)
             {
                 // Second check
                 if (IsConnected || _disposedCancellation.IsCancellationRequested)
@@ -153,19 +151,20 @@ namespace RabbitLink.Connection
                     _connection.CallbackException += ConnectionOnCallbackException;
                     _connection.ConnectionBlocked += ConnectionOnConnectionBlocked;
                     _connection.ConnectionUnblocked += ConnectionOnConnectionUnblocked;
-                                        
+
                     _logger.Debug("Sucessfully opened");
                 }
                 catch (Exception ex)
                 {
-                    _logger.Error($"Cannot connect: {ex.Message}");
+                    _logger.Error($"Cannot connect: {ex.Message}");                 
                     ScheduleReconnect(true);
                     return;
-                }
+                }                
 
                 Connected?.Invoke(this, EventArgs.Empty);
 
-                _logger.Info($"Connected (Host: {_connection.Endpoint.HostName}, Port: {_connection.Endpoint.Port}, LocalPort: {_connection.LocalPort})");
+                _logger.Info(
+                    $"Connected (Host: {_connection.Endpoint.HostName}, Port: {_connection.Endpoint.Port}, LocalPort: {_connection.LocalPort})");
             }
         }
 
@@ -174,28 +173,34 @@ namespace RabbitLink.Connection
             if (IsConnected || _disposedCancellation.IsCancellationRequested)
                 return;
 
-            try
-            {
-                _eventLoop.ScheduleAsync(async () =>
-                {
-                    if (wait)
-                    {
-                        _logger.Info($"Reconnecting in {_configuration.ConnectionRecoveryInterval.TotalSeconds:0.###}s");
-                        await Task.Delay(_configuration.ConnectionRecoveryInterval, _disposedCancellation)
-                            .ConfigureAwait(false);
-                    }
 
-                    Connect();
-                }, _disposedCancellation);
-            }
-            catch
+            lock (_timerSync)
             {
-                // no op
-            }
+                if (_reconnectTimer != null)
+                {
+                    _logger.Debug("Supressing reconnection due another one already running");
+                    return;
+                }
+
+                var timeout = wait ? _configuration.ConnectionRecoveryInterval : TimeSpan.Zero;
+                _logger.Info($"Reconnecting in {timeout.TotalSeconds:0.###}s");
+                _reconnectTimer = new Timer(OnReconnectTimerFired, null, timeout, TimeSpan.FromMilliseconds(-1));
+            }           
+        }
+
+        private void OnReconnectTimerFired(object state)
+        {
+            Connect();
         }
 
         private void Cleanup()
         {
+            lock (_timerSync)
+            {
+                _reconnectTimer?.Dispose();
+                _reconnectTimer = null;
+            }
+
             try
             {
                 _connection?.Dispose();
@@ -206,7 +211,7 @@ namespace RabbitLink.Connection
             catch (Exception ex)
             {
                 _logger.Warning("Cleaning exception: {0}", ex);
-            }
+            }           
         }
 
         private void OnDisconnected(ShutdownEventArgs e)
@@ -272,7 +277,7 @@ namespace RabbitLink.Connection
             if (!IsConnected)
                 throw new LinkNotConnectedException();
 
-            lock (_connectionSync)
+            lock (_sync)
             {
                 if (_disposedCancellation.IsCancellationRequested)
                     throw new ObjectDisposedException(GetType().Name);
