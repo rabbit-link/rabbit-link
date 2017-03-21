@@ -19,16 +19,18 @@ namespace Playground
     internal class LinkPlayground
     {
         public static void Run()
-        {            
+        {
+            Console.WriteLine("Ready to run press enter");
+            Console.ReadLine();
+
             using (var link = new Link("amqp://localhost", cfg => cfg
                 .AutoStart(false)
                 .LoggerFactory(new ColoredConsoleLinkLoggerFactory())
                 ))
             {
-                //TestTopology(link);
-#pragma warning disable 4014
-                TestPullConsumer(link);
-#pragma warning restore 4014
+
+                // ReSharper disable once AccessToDisposedClosure
+                //Task.Factory.StartNew(() => TestPullConsumer(link));                
                 TestPublish(link);
 
 
@@ -98,15 +100,16 @@ namespace Playground
                     catch (Exception ex)
                     {
                         ColorConsole.WriteLine("Consume exception:".Red(), ex.ToString());
-                    }                    
+                    }
                 }
             }
         }
 
         private static void TestPublish(Link link)
         {
-            ColorConsole.WriteLine("Starting...");
+            ColorConsole.WriteLine("Starting...".Green());
             link.Initialize();
+            ColorConsole.WriteLine("Started".Green());
 
             using (
                 var producer =
@@ -115,21 +118,35 @@ namespace Playground
                         config: cfg => cfg.TypeNameMap(map => map.Set<string>("string").Set<MyClass>("woot")))
                 )
             {
+                ColorConsole.WriteLine("Producer started, press enter");
+                Console.ReadLine();
+
                 ColorConsole.WriteLine("Publish");
                 var sw = Stopwatch.StartNew();
 
                 var tasks = Enumerable
-                    .Range(0, 100)
-                    .Select(i => $"Item {i + 1}")
-                    .Select(body => producer.PublishAsync(
+                        .Range(0, 100)
+                        .Select(i => $"Item {i + 1}")
+                    //.Select(body => producer.PublishAsync(
+                    //    body,
+                    //    new LinkMessageProperties {DeliveryMode = LinkMessageDeliveryMode.Persistent},
+                    //    new LinkPublishProperties {Mandatory = false}
+                    //))
+                    //.ToArray();
+                    ;
+
+                foreach (var body in tasks)
+                {
+                    producer.PublishAsync(
                         body,
-                        new LinkMessageProperties {DeliveryMode = LinkMessageDeliveryMode.Persistent},
-                        new LinkPublishProperties {Mandatory = false}
-                        ))
-                    .ToArray();
+                            new LinkMessageProperties { DeliveryMode = LinkMessageDeliveryMode.Persistent },
+                        new LinkPublishProperties { Mandatory = false }
+                    )
+                     .WaitAndUnwrapException();
+                }
 
                 ColorConsole.WriteLine("Waiting for publish end...");
-                Task.WaitAll(tasks);
+                //Task.WaitAll(tasks);
                 ColorConsole.WriteLine("Publish done");
 
                 sw.Stop();
@@ -170,7 +187,7 @@ namespace Playground
         private static Task PersOnException(Exception exception)
         {
             ColorConsole.WriteLine("PersTopology exception:".Red(), exception.ToString());
-            return Task.FromResult((object) null);
+            return Task.FromResult((object)null);
         }
 
         private static async Task PersConfigure(ILinkTopologyConfig config)

@@ -46,9 +46,7 @@ namespace RabbitLink.Topology.Internal
 
             _logger.Debug($"Created(channelId: {Channel.Id}, once: {once})");
 
-#pragma warning disable 4014
             ScheduleConfiguration(false);
-#pragma warning restore 4014           
         }
 
         #endregion
@@ -144,16 +142,7 @@ namespace RabbitLink.Topology.Internal
             {
                 await _handler.Configure(new LinkTopologyConfig(_logger, Channel))
                     .ConfigureAwait(false);
-            }
-            catch (ObjectDisposedException)
-            {
-                _logger.Warning("Channel disposed, disposing");
-#pragma warning disable 4014
-                // ReSharper disable once MethodSupportsCancellation
-                Task.Run(() => Dispose());
-#pragma warning restore 4014
-                return;
-            }
+            }           
             catch (Exception ex)
             {
                 _logger.Warning("Exception on configuration: {0}", ex);
@@ -167,9 +156,7 @@ namespace RabbitLink.Topology.Internal
                     _logger.Error("Error in error handler: {0}", handlerException);
                 }
 
-#pragma warning disable 4014
                 ScheduleConfiguration(true);
-#pragma warning restore 4014
                 return;
             }
 
