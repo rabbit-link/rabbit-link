@@ -25,7 +25,7 @@
     <PackageReference Include="Microsoft.CSharp" Version="4.3.0" />
     <PackageReference Include="Newtonsoft.Json" Version="9.0.1" />
     <PackageReference Include="Nito.AsyncEx.Coordination" Version="1.0.2" />
-    <PackageReference Include="Nito.AsyncEx.Tasks" Version="1.1.0" />    
+    <PackageReference Include="Nito.AsyncEx.Tasks" Version="1.1.0" /> 
     <PackageReference Include="RabbitMQ.Client" Version="4.1.1" />
   </ItemGroup>
 

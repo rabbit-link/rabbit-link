@@ -4,7 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using Nito.AsyncEx.Synchronous;
+using RabbitLink.Async;
 using RabbitLink.Configuration;
 using RabbitLink.Connection;
 using RabbitLink.Exceptions;

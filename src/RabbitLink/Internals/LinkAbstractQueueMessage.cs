@@ -3,7 +3,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using Nito.AsyncEx;
+using RabbitLink.Async;
 
 #endregion
 

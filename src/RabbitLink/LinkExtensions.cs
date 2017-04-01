@@ -3,7 +3,6 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using Nito.AsyncEx;
 using RabbitLink.Topology;
 using RabbitLink.Topology.Internal;
 
@@ -58,7 +57,7 @@ namespace RabbitLink
         public static async Task ConfigureTopologyAsync(this Link @this,
             Func<ILinkTopologyConfig, Task> configure, CancellationToken cancellationToken)
         {
-            var completion = TaskCompletionSourceExtensions.CreateAsyncTaskSource<object>();
+            var completion = new TaskCompletionSource<object>(TaskContinuationOptions.RunContinuationsAsynchronously);
             if (cancellationToken.IsCancellationRequested)
             {
                 completion.TrySetCanceled();

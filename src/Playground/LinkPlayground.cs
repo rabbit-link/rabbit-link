@@ -6,9 +6,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using ColoredConsole;
 using Newtonsoft.Json;
-using Nito.AsyncEx.Synchronous;
 using RabbitLink;
-using RabbitLink.Logging;
 using RabbitLink.Messaging;
 using RabbitLink.Topology;
 
@@ -26,9 +24,8 @@ namespace Playground
             using (var link = new Link("amqp://localhost", cfg => cfg
                 .AutoStart(false)
                 .LoggerFactory(new ColoredConsoleLinkLoggerFactory())
-                ))
+            ))
             {
-
                 // ReSharper disable once AccessToDisposedClosure
                 //Task.Factory.StartNew(() => TestPullConsumer(link));                
                 TestPublish(link);
@@ -56,11 +53,11 @@ namespace Playground
                     return queue;
                 },
                 config:
-                    cfg =>
-                        cfg.AutoAck(false)
-                            .PrefetchCount(1000)
-                            .TypeNameMap(map => map.Set<string>("string").Set<MyClass>("woot"))
-                ))
+                cfg =>
+                    cfg.AutoAck(false)
+                        .PrefetchCount(1000)
+                        .TypeNameMap(map => map.Set<string>("string").Set<MyClass>("woot"))
+            ))
             {
                 //Console.ReadLine();
 
@@ -116,7 +113,7 @@ namespace Playground
                     link.CreateProducer(
                         async cfg => await cfg.ExchangeDeclare("link.consume", LinkExchangeType.Fanout),
                         config: cfg => cfg.TypeNameMap(map => map.Set<string>("string").Set<MyClass>("woot")))
-                )
+            )
             {
                 ColorConsole.WriteLine("Producer started, press enter");
                 Console.ReadLine();
@@ -138,11 +135,11 @@ namespace Playground
                 foreach (var body in tasks)
                 {
                     producer.PublishAsync(
-                        body,
-                            new LinkMessageProperties { DeliveryMode = LinkMessageDeliveryMode.Persistent },
-                        new LinkPublishProperties { Mandatory = false }
-                    )
-                     .WaitAndUnwrapException();
+                            body,
+                            new LinkMessageProperties {DeliveryMode = LinkMessageDeliveryMode.Persistent},
+                            new LinkPublishProperties {Mandatory = false}
+                        )
+                        .GetAwaiter().GetResult();
                 }
 
                 ColorConsole.WriteLine("Waiting for publish end...");
@@ -167,7 +164,7 @@ namespace Playground
             try
             {
                 link.ConfigureTopologyAsync(OnceConfigure, TimeSpan.FromSeconds(10))
-                    .WaitAndUnwrapException();
+                    .GetAwaiter().GetResult();
                 ColorConsole.WriteLine("Topology configured");
             }
             catch (Exception ex)
@@ -187,7 +184,7 @@ namespace Playground
         private static Task PersOnException(Exception exception)
         {
             ColorConsole.WriteLine("PersTopology exception:".Red(), exception.ToString());
-            return Task.FromResult((object)null);
+            return Task.FromResult((object) null);
         }
 
         private static async Task PersConfigure(ILinkTopologyConfig config)

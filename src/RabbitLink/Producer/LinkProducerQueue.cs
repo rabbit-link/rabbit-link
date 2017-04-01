@@ -4,8 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using Nito.AsyncEx;
-using Nito.AsyncEx.Synchronous;
+using RabbitLink.Async;
 using RabbitLink.Internals;
 
 #endregion
