@@ -30,28 +30,18 @@ namespace RabbitLink.Connection
 
                 _disposedCancellationSource.Cancel();
                 _disposedCancellationSource.Dispose();
+
+                _logger.Debug("Disposing");
+                _eventLoop.Dispose();
+                Cleanup();
+
+                Connection.Disposed -= ConnectionOnDisposed;
+
+                Disposed?.Invoke(this, EventArgs.Empty);
+
+                _logger.Debug("Disposed");
+                _logger.Dispose();
             }
-
-            _logger.Debug("Disposing");
-            _eventLoop.Dispose();
-            Cleanup();
-
-            Connection.Connected -= ConnectionOnConnected;
-            Connection.Disposed -= ConnectionOnDisposed;
-
-            _logger.Debug("Disposed");
-            _logger.Dispose();
-
-            Disposed?.Invoke(this, EventArgs.Empty);
-        }
-
-        #endregion
-
-        #region Connection callbacks
-
-        private void ConnectionOnConnected(object sender, EventArgs eventArgs)
-        {
-            ScheduleReopen(false);
         }
 
         #endregion
@@ -91,7 +81,6 @@ namespace RabbitLink.Connection
             Connection = connection;
 
             Connection.Disposed += ConnectionOnDisposed;
-            Connection.Connected += ConnectionOnConnected;
 
             _logger.Debug($"Created(connectionId: {Connection.Id:D})");
 
@@ -136,9 +125,6 @@ namespace RabbitLink.Connection
 
         public async Task InvokeActionAsync(Action<IModel> action, CancellationToken cancellation)
         {
-            await Task.Delay(0)
-                .ConfigureAwait(false);
-
             if (_disposedCancellation.IsCancellationRequested)
                 throw new ObjectDisposedException(GetType().Name);
 
@@ -178,22 +164,18 @@ namespace RabbitLink.Connection
 
         private void Open()
         {
-            if (!Connection.IsConnected || IsOpen || _disposedCancellation.IsCancellationRequested)
+            if (IsOpen || _disposedCancellation.IsCancellationRequested)
                 return;
 
             _logger.Info("Opening");
 
             Cleanup();
 
-            // Last chance to cancel
-            if (!Connection.IsConnected || _disposedCancellation.IsCancellationRequested)
-                return;
-
             try
             {
                 _logger.Debug("Creating model");
 
-                _model = Connection.CreateModel();
+                _model = Connection.CreateModel(_disposedCancellation);
                 _model.ModelShutdown += ModelOnModelShutdown;
                 _model.CallbackException += ModelOnCallbackException;
                 _model.FlowControl += ModelOnFlowControl;
@@ -203,6 +185,10 @@ namespace RabbitLink.Connection
                 _model.BasicReturn += ModelOnBasicReturn;
 
                 _logger.Debug($"Model created, channel number: {_model.ChannelNumber}");
+            }
+            catch (OperationCanceledException)
+            {
+                return;
             }
             catch (Exception ex)
             {
@@ -218,23 +204,22 @@ namespace RabbitLink.Connection
 
         private void ScheduleReopen(bool delay)
         {
-            if (!Connection.IsConnected || _disposedCancellation.IsCancellationRequested)
-            {
-                return;
-            }
+            if (_disposedCancellation.IsCancellationRequested)
+                return;      
 
             try
             {
                 _eventLoop.ScheduleAsync(async () =>
                 {
-                    if (delay)
+                    if (delay && Connection.IsConnected)
                     {
                         _logger.Info($"Reopening in {_configuration.ChannelRecoveryInterval.TotalSeconds:0.###}s");
                         await Task.Delay(_configuration.ChannelRecoveryInterval, _disposedCancellation)
                             .ConfigureAwait(false);
                     }
 
-                    Open();
+                    await Task.Factory.StartNew(Open, TaskCreationOptions.LongRunning)
+                        .ConfigureAwait(false);
                 }, _disposedCancellation);
             }
             catch

@@ -104,7 +104,13 @@ namespace RabbitLink.Topology.Internal
 
         public void Dispose()
         {
-            if (_disposedCancellationSource.IsCancellationRequested) return;
+            Dispose(false);
+        }
+
+        private void Dispose(bool byChannel)
+        {
+            if (_disposedCancellationSource.IsCancellationRequested)
+                return;
 
             _logger.Debug("Disposing");
             _disposedCancellationSource.Cancel();
@@ -114,7 +120,10 @@ namespace RabbitLink.Topology.Internal
             Channel.Ready -= ChannelOnReady;
             Channel.Disposed -= ChannelOnDisposed;
 
-            Channel.Dispose();
+            if (!byChannel)
+            {
+                Channel.Dispose();
+            }
 
             _logger.Debug("Disposed");
             _logger.Dispose();
@@ -224,7 +233,7 @@ namespace RabbitLink.Topology.Internal
         private void ChannelOnDisposed(object sender, EventArgs eventArgs)
         {
             _logger.Debug("Channel disposed, disposing...");
-            Dispose();
+            Dispose(true);
         }
 
         #endregion

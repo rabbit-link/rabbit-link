@@ -3,8 +3,8 @@
 using System;
 using System.IO;
 using System.Threading;
+using RabbitLink.Async;
 using RabbitLink.Configuration;
-using RabbitLink.Exceptions;
 using RabbitLink.Logging;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
@@ -35,7 +35,7 @@ namespace RabbitLink.Connection
                 Uri = ConnectionString,
                 TopologyRecoveryEnabled = false,
                 AutomaticRecoveryEnabled = false,
-                RequestedConnectionTimeout = (int) _configuration.ConnectionTimeout.TotalMilliseconds
+                RequestedConnectionTimeout = (int)_configuration.ConnectionTimeout.TotalMilliseconds
             };
 
             UserId = _connectionFactory.UserName;
@@ -59,7 +59,7 @@ namespace RabbitLink.Connection
             if (_disposedCancellation.IsCancellationRequested)
                 return;
 
-            lock (_sync)
+            using (_syncLock.Lock())
             {
                 if (_disposedCancellation.IsCancellationRequested)
                     return;
@@ -67,7 +67,7 @@ namespace RabbitLink.Connection
                 _logger.Debug("Disposing");
 
                 _disposedCancellationSource.Cancel();
-                _disposedCancellationSource.Dispose();                
+                _disposedCancellationSource.Dispose();
                 Cleanup();
 
                 _logger.Debug("Disposed");
@@ -81,7 +81,8 @@ namespace RabbitLink.Connection
 
         #region .fields
 
-        private readonly object _sync = new object();        
+        private readonly AsyncLock _syncLock = new AsyncLock();
+        private readonly ManualResetEventSlim _createModelEvent = new ManualResetEventSlim();
         private readonly object _timerSync = new object();
 
         private readonly CancellationTokenSource _disposedCancellationSource;
@@ -127,7 +128,7 @@ namespace RabbitLink.Connection
             if (IsConnected || _disposedCancellation.IsCancellationRequested)
                 return;
 
-            lock (_sync)
+            using (_syncLock.Lock())
             {
                 // Second check
                 if (IsConnected || _disposedCancellation.IsCancellationRequested)
@@ -156,12 +157,13 @@ namespace RabbitLink.Connection
                 }
                 catch (Exception ex)
                 {
-                    _logger.Error($"Cannot connect: {ex.Message}");                 
+                    _logger.Error($"Cannot connect: {ex.Message}");
                     ScheduleReconnect(true);
                     return;
-                }                
+                }
 
                 Connected?.Invoke(this, EventArgs.Empty);
+                _createModelEvent.Set();
 
                 _logger.Info(
                     $"Connected (Host: {_connection.Endpoint.HostName}, Port: {_connection.Endpoint.Port}, LocalPort: {_connection.LocalPort})");
@@ -185,7 +187,7 @@ namespace RabbitLink.Connection
                 var timeout = wait ? _configuration.ConnectionRecoveryInterval : TimeSpan.Zero;
                 _logger.Info($"Reconnecting in {timeout.TotalSeconds:0.###}s");
                 _reconnectTimer = new Timer(OnReconnectTimerFired, null, timeout, TimeSpan.FromMilliseconds(-1));
-            }           
+            }
         }
 
         private void OnReconnectTimerFired(object state)
@@ -201,6 +203,8 @@ namespace RabbitLink.Connection
                 _reconnectTimer = null;
             }
 
+            _createModelEvent.Reset();
+
             try
             {
                 _connection?.Dispose();
@@ -211,7 +215,7 @@ namespace RabbitLink.Connection
             catch (Exception ex)
             {
                 _logger.Warning("Cleaning exception: {0}", ex);
-            }           
+            }
         }
 
         private void OnDisconnected(ShutdownEventArgs e)
@@ -254,38 +258,65 @@ namespace RabbitLink.Connection
             if (Initialized)
                 return;
 
-            lock (_sync)
+            try
+            {
+                using (_syncLock.Lock(_disposedCancellation))
+                {
+                    if (_disposedCancellation.IsCancellationRequested)
+                        throw new ObjectDisposedException(GetType().Name);
+
+                    if (Initialized) return;
+
+                    _logger.Debug("Initializing");
+                    Initialized = true;
+
+                    ScheduleReconnect(false);
+                    _logger.Debug("Initialized");
+                }
+            }
+            catch (OperationCanceledException)
             {
                 if (_disposedCancellation.IsCancellationRequested)
                     throw new ObjectDisposedException(GetType().Name);
 
-                if (Initialized) return;
-
-                _logger.Debug("Initializing");
-                Initialized = true;
-
-                ScheduleReconnect(false);
-                _logger.Debug("Initialized");
+                throw;
             }
         }
 
-        public IModel CreateModel()
+        public IModel CreateModel(CancellationToken cancellationToken)
         {
-            if (_disposedCancellation.IsCancellationRequested)
-                throw new ObjectDisposedException(GetType().Name);
-
-            if (!IsConnected)
-                throw new LinkNotConnectedException();
-
-            lock (_sync)
+            using (var compositeCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken,
+                _disposedCancellation))
             {
-                if (_disposedCancellation.IsCancellationRequested)
-                    throw new ObjectDisposedException(GetType().Name);
+                if (compositeCancellation.IsCancellationRequested)
+                {
+                    if (_disposedCancellation.IsCancellationRequested)
+                        throw new ObjectDisposedException(GetType().Name);
 
-                if (!IsConnected)
-                    throw new LinkNotConnectedException();
+                    cancellationToken.ThrowIfCancellationRequested();
+                }
 
-                return _connection.CreateModel();
+                try
+                {
+                    while (true)
+                    {
+                        _createModelEvent.Wait(compositeCancellation.Token);
+                        using (_syncLock.Lock(compositeCancellation.Token))
+                        {
+                            if (!IsConnected)
+                                continue;
+
+                            return _connection.CreateModel();
+                        }
+                    }
+                }
+                catch (OperationCanceledException)
+                {
+                    if (_disposedCancellation.IsCancellationRequested)
+                        throw new ObjectDisposedException(GetType().Name);
+
+                    throw;
+                }
             }
         }
 
@@ -311,6 +342,8 @@ namespace RabbitLink.Connection
         private void ConnectionOnConnectionShutdown(object sender, ShutdownEventArgs e)
         {
             _logger.Info($"Diconnected, Initiator: {e.Initiator}, Code: {e.ReplyCode}, Message: {e.ReplyText}");
+
+            _createModelEvent.Reset();
             OnDisconnected(e);
 
             // if initialized by application, exit

@@ -13,17 +13,24 @@ using RabbitLink.Topology.Internal;
 
 namespace RabbitLink
 {
+    /// <summary>
+    /// Represents connection to RabbitMQ
+    /// </summary>
     public sealed class Link : IDisposable
     {
         #region Ctor
-
-        public Link(string connectionString, Action<ILinkConfigurationBuilder> config = null)
+        /// <summary>
+        /// Creates new <see cref="Link"/> instance
+        /// </summary>
+        /// <param name="connectionString">AMQP connection string</param>
+        /// <param name="configAction">Action to configure instance settings</param>
+        public Link(string connectionString, Action<ILinkConfigurationBuilder> configAction = null)
         {
             if (string.IsNullOrWhiteSpace(connectionString))
                 throw new ArgumentNullException(nameof(connectionString));
 
             var configBuilder = new LinkConfigurationBuilder();
-            config?.Invoke(configBuilder);
+            configAction?.Invoke(configBuilder);
 
             _configuration = configBuilder.Configuration;
             _configuration.ConnectionString = connectionString;
@@ -42,13 +49,34 @@ namespace RabbitLink
 
         #endregion
 
-        #region IDisposable implementation
+        #region IDisposable and Finalizer
 
+        /// <summary>
+        /// Cleaning up connection and all dependent resources
+        /// </summary>
         public void Dispose()
+        {
+            Dispose(true);
+        }
+
+        private void Dispose(bool disposing)
         {
             if (_disposed) return;
             _connection.Dispose();
             _disposed = true;
+
+            if (!disposing)
+            {
+                GC.SuppressFinalize(this);
+            }
+        }
+
+        /// <summary>
+        /// Finalizer
+        /// </summary>
+        ~Link()
+        {
+            Dispose(false);
         }
 
         #endregion
@@ -58,6 +86,9 @@ namespace RabbitLink
             return new LinkChannel(_configuration, _connection);
         }
 
+        /// <summary>
+        /// Initializes connection
+        /// </summary>
         public void Initialize()
         {
             _connection.Initialize();

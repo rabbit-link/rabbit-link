@@ -81,6 +81,11 @@ namespace RabbitLink.Consumer
 
         public void Dispose()
         {
+            Dispose(false);
+        }
+
+        private void Dispose(bool byTopology)
+        {
             if (_disposedCancellation.IsCancellationRequested)
                 return;
 
@@ -95,8 +100,10 @@ namespace RabbitLink.Consumer
                 _disposedCancellationSource.Dispose();
 
                 _topology.Disposed -= TopologyOnDisposed;
-                _topology.Dispose();
-                _channel.Dispose();
+                if (!byTopology)
+                {
+                    _topology.Dispose();
+                }
 
                 _initializeCancellationSource?.Cancel();
                 _initializeCancellationSource?.Dispose();
@@ -457,7 +464,7 @@ namespace RabbitLink.Consumer
         private void TopologyOnDisposed(object sender, EventArgs e)
         {
             _logger.Debug("Topology configurator disposed, disposing...");
-            Dispose();
+            Dispose(true);
         }
 
         #endregion
