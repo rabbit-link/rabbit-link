@@ -19,6 +19,7 @@ namespace RabbitLink.Serialization
     {
         private readonly IDictionary<string, Type> _nameTypeMap = new Dictionary<string, Type>();
         private readonly IDictionary<Type, string> _typeNameMap = new Dictionary<Type, string>();
+        private ILinkTypeNameMapping _parent = null;
 
         public LinkTypeNameMapping()
         {
@@ -32,7 +33,12 @@ namespace RabbitLink.Serialization
         public LinkTypeNameMapping(LinkTypeNameMapping mapping)
         {
             Set(mapping);
-        }        
+        }
+
+        public LinkTypeNameMapping(ILinkTypeNameMapping mapping)
+        {
+            _parent = mapping;
+        }
 
         public string Map(Type type)
         {
@@ -40,9 +46,7 @@ namespace RabbitLink.Serialization
                 throw new ArgumentNullException(nameof(type));
 
             string name;
-            _typeNameMap.TryGetValue(type, out name);
-
-            return name;
+            return _typeNameMap.TryGetValue(type, out name) ? name : _parent?.Map(type);
         }
 
         public string Map<T>()
@@ -58,9 +62,12 @@ namespace RabbitLink.Serialization
             name = name.Trim();
 
             Type type;
-            _nameTypeMap.TryGetValue(name, out type);
+            return _nameTypeMap.TryGetValue(name, out type) ? type : _parent?.Map(name);
+        }
 
-            return type;
+        public void SetParent(ILinkTypeNameMapping parent)
+        {
+            _parent = parent;
         }
 
         public void Set(Type type, string name)

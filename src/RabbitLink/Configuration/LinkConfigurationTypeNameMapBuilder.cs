@@ -51,5 +51,11 @@ namespace RabbitLink.Configuration
 
             return this;
         }
+
+        public ILinkConfigurationTypeNameMapBuilder SetParent(ILinkTypeNameMapping parent)
+        {
+            Mapping.SetParent(parent);
+            return this;
+        }
     }
 }
