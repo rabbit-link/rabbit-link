@@ -14,7 +14,11 @@ namespace RabbitLink.Async
 
         private IDisposable GetUnlockingDisposable()
         {
-            return new OnceDisposable(() => _sem.Release());
+            return new OnceDisposable(() =>
+            {
+                _sem.Release();
+                Interlocked.MemoryBarrier();
+            });
         }
 
         public Task<IDisposable> LockAsync()
@@ -26,6 +30,7 @@ namespace RabbitLink.Async
         {
             await _sem.WaitAsync(cancellationToken)
                 .ConfigureAwait(false);
+            Interlocked.MemoryBarrier();
 
             return GetUnlockingDisposable();
         }

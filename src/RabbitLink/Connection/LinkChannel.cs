@@ -16,7 +16,44 @@ namespace RabbitLink.Connection
 {
     internal class LinkChannel : ILinkChannel
     {
-        #region IDisposable
+        #region Fields
+
+        private readonly LinkConfiguration _configuration;
+        private readonly CancellationToken _disposedCancellation;
+
+        private readonly CancellationTokenSource _disposedCancellationSource;
+        private readonly EventLoop _eventLoop = new EventLoop();
+        private readonly ILinkLogger _logger;
+        private readonly object _syncObject = new object();
+        private IModel _model;
+
+        #endregion
+
+        #region Ctor
+
+        public LinkChannel(LinkConfiguration configuration, ILinkConnection connection)
+        {
+            Connection = connection ?? throw new ArgumentNullException(nameof(connection));
+            _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+
+            _logger = _configuration.LoggerFactory.CreateLogger($"{GetType().Name}({Id:D})");
+
+            if (_logger == null)
+                throw new ArgumentException("Cannot create logger", nameof(configuration.LoggerFactory));
+
+            _disposedCancellationSource = new CancellationTokenSource();
+            _disposedCancellation = _disposedCancellationSource.Token;
+
+            Connection.Disposed += ConnectionOnDisposed;
+
+            _logger.Debug($"Created(connectionId: {Connection.Id:D})");
+
+            ScheduleReopen(false);
+        }
+
+        #endregion
+
+        #region ILinkChannel Members
 
         public void Dispose()
         {
@@ -44,59 +81,6 @@ namespace RabbitLink.Connection
             }
         }
 
-        #endregion
-
-        #region Fields
-
-        private readonly CancellationTokenSource _disposedCancellationSource;
-        private readonly CancellationToken _disposedCancellation;
-        private readonly EventLoop _eventLoop = new EventLoop();
-
-        private readonly LinkConfiguration _configuration;
-        private readonly ILinkLogger _logger;
-        private readonly object _syncObject = new object();
-        private IModel _model;
-
-        #endregion
-
-        #region .ctor
-
-        public LinkChannel(LinkConfiguration configuration, ILinkConnection connection)
-        {
-            if (configuration == null)
-                throw new ArgumentNullException(nameof(configuration));
-
-            if (connection == null)
-                throw new ArgumentNullException(nameof(connection));
-
-            _configuration = configuration;
-            _logger = _configuration.LoggerFactory.CreateLogger($"{GetType().Name}({Id:D})");
-
-            if (_logger == null)
-                throw new ArgumentException("Cannot create logger", nameof(configuration.LoggerFactory));
-
-            _disposedCancellationSource = new CancellationTokenSource();
-            _disposedCancellation = _disposedCancellationSource.Token;
-
-            Connection = connection;
-
-            Connection.Disposed += ConnectionOnDisposed;
-
-            _logger.Debug($"Created(connectionId: {Connection.Id:D})");
-
-            ScheduleReopen(false);
-        }
-
-        private void ConnectionOnDisposed(object sender, EventArgs eventArgs)
-        {
-            _logger.Debug("Connection disposed, disposing...");
-            Dispose();
-        }
-
-        #endregion
-
-        #region Properties
-
         public Guid Id { get; } = Guid.NewGuid();
 
         public bool IsOpen =>
@@ -105,10 +89,6 @@ namespace RabbitLink.Connection
             _model?.IsOpen == true;
 
         public ILinkConnection Connection { get; }
-
-        #endregion
-
-        #region Events
 
         public event EventHandler Ready;
         public event EventHandler<ShutdownEventArgs> Shutdown;
@@ -119,26 +99,23 @@ namespace RabbitLink.Connection
         public event EventHandler<BasicReturnEventArgs> Return;
         public event EventHandler Disposed;
 
-        #endregion
-
-        #region Public methods
-
         public async Task InvokeActionAsync(Action<IModel> action, CancellationToken cancellation)
         {
             if (_disposedCancellation.IsCancellationRequested)
                 throw new ObjectDisposedException(GetType().Name);
 
-            using (var compositeCancellation = CancellationTokenSource.CreateLinkedTokenSource(_disposedCancellation, cancellation))
+            using (var compositeCancellation =
+                CancellationTokenSource.CreateLinkedTokenSource(_disposedCancellation, cancellation))
             {
                 try
                 {
                     await _eventLoop.ScheduleAsync(() =>
-                    {
-                        if (_model?.IsOpen != true)
-                            throw new InvalidOperationException("Channel closed");
+                        {
+                            if (_model?.IsOpen != true)
+                                throw new InvalidOperationException("Channel closed");
 
-                        action(_model);
-                    }, compositeCancellation.Token)
+                            action(_model);
+                        }, compositeCancellation.Token)
                         .ConfigureAwait(false);
                 }
                 catch (OperationCanceledException)
@@ -160,22 +137,37 @@ namespace RabbitLink.Connection
 
         #endregion
 
-        #region State management
+        private void ConnectionOnDisposed(object sender, EventArgs eventArgs)
+        {
+            _logger.Debug("Connection disposed, disposing...");
+            Dispose();
+        }
 
-        private void Open()
+        private async Task OpenAsync(bool delay)
         {
             if (IsOpen || _disposedCancellation.IsCancellationRequested)
                 return;
 
-            _logger.Info("Opening");
 
             Cleanup();
 
             try
             {
-                _logger.Debug("Creating model");
+                if (delay && Connection.IsConnected)
+                {
+                    _logger.Info($"Opening in {_configuration.ChannelRecoveryInterval.TotalSeconds:0.###}s");
+                    _model = await Connection
+                        .CreateModelWaitAsync(_configuration.ChannelRecoveryInterval, _disposedCancellation)
+                        .ConfigureAwait(false);
+                }
+                else
+                {
+                    _logger.Info("Opening");
+                    _model = await Connection
+                        .CreateModelWaitAsync(TimeSpan.Zero, _disposedCancellation)
+                        .ConfigureAwait(false);
+                }
 
-                _model = Connection.CreateModel(_disposedCancellation);
                 _model.ModelShutdown += ModelOnModelShutdown;
                 _model.CallbackException += ModelOnCallbackException;
                 _model.FlowControl += ModelOnFlowControl;
@@ -205,22 +197,12 @@ namespace RabbitLink.Connection
         private void ScheduleReopen(bool delay)
         {
             if (_disposedCancellation.IsCancellationRequested)
-                return;      
+                return;
 
             try
             {
-                _eventLoop.ScheduleAsync(async () =>
-                {
-                    if (delay && Connection.IsConnected)
-                    {
-                        _logger.Info($"Reopening in {_configuration.ChannelRecoveryInterval.TotalSeconds:0.###}s");
-                        await Task.Delay(_configuration.ChannelRecoveryInterval, _disposedCancellation)
-                            .ConfigureAwait(false);
-                    }
-
-                    await Task.Factory.StartNew(Open, TaskCreationOptions.LongRunning)
-                        .ConfigureAwait(false);
-                }, _disposedCancellation);
+                _eventLoop.ScheduleAsync(async () => await OpenAsync(delay).ConfigureAwait(false),
+                    _disposedCancellation);
             }
             catch
             {
@@ -242,10 +224,6 @@ namespace RabbitLink.Connection
                 _logger.Warning("Model cleaning exception: {0}", ex);
             }
         }
-
-        #endregion
-
-        #region Model callbacks
 
         private void ModelOnBasicReturn(object sender, BasicReturnEventArgs e)
         {
@@ -293,7 +271,5 @@ namespace RabbitLink.Connection
 
             ScheduleReopen(true);
         }
-
-        #endregion
     }
 }
