@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using RabbitLink.Connection;
 using RabbitLink.Logging;
@@ -46,7 +47,7 @@ namespace RabbitLink.Topology.Internal
 
             await
                 _channel.InvokeActionAsync(
-                    model => model.ExchangeBind(destination.Name, source.Name, routingKey, arguments))
+                    model => model.ExchangeBind(destination.Name, source.Name, routingKey, arguments), CancellationToken.None)
                     .ConfigureAwait(false);
 
             _logger.Debug(
@@ -68,7 +69,7 @@ namespace RabbitLink.Topology.Internal
             if (arguments == null)
                 arguments = new Dictionary<string, object>();
 
-            await _channel.InvokeActionAsync(model => model.QueueBind(queue.Name, exchange.Name, routingKey, arguments))
+            await _channel.InvokeActionAsync(model => model.QueueBind(queue.Name, exchange.Name, routingKey, arguments), CancellationToken.None)
                 .ConfigureAwait(false);
 
             _logger.Debug(
@@ -123,7 +124,7 @@ namespace RabbitLink.Topology.Internal
 
             await
                 _channel.InvokeActionAsync(
-                    model => model.ExchangeDeclare(name, exchangeType, durable, autoDelete, arguments))
+                    model => model.ExchangeDeclare(name, exchangeType, durable, autoDelete, arguments), CancellationToken.None)
                     .ConfigureAwait(false);
 
             _logger.Debug(
@@ -137,7 +138,7 @@ namespace RabbitLink.Topology.Internal
             if (string.IsNullOrWhiteSpace(name))
                 throw new ArgumentNullException(nameof(name));
 
-            await _channel.InvokeActionAsync(model => model.ExchangeDeclarePassive(name))
+            await _channel.InvokeActionAsync(model => model.ExchangeDeclarePassive(name), CancellationToken.None)
                 .ConfigureAwait(false);
 
             _logger.Debug($"Declared exchange passive: \"{name}\"");
@@ -157,7 +158,7 @@ namespace RabbitLink.Topology.Internal
             if (exchange == null)
                 throw new ArgumentNullException(nameof(exchange));
 
-            await _channel.InvokeActionAsync(model => model.ExchangeDelete(exchange.Name, ifUnused))
+            await _channel.InvokeActionAsync(model => model.ExchangeDelete(exchange.Name, ifUnused), CancellationToken.None)
                 .ConfigureAwait(false);
 
             _logger.Debug($"Deleted exchange \"{exchange.Name}\", unused: {ifUnused}");
@@ -175,7 +176,7 @@ namespace RabbitLink.Topology.Internal
             {
                 var resule = model.QueueDeclare();
                 name = resule.QueueName;
-            })
+            }, CancellationToken.None)
                 .ConfigureAwait(false);
 
             _logger.Debug($"Declared exclusive queue with name from server: \"{name}\"");
@@ -223,7 +224,7 @@ namespace RabbitLink.Topology.Internal
 
         public async Task<ILinkQueue> QueueDeclarePassive(string name)
         {
-            await _channel.InvokeActionAsync(model => model.QueueDeclarePassive(name))
+            await _channel.InvokeActionAsync(model => model.QueueDeclarePassive(name), CancellationToken.None)
                 .ConfigureAwait(false);
 
             return new LinkQueue(name, false);
@@ -294,7 +295,7 @@ namespace RabbitLink.Topology.Internal
             }
 
             await
-                _channel.InvokeActionAsync(model => model.QueueDeclare(name, durable, exclusive, autoDelete, arguments))
+                _channel.InvokeActionAsync(model => model.QueueDeclare(name, durable, exclusive, autoDelete, arguments), CancellationToken.None)
                     .ConfigureAwait(false);
 
             _logger.Debug(
@@ -308,7 +309,7 @@ namespace RabbitLink.Topology.Internal
             if (queue == null)
                 throw new ArgumentNullException(nameof(queue));
 
-            await _channel.InvokeActionAsync(model => model.QueueDelete(queue.Name, ifUnused, ifEmpty))
+            await _channel.InvokeActionAsync(model => model.QueueDelete(queue.Name, ifUnused, ifEmpty), CancellationToken.None)
                 .ConfigureAwait(false);
 
             _logger.Debug($"Deleted queue \"{queue.Name}\", unused: {ifUnused}, empty: {ifEmpty}");
@@ -319,7 +320,7 @@ namespace RabbitLink.Topology.Internal
             if (queue == null)
                 throw new ArgumentNullException(nameof(queue));
 
-            await _channel.InvokeActionAsync(model => model.QueuePurge(queue.Name))
+            await _channel.InvokeActionAsync(model => model.QueuePurge(queue.Name), CancellationToken.None)
                 .ConfigureAwait(false);
 
             _logger.Debug($"Purged queue \"{queue.Name}\"");

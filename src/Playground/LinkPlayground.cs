@@ -21,7 +21,7 @@ namespace Playground
             Console.WriteLine("Ready to run press enter");
             Console.ReadLine();
 
-            using (var link = new Link("amqp://localhost", cfg => cfg
+            using (var link = new Link("amqp://localhost/", cfg => cfg
                 .AutoStart(false)
                 .LoggerFactory(new ColoredConsoleLinkLoggerFactory())
             ))
