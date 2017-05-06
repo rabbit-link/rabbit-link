@@ -45,7 +45,7 @@ namespace RabbitLink
         /// <summary>
         ///     Is Link connected
         /// </summary>
-        public bool IsConnected => !_disposed && _connection.IsConnected;                              
+        public bool IsConnected => !_disposed && _connection.State == LinkConnectionState.Active;                              
 
         #endregion
 
@@ -179,17 +179,17 @@ namespace RabbitLink
         /// </summary>
         public event EventHandler Connected
         {
-            add { _connection.Connected += value; }
-            remove { _connection.Connected -= value; }
+            add => _connection.Connected += value;
+            remove => _connection.Connected -= value;
         }
 
         /// <summary>
         ///     Invokes when disconnected, must not perform blocking operations.
         /// </summary>
-        public event EventHandler<LinkDisconnectedEventArgs> Disconnected
+        public event EventHandler Disconnected
         {
-            add { _connection.Disconnected += value; }
-            remove { _connection.Disconnected -= value; }
+            add => _connection.Disconnected += value;
+            remove => _connection.Disconnected -= value;
         }
 
         #endregion

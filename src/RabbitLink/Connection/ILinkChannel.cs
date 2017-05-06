@@ -8,14 +8,14 @@ using RabbitMQ.Client;
 namespace RabbitLink.Connection
 {
     /// <summary>
-    ///     Represents automatic recovering <see cref="IModel" />
+    ///     Represents <see cref="IModel" /> with automatic recovering
     /// </summary>
     internal interface ILinkChannel : IDisposable
     {
         #region Properties
 
         /// <summary>
-        ///     Id of channel
+        ///     Identifier
         /// </summary>
         Guid Id { get; }
 

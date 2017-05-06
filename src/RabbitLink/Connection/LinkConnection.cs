@@ -2,11 +2,10 @@
 
 using System;
 using System.IO;
-using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
-using RabbitLink.Async;
 using RabbitLink.Configuration;
+using RabbitLink.Internals.Queues;
 using RabbitLink.Logging;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
@@ -20,19 +19,19 @@ namespace RabbitLink.Connection
         #region Fields
 
         private readonly LinkConfiguration _configuration;
-        private readonly ConnectionFactory _connectionFactory;
-        private readonly CancellationToken _disposedCancellation;
-
-        private readonly CancellationTokenSource _disposedCancellationSource;
-
+        private readonly ILinkConnectionFactory _connectionFactory;
         private readonly ILinkLogger _logger;
 
-        private readonly AsyncLock _syncLock = new AsyncLock();
-        private readonly SemaphoreSlim _connectedSem = new SemaphoreSlim(0);
-        private readonly object _timerSync = new object();
+        private readonly CancellationToken _disposeCancellation;
+        private readonly CancellationTokenSource _disposeCts;
+        private readonly YieldingWorkQueue<object, IModel> _queue = new YieldingWorkQueue<object, IModel>();
+
+        private readonly object _sync = new object();
 
         private IConnection _connection;
-        private Timer _reconnectTimer;
+
+        private Task _loopTask;
+        private CancellationTokenSource _connectionActiveCts;
 
         #endregion
 
@@ -47,29 +46,15 @@ namespace RabbitLink.Connection
             if (_logger == null)
                 throw new ArgumentException("Cannot create logger", nameof(configuration.LoggerFactory));
 
-            ConnectionString = _configuration.ConnectionString;
+            _connectionFactory = new LinkConnectionFactory(
+                "default",
+                _configuration.AppId,
+                _configuration.ConnectionString,
+                _configuration.ConnectionTimeout
+                );
 
-            _connectionFactory = new ConnectionFactory
-            {
-                Uri = ConnectionString,
-                TopologyRecoveryEnabled = false,
-                AutomaticRecoveryEnabled = false,
-                RequestedConnectionTimeout = (int) _configuration.ConnectionTimeout.TotalMilliseconds,
-                ClientProperties =
-                {
-                    ["product"] = "RabbitLink",
-                    ["version"] = GetType().GetTypeInfo().Assembly.GetName().Version.ToString(3),
-                    ["copyright"] = "Copyright (c) 2015-2017 RabbitLink",
-                    ["information"] = "https://github.com/rabbit-link/rabbit-link",
-                    ["app_id"] = configuration.AppId
-                }
-            };
-
-
-            UserId = _connectionFactory.UserName;
-
-            _disposedCancellationSource = new CancellationTokenSource();
-            _disposedCancellation = _disposedCancellationSource.Token;
+            _disposeCts = new CancellationTokenSource();
+            _disposeCancellation = _disposeCts.Token;
 
             _logger.Debug("Created");
             if (_configuration.AutoStart)
@@ -80,216 +65,250 @@ namespace RabbitLink.Connection
 
         #endregion
 
-        #region ILinkConnection Members
-
         public void Dispose()
         {
-            if (_disposedCancellation.IsCancellationRequested)
+            if (State == LinkConnectionState.Disposed)
                 return;
 
-            using (_syncLock.Lock())
+            lock (_sync)
             {
-                if (_disposedCancellation.IsCancellationRequested)
+                if (State == LinkConnectionState.Disposed)
                     return;
 
                 _logger.Debug("Disposing");
 
-                _disposedCancellationSource.Cancel();
-                _disposedCancellationSource.Dispose();
-                Cleanup();
+                _disposeCts.Cancel();
+                _disposeCts.Dispose();
+
+                try
+                {
+                    _loopTask?.Wait(CancellationToken.None);
+                }
+                catch
+                {
+                    // no op
+                }
+
+                State = LinkConnectionState.Disposed;
+
+                DrainQueue();
+
+                Disposed?.Invoke(this, EventArgs.Empty);
 
                 _logger.Debug("Disposed");
                 _logger.Dispose();
             }
+        }
 
-            Disposed?.Invoke(this, EventArgs.Empty);
+        private void DrainQueue()
+        {
+            _queue.CompleteAdding();
+            var ex = new ObjectDisposedException(GetType().Name);
+
+            try
+            {
+                while (true)
+                {
+                    var item = _queue.Wait(CancellationToken.None);
+                    item.Completion.TrySetException(ex);
+                }
+            }
+            catch
+            {
+                // No op
+            }
         }
 
         public event EventHandler Disposed;
         public event EventHandler Connected;
-        public event EventHandler<LinkDisconnectedEventArgs> Disconnected;
+        public event EventHandler Disconnected;
 
         public Guid Id { get; } = Guid.NewGuid();
+        public LinkConnectionState State { get; private set; }
 
-        public bool IsConnected => !_disposedCancellation.IsCancellationRequested &&
-                                   Initialized &&
-                                   _connection?.IsOpen == true;
-
-        public bool Initialized { get; private set; }
-
-        public string ConnectionString { get; }
-        public string UserId { get; }
+        public string UserId => _connectionFactory.UserName;
 
         public void Initialize()
         {
-            if (_disposedCancellation.IsCancellationRequested)
+            if (_disposeCancellation.IsCancellationRequested)
                 throw new ObjectDisposedException(GetType().Name);
 
-            if (Initialized)
-                return;
+            if (State != LinkConnectionState.Init)
+                throw new InvalidOperationException("Already initialized");
 
-            try
+            lock (_sync)
             {
-                using (_syncLock.Lock(_disposedCancellation))
-                {
-                    if (_disposedCancellation.IsCancellationRequested)
-                        throw new ObjectDisposedException(GetType().Name);
-
-                    if (Initialized) return;
-
-                    _logger.Debug("Initializing");
-                    Initialized = true;
-
-                    ScheduleReconnect(false);
-                    _logger.Debug("Initialized");
-                }
-            }
-            catch (OperationCanceledException)
-            {
-                if (_disposedCancellation.IsCancellationRequested)
+                if (_disposeCancellation.IsCancellationRequested)
                     throw new ObjectDisposedException(GetType().Name);
 
-                throw;
+                if (State != LinkConnectionState.Init)
+                    throw new InvalidOperationException("Already initialized");
+
+                State = LinkConnectionState.Open;
+                _loopTask = Task.Run(async () => await Loop().ConfigureAwait(false), _disposeCancellation);
             }
         }
 
-        public async Task<IModel> CreateModelWaitAsync(TimeSpan waitInterval, CancellationToken cancellationToken)
+        public Task<IModel> CreateModelAsync(CancellationToken cancellationToken)
         {
-            using (var compositeCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken,
-                _disposedCancellation))
-            {
-                if (compositeCancellation.IsCancellationRequested)
-                {
-                    if (_disposedCancellation.IsCancellationRequested)
-                        throw new ObjectDisposedException(GetType().Name);
+            return _queue.PutAsync(null, cancellationToken);
+        }
 
-                    cancellationToken.ThrowIfCancellationRequested();
+        #region Loop
+
+        private async Task Loop()
+        {
+            var newState = State;
+
+            while (true)
+            {
+                if (_disposeCancellation.IsCancellationRequested)
+                {
+                    newState = LinkConnectionState.Stop;
                 }
 
-                if (waitInterval > TimeSpan.Zero && IsConnected)
+                if (newState != State)
                 {
-                    await Task.Delay(waitInterval, compositeCancellation.Token)
-                        .ConfigureAwait(false);
+                    _logger.Debug($"State change {State} -> {newState}");
+                    State = newState;
                 }
 
                 try
                 {
-                    while (true)
+                    switch (State)
                     {
-                        await _connectedSem.WaitAsync(compositeCancellation.Token).ConfigureAwait(false);
+                        case LinkConnectionState.Open:
+                        case LinkConnectionState.Reopen:
+                            newState = await OnOpenReopenAsync(State == LinkConnectionState.Reopen)
+                                .ConfigureAwait(false);
+                            break;
+                        case LinkConnectionState.Active:
+                            await OnActiveAsync()
+                                .ConfigureAwait(false);
+                            newState = LinkConnectionState.Stop;
+                            break;
+                        case LinkConnectionState.Stop:
+                            newState = await OnStopAsync()
+                                .ConfigureAwait(false);
+                            break;
+                        case LinkConnectionState.Disposed:
+                            return;
 
-                        try
-                        {
-                            using (await _syncLock.LockAsync(compositeCancellation.Token).ConfigureAwait(false))
-                            {
-                                if (!IsConnected)
-                                    continue;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.Error($"Unhandled exception: {ex}");
+                }
+            }
+        }
 
-                                return _connection.CreateModel();
-                            }
-                        }
-                        finally
+        #region Actions
+
+        private async Task<LinkConnectionState> OnOpenReopenAsync(bool reopen)
+        {
+            var newState = LinkConnectionState.Stop;
+
+            using (var yieldCts = new CancellationTokenSource())
+            {
+                var cts = yieldCts;
+                
+                var connectTask = Task.Run(async () =>
+                {
+                    try
+                    {
+                        if (await ConnectAsync(reopen).ConfigureAwait(false))
                         {
-                            if (IsConnected)
-                            {
-                                _connectedSem.Release();
-                            }
+                            newState = LinkConnectionState.Active;
                         }
                     }
+                    finally
+                    {
+                        cts.Cancel();
+                    }
+                }, CancellationToken.None);
+
+                try
+                {
+                    await _queue.YieldAsync(cts.Token)
+                        .ConfigureAwait(false);
                 }
                 catch (OperationCanceledException)
                 {
-                    if (_disposedCancellation.IsCancellationRequested)
-                        throw new ObjectDisposedException(GetType().Name);
+                    // No Op
+                }
 
-                    throw;
+                await connectTask
+                    .ConfigureAwait(false);
+            }
+
+            return newState;
+        }
+
+        #region Connect
+
+        private async Task<bool> ConnectAsync(bool reopen)
+        {
+            if (_disposeCancellation.IsCancellationRequested)
+                return false;
+
+            if (reopen)
+            {
+                var timeout = _configuration.ConnectionRecoveryInterval;
+                _logger.Info($"Reopening in {timeout.TotalSeconds:0.###}s");
+
+                try
+                {
+                    await Task.Delay(timeout, _disposeCancellation)
+                        .ConfigureAwait(false);
+                }
+                catch (OperationCanceledException)
+                {
+                    return false;
                 }
             }
+
+            // start long-running task for syncronyous connect
+            return await Task.Factory
+                .StartNew(Connect, CancellationToken.None)
+                .ConfigureAwait(false);
+        }
+
+        private bool Connect()
+        {
+            if (_disposeCancellation.IsCancellationRequested)
+                return false;
+
+            _logger.Info("Connecting");
+
+            try
+            {
+                _connection = _connectionFactory.GetConnection();
+                _connectionActiveCts = new CancellationTokenSource();
+
+                _connection.ConnectionShutdown += ConnectionOnConnectionShutdown;
+                _connection.CallbackException += ConnectionOnCallbackException;
+                _connection.ConnectionBlocked += ConnectionOnConnectionBlocked;
+                _connection.ConnectionUnblocked += ConnectionOnConnectionUnblocked;
+            }
+            catch (Exception ex)
+            {
+                _logger.Error($"Cannot connect: {ex.Message}");
+                return false;
+            }
+
+            _logger.Info(
+                $"Connected (Host: {_connection.Endpoint.HostName}, Port: {_connection.Endpoint.Port}, LocalPort: {_connection.LocalPort})");
+
+            return true;
         }
 
         #endregion
 
-        private void Connect()
+        private Task<LinkConnectionState> OnStopAsync()
         {
-            // if already connected or cancelled
-            if (IsConnected || _disposedCancellation.IsCancellationRequested)
-                return;
-
-            using (_syncLock.Lock())
-            {
-                // Second check
-                if (IsConnected || _disposedCancellation.IsCancellationRequested)
-                    return;
-
-                _logger.Info("Connecting");
-
-                // Cleaning old connection
-                Cleanup();
-
-                // Last chance to cancel
-                if (_disposedCancellation.IsCancellationRequested)
-                    return;
-
-                try
-                {
-                    _logger.Debug("Opening");
-
-                    _connection = _connectionFactory.CreateConnection();
-                    _connection.ConnectionShutdown += ConnectionOnConnectionShutdown;
-                    _connection.CallbackException += ConnectionOnCallbackException;
-                    _connection.ConnectionBlocked += ConnectionOnConnectionBlocked;
-                    _connection.ConnectionUnblocked += ConnectionOnConnectionUnblocked;
-
-                    _logger.Debug("Sucessfully opened");
-                }
-                catch (Exception ex)
-                {
-                    _logger.Error($"Cannot connect: {ex.Message}");
-                    ScheduleReconnect(true);
-                    return;
-                }
-
-
-                _connectedSem.Release();
-                Connected?.Invoke(this, EventArgs.Empty);
-
-                _logger.Info(
-                    $"Connected (Host: {_connection.Endpoint.HostName}, Port: {_connection.Endpoint.Port}, LocalPort: {_connection.LocalPort})");
-            }
-        }
-
-        private void ScheduleReconnect(bool wait)
-        {
-            if (IsConnected || _disposedCancellation.IsCancellationRequested)
-                return;
-
-
-            lock (_timerSync)
-            {
-                if (_reconnectTimer != null)
-                {
-                    _logger.Debug("Supressing reconnection due another one already running");
-                    return;
-                }
-
-                var timeout = wait ? _configuration.ConnectionRecoveryInterval : TimeSpan.Zero;
-                _logger.Info($"Reconnecting in {timeout.TotalSeconds:0.###}s");
-                _reconnectTimer = new Timer(OnReconnectTimerFired, null, timeout, TimeSpan.FromMilliseconds(-1));
-            }
-        }
-
-        private void OnReconnectTimerFired(object state)
-        {
-            Connect();
-        }
-
-        private void Cleanup()
-        {
-            lock (_timerSync)
-            {
-                _reconnectTimer?.Dispose();
-                _reconnectTimer = null;
-            }
+            _connectionActiveCts?.Cancel();
+            _connectionActiveCts?.Dispose();
 
             try
             {
@@ -302,35 +321,59 @@ namespace RabbitLink.Connection
             {
                 _logger.Warning("Cleaning exception: {0}", ex);
             }
+
+            return Task.FromResult(_disposeCancellation.IsCancellationRequested
+                ? LinkConnectionState.Disposed
+                : LinkConnectionState.Reopen
+            );
         }
 
-        private void OnDisconnected(ShutdownEventArgs e)
+        private Task OnActiveAsync()
         {
-            _logger.Debug("Invoking Disconnected event");
-
-            LinkDisconnectedInitiator initiator;
-
-            switch (e.Initiator)
+            return Task.Factory.StartNew(() =>
             {
-                case ShutdownInitiator.Application:
-                    initiator = LinkDisconnectedInitiator.Application;
-                    break;
-                case ShutdownInitiator.Library:
-                    initiator = LinkDisconnectedInitiator.Library;
-                    break;
-                case ShutdownInitiator.Peer:
-                    initiator = LinkDisconnectedInitiator.Peer;
-                    break;
-                default:
-                    initiator = LinkDisconnectedInitiator.Library;
-                    break;
-            }
+                Connected?.Invoke(this, EventArgs.Empty);
 
-            var eventArgs = new LinkDisconnectedEventArgs(initiator, e.ReplyCode, e.ReplyText);
-            Disconnected?.Invoke(this, eventArgs);
+                using (var cts =
+                    CancellationTokenSource.CreateLinkedTokenSource(_disposeCancellation, _connectionActiveCts.Token))
+                {
+                    try
+                    {
+                        while (true)
+                        {
+                            var item = _queue.Wait(cts.Token);
 
-            _logger.Debug("Disconnected event sucessfully invoked");
+                            IModel model;
+
+                            try
+                            {
+                                model = _connection.CreateModel();
+                            }
+                            catch(Exception ex)
+                            {
+                                _queue.Put(item);
+                                _logger.Error($"Cannot create model: {ex.Message}");
+                                throw;
+                            }
+
+                            item.Completion.SetResult(model);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.Debug($"Processing stopped: {ex}");
+                    }
+                }
+
+                Disconnected?.Invoke(this, EventArgs.Empty);
+            }, TaskCreationOptions.LongRunning);
         }
+
+        #endregion
+
+        #endregion
+
+        #region Connection event handlers
 
         private void ConnectionOnConnectionUnblocked(object sender, EventArgs e)
         {
@@ -351,12 +394,12 @@ namespace RabbitLink.Connection
         {
             _logger.Info($"Diconnected, Initiator: {e.Initiator}, Code: {e.ReplyCode}, Message: {e.ReplyText}");
 
-            OnDisconnected(e);
-
             // if initialized by application, exit
             if (e.Initiator == ShutdownInitiator.Application) return;
 
-            ScheduleReconnect(true);
+            _connectionActiveCts?.Cancel();
         }
+
+        #endregion
     }
 }
