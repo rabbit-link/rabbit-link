@@ -20,12 +20,18 @@ namespace RabbitLink.Connection
 
         private readonly LinkConfiguration _configuration;
         private readonly CancellationToken _disposedCancellation;
-
-        private readonly CancellationTokenSource _disposedCancellationSource;
+        private readonly ILinkConnection _connection;
         private readonly ILinkLogger _logger;
-        private readonly AsyncLock _sync = new AsyncLock();
+
+        private readonly CancellationTokenSource _disposeCts;
+
+        private readonly object _sync = new object();
 
         private IModel _model;
+        private ILinkChannelHandler _handler;
+
+        private Task _loopTask;
+        private CancellationTokenSource _modelActiveCts;
 
         #endregion
 
@@ -33,7 +39,7 @@ namespace RabbitLink.Connection
 
         public LinkChannel(LinkConfiguration configuration, ILinkConnection connection)
         {
-            Connection = connection ?? throw new ArgumentNullException(nameof(connection));
+            _connection = connection ?? throw new ArgumentNullException(nameof(connection));
             _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
 
             _logger = _configuration.LoggerFactory.CreateLogger($"{GetType().Name}({Id:D})");
@@ -41,14 +47,12 @@ namespace RabbitLink.Connection
             if (_logger == null)
                 throw new ArgumentException("Cannot create logger", nameof(configuration.LoggerFactory));
 
-            _disposedCancellationSource = new CancellationTokenSource();
-            _disposedCancellation = _disposedCancellationSource.Token;
+            _disposeCts = new CancellationTokenSource();
+            _disposedCancellation = _disposeCts.Token;
 
-            Connection.Disposed += ConnectionOnDisposed;
+            _connection.Disposed += ConnectionOnDisposed;
 
-            _logger.Debug($"Created(connectionId: {Connection.Id:D})");
-
-            ScheduleReopen(false);
+            _logger.Debug($"Created(connectionId: {_connection.Id:D})");
         }
 
         #endregion
@@ -57,22 +61,30 @@ namespace RabbitLink.Connection
 
         public void Dispose()
         {
-            if (_disposedCancellation.IsCancellationRequested)
+            if (State == LinkChannelState.Disposed)
                 return;
 
-            using(_sync.Lock(CancellationToken.None))
+            lock (_sync)
             {
-                if (_disposedCancellation.IsCancellationRequested)
+                if (State == LinkChannelState.Disposed)
                     return;
 
-                _disposedCancellationSource.Cancel();
-                _disposedCancellationSource.Dispose();
+                _disposeCts.Cancel();
+                _disposeCts.Dispose();
 
                 _logger.Debug("Disposing");
 
-                Cleanup();
+                try
+                {
+                    _loopTask?.Wait(CancellationToken.None);
+                }
+                catch
+                {
+                    // no op
+                }
 
-                Connection.Disposed -= ConnectionOnDisposed;
+                _connection.Disposed -= ConnectionOnDisposed;
+                State = LinkChannelState.Disposed;
 
                 Disposed?.Invoke(this, EventArgs.Empty);
 
@@ -83,88 +95,111 @@ namespace RabbitLink.Connection
 
         public Guid Id { get; } = Guid.NewGuid();
 
-        public bool IsOpen =>
-            !_disposedCancellation.IsCancellationRequested &&
-            Connection.IsConnected &&
-            _model?.IsOpen == true;
+        public LinkChannelState State { get; private set; }
 
-        public ILinkConnection Connection { get; }
-
-        public event EventHandler Ready;
-        public event EventHandler<ShutdownEventArgs> Shutdown;
-        public event EventHandler<BasicAckEventArgs> Ack;
-        public event EventHandler<BasicNackEventArgs> Nack;
-        public event EventHandler<BasicReturnEventArgs> Return;
         public event EventHandler Disposed;
 
-        public async Task InvokeActionAsync(Action<IModel> action, CancellationToken cancellation)
+        public void Initialize(ILinkChannelHandler handler)
         {
             if (_disposedCancellation.IsCancellationRequested)
                 throw new ObjectDisposedException(GetType().Name);
 
-            using (var compositeCancellation = CancellationTokenSource
-                .CreateLinkedTokenSource(_disposedCancellation, cancellation))
+            if (State != LinkChannelState.Init)
+                throw new InvalidOperationException("Already initialized");
+
+            if (handler == null)
+                throw new ArgumentNullException(nameof(handler));
+
+            lock (_sync)
             {
-                try
-                {
-                    using (await _sync.LockAsync(compositeCancellation.Token).ConfigureAwait(false))
-                    {
-                        if (_model?.IsOpen != true)
-                            throw new InvalidOperationException("Channel closed");
+                if (_disposedCancellation.IsCancellationRequested)
+                    throw new ObjectDisposedException(GetType().Name);
 
-                        action(_model);
-                    }
-                }
-                catch (OperationCanceledException)
-                {
-                    if (_disposedCancellation.IsCancellationRequested)
-                    {
-                        throw new ObjectDisposedException(GetType().Name);
-                    }
+                if (State != LinkChannelState.Init)
+                    throw new InvalidOperationException("Already initialized");
 
-                    throw;
-                }
+                _handler = handler;
+                State = LinkChannelState.Open;
+                _loopTask = Task.Run(async () => await Loop().ConfigureAwait(false), _disposedCancellation);
             }
-        }
-
-        public Task InvokeActionAsync(Action<IModel> action)
-        {
-            return InvokeActionAsync(action, CancellationToken.None);
         }
 
         #endregion
 
-        private void ConnectionOnDisposed(object sender, EventArgs eventArgs)
-        {
-            _logger.Debug("Connection disposed, disposing...");
-            Dispose();
-        }
+        #region Loop
 
-        private async Task OpenAsync(bool delay)
+        private async Task Loop()
         {
-            if (IsOpen || _disposedCancellation.IsCancellationRequested)
-                return;
+            var newState = State;
 
-            using (await _sync.LockAsync(_disposedCancellation).ConfigureAwait(false))
+            while (true)
             {
-                if (IsOpen || _disposedCancellation.IsCancellationRequested)
-                    return;
+                if (_disposedCancellation.IsCancellationRequested)
+                {
+                    newState = LinkChannelState.Stop;
+                }
 
-                Cleanup();
+                if (newState != State)
+                {
+                    _logger.Debug($"State change {State} -> {newState}");
+                    State = newState;
+                }
 
                 try
                 {
-                    if (delay && Connection.IsConnected)
+                    switch (State)
                     {
-                        _logger.Info($"Opening in {_configuration.ChannelRecoveryInterval.TotalSeconds:0.###}s");
-                        _model = await Connection
+                        case LinkChannelState.Open:
+                        case LinkChannelState.Reopen:
+                            newState = await OnOpenReopenAsync(State == LinkChannelState.Reopen)
+                                .ConfigureAwait(false);
+                            break;
+                        case LinkChannelState.Active:
+                            newState = await OnActive()
+                                .ConfigureAwait(false);
+                            break;
+                        case LinkChannelState.Stop:
+                            newState = await OnStop()
+                                .ConfigureAwait(false);
+                            break;
+                        case LinkChannelState.Disposed:
+                            return;
+
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.Error($"Unhandled exception: {ex}");
+                }
+            }
+        }
+
+        #region Actions
+
+        private async Task<LinkChannelState> OnOpenReopenAsync(bool reopen)
+        {
+            _modelActiveCts = new CancellationTokenSource();
+            using (var openCts = new CancellationTokenSource())
+            {
+                var openCancellation = openCts.Token;
+                var openTask = Task.Run(
+                    async () => await _handler.OnConnecting(openCancellation).ConfigureAwait(false),
+                    openCancellation
+                );
+
+                try
+                {
+                    if (reopen && _connection.IsConnected)
+                    {
+                        _logger.Info($"Reopening in {_configuration.ChannelRecoveryInterval.TotalSeconds:0.###}s");
+                        _model = await _connection
                             .CreateModelWaitAsync(_configuration.ChannelRecoveryInterval, _disposedCancellation)
                             .ConfigureAwait(false);
                     }
                     else
                     {
-                        _logger.Info("Opening");
-                        _model = await Connection
+                        _logger.Info(reopen ? "Reopening" : "Opening");
+                        _model = await _connection
                             .CreateModelWaitAsync(TimeSpan.Zero, _disposedCancellation)
                             .ConfigureAwait(false);
                     }
@@ -177,33 +212,36 @@ namespace RabbitLink.Connection
 
                     _logger.Debug($"Model created, channel number: {_model.ChannelNumber}");
                 }
-                catch (OperationCanceledException)
-                {
-                    return;
-                }
                 catch (Exception ex)
                 {
                     _logger.Error("Cannot create model: {0}", ex.Message);
-                    ScheduleReopen(true);
-                    return;
+                    return LinkChannelState.Stop;
                 }
+                finally
+                {
+                    openCts.Cancel();
 
-                Ready?.Invoke(this, EventArgs.Empty);
-
-                _logger.Info($"Opened(channelNumber: {_model.ChannelNumber})");
+                    try
+                    {
+                        await openTask
+                            .ConfigureAwait(false);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.Warning($"Connecting handler throws exception: {ex}");
+                    }
+                }
             }
+
+            _logger.Info($"Opened(channelNumber: {_model.ChannelNumber})");
+            return LinkChannelState.Active;
         }
 
-        private void ScheduleReopen(bool delay)
+        private Task<LinkChannelState> OnStop()
         {
-            if (_disposedCancellation.IsCancellationRequested)
-                return;
+            _modelActiveCts?.Cancel();
+            _modelActiveCts?.Dispose();
 
-            Task.Run(async () => await OpenAsync(delay).ConfigureAwait(false), _disposedCancellation);
-        }
-
-        private void Cleanup()
-        {
             try
             {
                 _model?.Dispose();
@@ -215,25 +253,65 @@ namespace RabbitLink.Connection
             {
                 _logger.Warning("Model cleaning exception: {0}", ex);
             }
+
+            return Task.FromResult(_disposedCancellation.IsCancellationRequested
+                ? LinkChannelState.Disposed
+                : LinkChannelState.Reopen
+            );
+        }
+
+        private async Task<LinkChannelState> OnActive()
+        {
+            using (var activeCts =
+                CancellationTokenSource.CreateLinkedTokenSource(_disposedCancellation, _modelActiveCts.Token))
+            {
+                try
+                {
+                    await _handler.OnActive(_model, activeCts.Token)
+                        .ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    _logger.Warning($"Processing handler exception: {ex}");
+                }
+
+                await activeCts.Token.WaitCancellation()
+                    .ConfigureAwait(false);
+            }
+
+            return LinkChannelState.Stop;
+        }
+
+        #endregion
+
+        #endregion
+
+        #region Event handlers
+
+        private void ConnectionOnDisposed(object sender, EventArgs eventArgs)
+        {
+            _logger.Debug("Connection disposed, disposing...");
+            Dispose();
         }
 
         private void ModelOnBasicReturn(object sender, BasicReturnEventArgs e)
         {
             _logger.Debug(
                 $"Return, code: {e.ReplyCode}, message: {e.ReplyText},  message id:{e.BasicProperties.MessageId}");
-            Return?.Invoke(this, e);
+
+            _handler.MessageReturn(e);
         }
 
         private void ModelOnBasicNacks(object sender, BasicNackEventArgs e)
         {
             _logger.Debug($"Nack, tag: {e.DeliveryTag}, multiple: {e.Multiple}");
-            Nack?.Invoke(this, e);
+            _handler.MessageNack(e);
         }
 
         private void ModelOnBasicAcks(object sender, BasicAckEventArgs e)
         {
             _logger.Debug($"Ack, tag: {e.DeliveryTag}, multiple: {e.Multiple}");
-            Ack?.Invoke(this, e);
+            _handler.MessageAck(e);
         }
 
         private void ModelOnCallbackException(object sender, CallbackExceptionEventArgs e)
@@ -247,9 +325,9 @@ namespace RabbitLink.Connection
 
             if (e.Initiator == ShutdownInitiator.Application) return;
 
-            Shutdown?.Invoke(this, e);
-
-            ScheduleReopen(true);
+            _modelActiveCts?.Cancel();
         }
+
+        #endregion
     }
 }

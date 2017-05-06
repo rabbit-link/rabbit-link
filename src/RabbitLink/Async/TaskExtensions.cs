@@ -1,6 +1,7 @@
 ﻿#region Usings
 
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 
 #endregion
@@ -48,6 +49,21 @@ namespace RabbitLink.Async
             if (task == null)
                 throw new ArgumentNullException(nameof(task));
             return task.GetAwaiter().GetResult();
+        }
+
+        /// <summary>
+        /// Creates <see cref="Task"/> which will be completed on token cancel
+        /// </summary>
+        /// <param name="token">token watch on</param>
+        /// <returns></returns>
+        public static Task WaitCancellation(this CancellationToken token)
+        {
+            if (token.IsCancellationRequested)
+                return Task.FromCanceled(token);
+
+            var tcs = new TaskCompletionSource<object>();
+            token.Register(() => tcs.TrySetResult(null));
+            return tcs.Task;
         }
     }
 }

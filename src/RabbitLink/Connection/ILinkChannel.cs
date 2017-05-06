@@ -1,26 +1,40 @@
 #region Usings
 
 using System;
-using System.Threading;
-using System.Threading.Tasks;
 using RabbitMQ.Client;
-using RabbitMQ.Client.Events;
 
 #endregion
 
 namespace RabbitLink.Connection
 {
+    /// <summary>
+    ///     Represents automatic recovering <see cref="IModel" />
+    /// </summary>
     internal interface ILinkChannel : IDisposable
     {
+        #region Properties
+
+        /// <summary>
+        ///     Id of channel
+        /// </summary>
         Guid Id { get; }
-        bool IsOpen { get; }
-        ILinkConnection Connection { get; }
-        event EventHandler Ready;
-        event EventHandler<ShutdownEventArgs> Shutdown;
-        event EventHandler<BasicAckEventArgs> Ack;
-        event EventHandler<BasicNackEventArgs> Nack;
-        event EventHandler<BasicReturnEventArgs> Return;
+
+        /// <summary>
+        /// Operating state
+        /// </summary>
+        LinkChannelState State { get; }
+
+        #endregion
+
+        /// <summary>
+        ///     Called when channel disposed
+        /// </summary>
         event EventHandler Disposed;
-        Task InvokeActionAsync(Action<IModel> action, CancellationToken cancellation);
+
+        /// <summary>
+        /// Initializes channel
+        /// </summary>
+        /// <param name="handler">Handler to run callbacks on</param>
+        void Initialize(ILinkChannelHandler handler);
     }
 }
