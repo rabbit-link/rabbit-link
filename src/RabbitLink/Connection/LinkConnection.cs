@@ -24,7 +24,7 @@ namespace RabbitLink.Connection
 
         private readonly CancellationToken _disposeCancellation;
         private readonly CancellationTokenSource _disposeCts;
-        private readonly QueueRunner<IConnection> _runner = new QueueRunner<IConnection>();
+        private readonly ActionQueue<IConnection> _queue = new ActionQueue<IConnection>();
 
         private readonly object _sync = new object();
 
@@ -91,7 +91,7 @@ namespace RabbitLink.Connection
 
                 State = LinkConnectionState.Disposed;
 
-                _runner.Dispose(new ObjectDisposedException(GetType().Name));
+                _queue.Complete(new ObjectDisposedException(GetType().Name));
 
                 Disposed?.Invoke(this, EventArgs.Empty);
 
@@ -132,7 +132,7 @@ namespace RabbitLink.Connection
 
         public Task<IModel> CreateModelAsync(CancellationToken cancellation)
         {
-            return _runner.EnqueueAsync(conn => conn.CreateModel(), cancellation);
+            return _queue.PutAsync(conn => conn.CreateModel(), cancellation);
         }
 
         #region Loop
@@ -188,30 +188,13 @@ namespace RabbitLink.Connection
 
         private async Task<LinkConnectionState> OnOpenReopenAsync(bool reopen)
         {
-            var newState = LinkConnectionState.Stop;
-
             using (var yieldCts = new CancellationTokenSource())
             {
-                var cts = yieldCts;
-
-                var connectTask = Task.Run(async () =>
-                {
-                    try
-                    {
-                        if (await ConnectAsync(reopen).ConfigureAwait(false))
-                        {
-                            newState = LinkConnectionState.Active;
-                        }
-                    }
-                    finally
-                    {
-                        cts.Cancel();
-                    }
-                }, CancellationToken.None);
+                var connectTask = ConnectAsync(reopen, yieldCts);
 
                 try
                 {
-                    await _runner.YieldAsync(cts.Token)
+                    await _queue.YieldAsync(yieldCts.Token)
                         .ConfigureAwait(false);
                 }
                 catch (OperationCanceledException)
@@ -219,40 +202,50 @@ namespace RabbitLink.Connection
                     // No Op
                 }
 
-                await connectTask
+                return await connectTask
                     .ConfigureAwait(false);
             }
-
-            return newState;
         }
 
         #region Connect
 
-        private async Task<bool> ConnectAsync(bool reopen)
+        private async Task<LinkConnectionState> ConnectAsync(bool reopen, CancellationTokenSource cts)
         {
-            if (_disposeCancellation.IsCancellationRequested)
-                return false;
-
-            if (reopen)
+            try
             {
-                var timeout = _configuration.ConnectionRecoveryInterval;
-                _logger.Info($"Reopening in {timeout.TotalSeconds:0.###}s");
+                if (_disposeCancellation.IsCancellationRequested)
+                    return LinkConnectionState.Stop;
 
-                try
+                if (reopen)
                 {
-                    await Task.Delay(timeout, _disposeCancellation)
-                        .ConfigureAwait(false);
+                    var timeout = _configuration.ConnectionRecoveryInterval;
+                    _logger.Info($"Reopening in {timeout.TotalSeconds:0.###}s");
+
+                    try
+                    {
+                        await Task.Delay(timeout, _disposeCancellation)
+                            .ConfigureAwait(false);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        return LinkConnectionState.Stop;
+                    }
                 }
-                catch (OperationCanceledException)
+
+                // start long-running task for syncronyous connect
+                if (await Task.Factory
+                    .StartNew(Connect, CancellationToken.None)
+                    .ConfigureAwait(false))
                 {
-                    return false;
+                    return LinkConnectionState.Active;
                 }
+
+                return LinkConnectionState.Stop;
             }
-
-            // start long-running task for syncronyous connect
-            return await Task.Factory
-                .StartNew(Connect, CancellationToken.None)
-                .ConfigureAwait(false);
+            finally
+            {
+                cts.Cancel();
+            }
         }
 
         private bool Connect()
@@ -320,7 +313,21 @@ namespace RabbitLink.Connection
                 {
                     try
                     {
-                       _runner.Run(_connection, cts.Token);
+                        while (true)
+                        {
+                            var item = _queue.Wait(cts.Token);
+
+                            try
+                            {
+                                item.TrySetResult(item.Value(_connection));
+                            }
+                            catch (Exception ex)
+                            {
+                                _queue.Put(item);
+                                _logger.Error($"Cannot create model: {ex.Message}");
+                                throw;
+                            }
+                        }
                     }
                     catch (Exception ex)
                     {
