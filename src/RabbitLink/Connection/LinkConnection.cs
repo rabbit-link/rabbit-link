@@ -24,7 +24,7 @@ namespace RabbitLink.Connection
 
         private readonly CancellationToken _disposeCancellation;
         private readonly CancellationTokenSource _disposeCts;
-        private readonly YieldingWorkQueue<object, IModel> _queue = new YieldingWorkQueue<object, IModel>();
+        private readonly QueueRunner<IConnection> _runner = new QueueRunner<IConnection>();
 
         private readonly object _sync = new object();
 
@@ -91,31 +91,12 @@ namespace RabbitLink.Connection
 
                 State = LinkConnectionState.Disposed;
 
-                DrainQueue();
+                _runner.Dispose(new ObjectDisposedException(GetType().Name));
 
                 Disposed?.Invoke(this, EventArgs.Empty);
 
                 _logger.Debug("Disposed");
                 _logger.Dispose();
-            }
-        }
-
-        private void DrainQueue()
-        {
-            _queue.CompleteAdding();
-            var ex = new ObjectDisposedException(GetType().Name);
-
-            try
-            {
-                while (true)
-                {
-                    var item = _queue.Wait(CancellationToken.None);
-                    item.Completion.TrySetException(ex);
-                }
-            }
-            catch
-            {
-                // No op
             }
         }
 
@@ -149,9 +130,9 @@ namespace RabbitLink.Connection
             }
         }
 
-        public Task<IModel> CreateModelAsync(CancellationToken cancellationToken)
+        public Task<IModel> CreateModelAsync(CancellationToken cancellation)
         {
-            return _queue.PutAsync(null, cancellationToken);
+            return _runner.EnqueueAsync(conn => conn.CreateModel(), cancellation);
         }
 
         #region Loop
@@ -212,7 +193,7 @@ namespace RabbitLink.Connection
             using (var yieldCts = new CancellationTokenSource())
             {
                 var cts = yieldCts;
-                
+
                 var connectTask = Task.Run(async () =>
                 {
                     try
@@ -230,7 +211,7 @@ namespace RabbitLink.Connection
 
                 try
                 {
-                    await _queue.YieldAsync(cts.Token)
+                    await _runner.YieldAsync(cts.Token)
                         .ConfigureAwait(false);
                 }
                 catch (OperationCanceledException)
@@ -319,7 +300,7 @@ namespace RabbitLink.Connection
             }
             catch (Exception ex)
             {
-                _logger.Warning("Cleaning exception: {0}", ex);
+                _logger.Warning($"Cleaning exception: {ex}");
             }
 
             return Task.FromResult(_disposeCancellation.IsCancellationRequested
@@ -339,25 +320,7 @@ namespace RabbitLink.Connection
                 {
                     try
                     {
-                        while (true)
-                        {
-                            var item = _queue.Wait(cts.Token);
-
-                            IModel model;
-
-                            try
-                            {
-                                model = _connection.CreateModel();
-                            }
-                            catch(Exception ex)
-                            {
-                                _queue.Put(item);
-                                _logger.Error($"Cannot create model: {ex.Message}");
-                                throw;
-                            }
-
-                            item.Completion.SetResult(model);
-                        }
+                       _runner.Run(_connection, cts.Token);
                     }
                     catch (Exception ex)
                     {

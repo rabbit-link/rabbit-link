@@ -11,32 +11,40 @@ namespace RabbitLink.Configuration
 {
     internal class LinkConfiguration
     {
+        #region Fields
+
+        private string _appId = Guid.NewGuid().ToString("D");
         private TimeSpan? _channelRecoveryInterval;
         private TimeSpan _connectionRecoveryInterval = TimeSpan.FromSeconds(10);
-        private TimeSpan _connectionTimeout = TimeSpan.FromSeconds(10);        
+        private TimeSpan _connectionTimeout = TimeSpan.FromSeconds(10);
         private TimeSpan? _consumerGetMessageTimeout;
         private ushort _consumerPrefetchCount = 1;
         private ILinkLoggerFactory _loggerFactory = new LinkNullLoggingFactory();
         private ILinkMessageSerializer _messageSerializer = new JsonMessageSerializer();
+        private ILinkMessageIdGenerator _producerMessageIdGenerator = new LinkGuidMessageIdGenerator();
         private LinkMessageProperties _producerMessageProperties = new LinkMessageProperties();
         private TimeSpan? _producerPublishTimeout;
         private TimeSpan? _topologyRecoveryInterval;
-        private string _appId = Guid.NewGuid().ToString("D");
-        private ILinkMessageIdGenerator _producerMessageIdGenerator = new LinkGuidMessageIdGenerator();
+
+        #endregion
+
+        #region Properties
 
         public bool AutoStart { get; set; } = true;
+
+        public bool UseThreads { get; set; }
 
         public string ConnectionString { get; set; }
 
         public TimeSpan ConnectionTimeout
         {
-            get { return _connectionTimeout; }
+            get => _connectionTimeout;
             set
             {
                 if (
                     value.TotalMilliseconds <= 0 ||
                     value.TotalMilliseconds > int.MaxValue
-                    )
+                )
                 {
                     throw new ArgumentOutOfRangeException(nameof(value),
                         "TotalMilliseconds must be greater than 0 and less than Int32.MaxValue");
@@ -48,7 +56,7 @@ namespace RabbitLink.Configuration
 
         public TimeSpan ConnectionRecoveryInterval
         {
-            get { return _connectionRecoveryInterval; }
+            get => _connectionRecoveryInterval;
             set
             {
                 if (value.TotalMilliseconds <= 0)
@@ -63,7 +71,7 @@ namespace RabbitLink.Configuration
 
         public TimeSpan ChannelRecoveryInterval
         {
-            get { return _channelRecoveryInterval ?? ConnectionRecoveryInterval; }
+            get => _channelRecoveryInterval ?? ConnectionRecoveryInterval;
             set
             {
                 if (value.TotalMilliseconds <= 0)
@@ -78,7 +86,7 @@ namespace RabbitLink.Configuration
 
         public TimeSpan TopologyRecoveryInterval
         {
-            get { return _topologyRecoveryInterval ?? ChannelRecoveryInterval; }
+            get => _topologyRecoveryInterval ?? ChannelRecoveryInterval;
             set
             {
                 if (value.TotalMilliseconds <= 0)
@@ -93,33 +101,21 @@ namespace RabbitLink.Configuration
 
         public ILinkLoggerFactory LoggerFactory
         {
-            get { return _loggerFactory; }
-            set
-            {
-                if (value == null)
-                    throw new ArgumentNullException(nameof(value));
-
-                _loggerFactory = value;
-            }
+            get => _loggerFactory;
+            set => _loggerFactory = value ?? throw new ArgumentNullException(nameof(value));
         }
 
         public LinkMessageProperties ProducerMessageProperties
         {
-            get { return _producerMessageProperties; }
-            set
-            {
-                if (value == null)
-                    throw new ArgumentNullException(nameof(value));
-
-                _producerMessageProperties = value.Clone();
-            }
+            get => _producerMessageProperties;
+            set => _producerMessageProperties = value?.Clone() ?? throw new ArgumentNullException(nameof(value));
         }
 
         public bool ProducerConfirmsMode { get; set; } = true;
 
         public TimeSpan? ProducerPublishTimeout
         {
-            get { return _producerPublishTimeout; }
+            get => _producerPublishTimeout;
             set
             {
                 if (value?.Ticks < 0)
@@ -133,7 +129,7 @@ namespace RabbitLink.Configuration
 
         public ushort ConsumerPrefetchCount
         {
-            get { return _consumerPrefetchCount; }
+            get => _consumerPrefetchCount;
             set
             {
                 if (value < 1)
@@ -145,7 +141,7 @@ namespace RabbitLink.Configuration
 
         public TimeSpan? ConsumerGetMessageTimeout
         {
-            get { return _consumerGetMessageTimeout; }
+            get => _consumerGetMessageTimeout;
             set
             {
                 if (value?.Ticks < 0)
@@ -155,23 +151,17 @@ namespace RabbitLink.Configuration
             }
         }
 
-        public bool ConsumerCancelOnHaFailover { get; set; }        
+        public bool ConsumerCancelOnHaFailover { get; set; }
 
         public ILinkMessageSerializer MessageSerializer
         {
-            get { return _messageSerializer; }
-            set
-            {
-                if (value == null)
-                    throw new ArgumentNullException(nameof(value));
-
-                _messageSerializer = value;
-            }
+            get => _messageSerializer;
+            set => _messageSerializer = value ?? throw new ArgumentNullException(nameof(value));
         }
 
         public string AppId
         {
-            get { return _appId; }
+            get => _appId;
             set
             {
                 if (string.IsNullOrWhiteSpace(value))
@@ -185,14 +175,10 @@ namespace RabbitLink.Configuration
 
         public ILinkMessageIdGenerator ProducerMessageIdGenerator
         {
-            get { return _producerMessageIdGenerator; }
-            set
-            {
-                if (value == null)
-                    throw new ArgumentNullException(nameof(value));
-
-                _producerMessageIdGenerator = value;
-            }
+            get => _producerMessageIdGenerator;
+            set => _producerMessageIdGenerator = value ?? throw new ArgumentNullException(nameof(value));
         }
+
+        #endregion
     }
 }

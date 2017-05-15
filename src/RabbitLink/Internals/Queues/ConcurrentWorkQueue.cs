@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace RabbitLink.Internals.Queues
 {
-    class ConcurrentWorkQueue<TValue, TResult>
+    class ConcurrentWorkQueue<TItem> where TItem:IWorkQueueItem
     {
         private readonly CancellationTokenSource _addingCompleteSource = new CancellationTokenSource();
         private readonly object _addingCompleteSync = new object();
@@ -28,21 +28,14 @@ namespace RabbitLink.Internals.Queues
             _addingCompleteToken = _addingCompleteSource.Token;
         }
 
-        public Task<TResult> PutAsync(TValue value, CancellationToken cancellationToken)
-        {
-            var item = new WorkItem<TValue, TResult>(value, cancellationToken);
-            Put(item);
-            return item.Completion.Task;
-        }
-
-        public void Put(WorkItem<TValue, TResult> item)
+        public void Put(TItem item)
         {
             if (item == null)
                 throw new ArgumentNullException(nameof(item));
 
             if (item.Cancellation.IsCancellationRequested)
             {
-                item.Completion.TrySetCanceled(item.Cancellation);
+                item.TrySetCanceled(item.Cancellation);
                 return;
             }
 
@@ -68,7 +61,7 @@ namespace RabbitLink.Internals.Queues
             }
         }
 
-        public WorkItem<TValue, TResult> Wait(CancellationToken cancellationToken)
+        public TItem Wait(CancellationToken cancellationToken)
         {
             while (true)
             {
@@ -101,7 +94,7 @@ namespace RabbitLink.Internals.Queues
 
                 if (item.Cancellation.IsCancellationRequested)
                 {
-                    item.Completion.TrySetCanceled(item.Cancellation);
+                    item.TrySetCanceled(item.Cancellation);
                     continue;
                 }
 
@@ -136,7 +129,7 @@ namespace RabbitLink.Internals.Queues
             }
         }
 
-        public async Task<WorkItem<TValue, TResult>> WaitAsync(CancellationToken cancellationToken)
+        public async Task<TItem> WaitAsync(CancellationToken cancellationToken)
         {
             while (true)
             {
@@ -169,7 +162,7 @@ namespace RabbitLink.Internals.Queues
 
                 if (item.Cancellation.IsCancellationRequested)
                 {
-                    item.Completion.TrySetCanceled(item.Cancellation);
+                    item.TrySetCanceled(item.Cancellation);
                     continue;
                 }
 
@@ -182,12 +175,12 @@ namespace RabbitLink.Internals.Queues
             private readonly object _cancellationSync = new object();
             private CancellationTokenRegistration? _cancellationRegistration;
 
-            public QueueItem(WorkItem<TValue, TResult> value)
+            public QueueItem(TItem value)
             {
                 Value = value;
             }
 
-            public WorkItem<TValue, TResult> Value { get; }
+            public TItem Value { get; }
 
             public void EnableCancellation()
             {
@@ -200,7 +193,7 @@ namespace RabbitLink.Internals.Queues
                         throw new InvalidOperationException("Cancellation already enabled");
 
                     _cancellationRegistration =
-                        Value.Cancellation.Register(() => Value.Completion.TrySetCanceled(Value.Cancellation));
+                        Value.Cancellation.Register(() => Value.TrySetCanceled(Value.Cancellation));
                 }
             }
 

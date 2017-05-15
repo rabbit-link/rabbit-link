@@ -192,7 +192,7 @@ namespace RabbitLink.Consumer
                 if (_disposedCancellation.IsCancellationRequested)
                     return;
 
-                _logger.Error("Cannot initialize: {0}", ex);
+                _logger.Error($"Cannot initialize: {ex}");
 
                 if (_channel.IsOpen)
                 {
@@ -320,12 +320,12 @@ namespace RabbitLink.Consumer
 
         private void ConsumerOnRegistered(object sender, ConsumerEventArgs e)
         {
-            _logger.Info("Consuming: {0}", e.ConsumerTag);
+            _logger.Info($"Consuming: {e.ConsumerTag}");
         }
 
         private void ConsumerOnConsumerCancelled(object sender, ConsumerEventArgs e)
         {
-            _logger.Info("Cancelled: {0}", e.ConsumerTag);
+            _logger.Info("Cancelled: {e.ConsumerTag}");
             if (_channel.IsOpen)
             {
                 _topology.ScheduleConfiguration(true);
@@ -410,7 +410,7 @@ namespace RabbitLink.Consumer
             }
             catch (Exception ex)
             {
-                _logger.Warning("Cannot add recieved message to queue: {0}", ex);
+                _logger.Warning($"Cannot add recieved message to queue: {ex}");
             }
         }
 
@@ -454,7 +454,7 @@ namespace RabbitLink.Consumer
             // ReSharper disable MethodSupportsCancellation
             return Task.Run(async () =>
             {
-                _logger.Warning("Cannot configure topology: {0}", ex.Message);
+                _logger.Warning($"Cannot configure topology: {ex.Message}");
                 await _topologyConfigErrorHandler(ex)
                     .ConfigureAwait(false);
             });

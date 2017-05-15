@@ -35,6 +35,6 @@ namespace RabbitLink.Connection
         event EventHandler Disconnected;
 
         void Initialize();
-        Task<IModel> CreateModelAsync(CancellationToken cancellationToken);
+        Task<IModel> CreateModelAsync(CancellationToken cancellation);
     }
 }

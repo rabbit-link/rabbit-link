@@ -456,7 +456,7 @@ namespace RabbitLink.Producer
             await Task.Delay(0)
                 .ConfigureAwait(false);
 
-            _logger.Warning("Cannot configure topology for producer: {0}", ex.Message);
+            _logger.Warning($"Cannot configure topology for producer: {ex.Message}");
             await _topologyConfigErrorHandler(ex)
                 .ConfigureAwait(false);
         }

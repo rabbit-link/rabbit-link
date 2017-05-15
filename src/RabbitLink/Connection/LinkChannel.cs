@@ -189,7 +189,7 @@ namespace RabbitLink.Connection
 
                 try
                 {
-                    if (reopen)
+                    if (reopen && _connection.State == LinkConnectionState.Active)
                     {
                         _logger.Info($"Reopening in {_configuration.ChannelRecoveryInterval.TotalSeconds:0.###}s");
                         await Task.Delay(_configuration.ChannelRecoveryInterval, _disposeCancellation)
@@ -213,7 +213,7 @@ namespace RabbitLink.Connection
                 }
                 catch (Exception ex)
                 {
-                    _logger.Error("Cannot create model: {0}", ex.Message);
+                    _logger.Error($"Cannot create model: {ex.Message}");
                     return LinkChannelState.Stop;
                 }
                 finally
@@ -250,7 +250,7 @@ namespace RabbitLink.Connection
             }
             catch (Exception ex)
             {
-                _logger.Warning("Model cleaning exception: {0}", ex);
+                _logger.Warning($"Model cleaning exception: {ex}");
             }
 
             return Task.FromResult(_disposeCancellation.IsCancellationRequested

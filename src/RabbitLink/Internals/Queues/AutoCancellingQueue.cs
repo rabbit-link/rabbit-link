@@ -10,7 +10,7 @@ using RabbitLink.Async;
 
 namespace RabbitLink.Internals.Queues
 {
-    class AutoCancellingWorkQueue<TValue, TResult>
+    class AutoCancellingQueue<TItem> where TItem:IWorkQueueItem
     {
         #region Fields
 
@@ -20,11 +20,11 @@ namespace RabbitLink.Internals.Queues
         #endregion
 
         /// <summary>
-        /// Takes first <see cref="WorkItem{TValue,TResult}"/> from queue
+        ///     Takes first <see cref="WorkItem{TValue,TResult}" /> from queue
         /// </summary>
         /// <param name="cancellationToken">token to cancel operation</param>
-        /// <returns>First <see cref="WorkItem{TValue,TResult}"/> or null if queue empty</returns>
-        public WorkItem<TValue, TResult> Take(CancellationToken cancellationToken)
+        /// <returns>First <see cref="WorkItem{TValue,TResult}" /> or null if queue empty</returns>
+        public TItem Take(CancellationToken cancellationToken)
         {
             while (true)
             {
@@ -33,7 +33,7 @@ namespace RabbitLink.Internals.Queues
                     var node = _queue.First;
                     if (node == null)
                     {
-                        return null;
+                        return default(TItem);
                     }
 
                     node.List.Remove(node);
@@ -42,7 +42,7 @@ namespace RabbitLink.Internals.Queues
                     var item = node.Value.Value;
                     if (item.Cancellation.IsCancellationRequested)
                     {
-                        item.Completion.TrySetCanceled(item.Cancellation);
+                        item.TrySetCanceled(item.Cancellation);
                         continue;
                     }
 
@@ -52,11 +52,11 @@ namespace RabbitLink.Internals.Queues
         }
 
         /// <summary>
-        /// Asynchronously takes first <see cref="WorkItem{TValue,TResult}"/> from queue
+        ///     Asynchronously takes first <see cref="WorkItem{TValue,TResult}" /> from queue
         /// </summary>
         /// <param name="cancellationToken">token to cancel operation</param>
-        /// <returns>Tasks which will be completes with first <see cref="WorkItem{TValue,TResult}"/> or null if queue empty</returns>
-        public async Task<WorkItem<TValue, TResult>> TakeAsync(CancellationToken cancellationToken)
+        /// <returns>Tasks which will be completes with first <see cref="WorkItem{TValue,TResult}" /> or null if queue empty</returns>
+        public async Task<TItem> TakeAsync(CancellationToken cancellationToken)
         {
             while (true)
             {
@@ -65,7 +65,7 @@ namespace RabbitLink.Internals.Queues
                     var node = _queue.First;
                     if (node == null)
                     {
-                        return null;
+                        return default(TItem);
                     }
 
                     node.List.Remove(node);
@@ -74,7 +74,7 @@ namespace RabbitLink.Internals.Queues
                     var item = node.Value.Value;
                     if (item.Cancellation.IsCancellationRequested)
                     {
-                        item.Completion.TrySetCanceled(item.Cancellation);
+                        item.TrySetCanceled(item.Cancellation);
                         continue;
                     }
 
@@ -83,12 +83,11 @@ namespace RabbitLink.Internals.Queues
             }
         }
 
-        public void Put(WorkItem<TValue, TResult> item, CancellationToken cancellationToken)
+        public void Put(TItem item, CancellationToken cancellationToken)
         {
-            var qitem = new QueueItem(item);
-
             using (_sync.Lock(cancellationToken))
             {
+                var qitem = new QueueItem(item);
                 var node = _queue.AddLast(qitem);
 
                 qitem.EnableCancellation(async () =>
@@ -101,12 +100,11 @@ namespace RabbitLink.Internals.Queues
             }
         }
 
-        public async Task PutAsync(WorkItem<TValue, TResult> item, CancellationToken cancellationToken)
+        public async Task PutAsync(TItem item, CancellationToken cancellationToken)
         {
-            var qitem = new QueueItem(item);
-
             using (await _sync.LockAsync(cancellationToken).ConfigureAwait(false))
             {
+                var qitem = new QueueItem(item);
                 var node = _queue.AddLast(qitem);
 
                 qitem.EnableCancellation(async () =>
@@ -116,6 +114,48 @@ namespace RabbitLink.Internals.Queues
                         node.List?.Remove(node);
                     }
                 });
+            }
+        }
+
+        public void PutRetry(IEnumerable<TItem> items,
+            CancellationToken cancellationToken)
+        {
+            using (_sync.Lock(cancellationToken))
+            {
+                foreach (var item in items)
+                {
+                    var qitem = new QueueItem(item);
+                    var node = _queue.AddLast(qitem);
+
+                    qitem.EnableCancellation(async () =>
+                    {
+                        using (await _sync.LockAsync(CancellationToken.None).ConfigureAwait(false))
+                        {
+                            node.List?.Remove(node);
+                        }
+                    });
+                }
+            }
+        }
+
+        public async Task PutRetryAsync(IEnumerable<TItem> items,
+            CancellationToken cancellationToken)
+        {
+            using (await _sync.LockAsync(cancellationToken).ConfigureAwait(false))
+            {
+                foreach (var item in items)
+                {
+                    var qitem = new QueueItem(item);
+                    var node = _queue.AddLast(qitem);
+
+                    qitem.EnableCancellation(async () =>
+                    {
+                        using (await _sync.LockAsync(CancellationToken.None).ConfigureAwait(false))
+                        {
+                            node.List?.Remove(node);
+                        }
+                    });
+                }
             }
         }
 
@@ -124,7 +164,7 @@ namespace RabbitLink.Internals.Queues
         #region QueueItem
 
         /// <summary>
-        /// Class to store <see cref="WorkItem{TValue,TResult}"/> with it cancellation
+        ///     Class to store <see cref="WorkItem{TValue,TResult}" /> with it cancellation
         /// </summary>
         private class QueueItem
         {
@@ -138,7 +178,7 @@ namespace RabbitLink.Internals.Queues
 
             #region Ctor
 
-            public QueueItem(WorkItem<TValue, TResult> value)
+            public QueueItem(TItem value)
             {
                 Value = value;
             }
@@ -147,7 +187,7 @@ namespace RabbitLink.Internals.Queues
 
             #region Properties
 
-            public WorkItem<TValue, TResult> Value { get; }
+            public TItem Value { get; }
 
             #endregion
 
@@ -163,19 +203,20 @@ namespace RabbitLink.Internals.Queues
 
                     _cancellationSource = new CancellationTokenSource();
 
-                    Value.Completion.Task.ContinueWith(async _ =>
-                        {
-                            var ret = cancelAction?.Invoke();
-
-                            if (ret != null)
-                            {
-                                await ret.ConfigureAwait(false);
-                            }
-                        }, _cancellationSource.Token,
-                        TaskContinuationOptions.NotOnCanceled, TaskScheduler.Current);
-
                     _cancellationRegistration =
-                        Value.Cancellation.Register(() => Value.Completion.TrySetCanceled(Value.Cancellation));
+                        Value.Cancellation.Register(() =>
+                        {
+                            Value.TrySetCanceled(Value.Cancellation);
+                            Task.Run(async ()=>
+                            {
+                                var ret = cancelAction?.Invoke();
+
+                                if (ret != null)
+                                {
+                                    await ret.ConfigureAwait(false);
+                                }
+                            }, _cancellationSource.Token);
+                        });
                 }
             }
 

@@ -3,158 +3,157 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using RabbitLink.Async;
 using RabbitLink.Configuration;
 using RabbitLink.Connection;
-using RabbitLink.Internals;
+using RabbitLink.Internals.Queues;
 using RabbitLink.Logging;
+using RabbitMQ.Client;
+using RabbitMQ.Client.Events;
 
 #endregion
 
 namespace RabbitLink.Topology.Internal
 {
-    internal class LinkTopology : ILinkTopology
+    internal class LinkTopology : ILinkTopology, ILinkChannelHandler
     {
-        #region .ctor
+        #region Fields
+
+        private readonly ILinkChannel _channel;
+        private readonly LinkConfiguration _configuration;
+        private readonly ILinkTopologyHandler _handler;
+        private readonly bool _isOnce;
+        private readonly ILinkLogger _logger;
+        private readonly object _sync = new object();
+
+        #endregion
+
+        #region Ctor
 
         public LinkTopology(LinkConfiguration configuration, ILinkChannel channel, ILinkTopologyHandler handler,
             bool once)
         {
-            if (configuration == null)
-                throw new ArgumentNullException(nameof(configuration));
+            _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+            _channel = channel ?? throw new ArgumentNullException(nameof(channel));
 
-            if (channel == null)
-                throw new ArgumentNullException(nameof(channel));
-
-            if (handler == null)
-                throw new ArgumentNullException(nameof(handler));
-
-            _configuration = configuration;
             _logger = _configuration.LoggerFactory.CreateLogger($"{GetType().Name}({Id:D})");
 
             if (_logger == null)
                 throw new ArgumentException("Cannot create logger", nameof(configuration.LoggerFactory));
 
-            _handler = handler;
+            _handler = handler ?? throw new ArgumentNullException(nameof(handler));
             _isOnce = once;
 
-            _disposedCancellationSource = new CancellationTokenSource();
-            _disposedCancellation = _disposedCancellationSource.Token;
+            _channel.Disposed += ChannelOnDisposed;
 
-            Channel = channel;
-            Channel.Disposed += ChannelOnDisposed;
-            Channel.Ready += ChannelOnReady;
+            _logger.Debug($"Created(channelId: {_channel.Id}, once: {once})");
 
-            _logger.Debug($"Created(channelId: {Channel.Id}, once: {once})");
-
-            ScheduleConfiguration(false);
+            _channel.Initialize(this);
         }
 
         #endregion
 
-        #region Events
+        #region ILinkChannelHandler Members
 
-        public event EventHandler Disposed;
-
-        #endregion
-
-        #region Schedule configuration
-
-        public void ScheduleConfiguration(bool delay)
+        public async Task OnActive(IModel model, CancellationToken cancellation)
         {
-            if (!Channel.IsOpen || _disposedCancellation.IsCancellationRequested)
+            var newState = State;
+
+            while (true)
             {
-                return;
+                if (cancellation.IsCancellationRequested)
+                {
+                    newState = LinkTopologyState.Stop;
+                }
+
+                if (newState != State)
+                {
+                    _logger.Debug($"State change {State} -> {newState}");
+                    State = newState;
+                }
+
+                try
+                {
+                    switch (State)
+                    {
+                        case LinkTopologyState.Init:
+                            newState = LinkTopologyState.Configure;
+                            break;
+                        case LinkTopologyState.Configure:
+                        case LinkTopologyState.Reconfigure:
+                            newState = await OnConfigureAsync(model, State == LinkTopologyState.Reconfigure, cancellation)
+                                .ConfigureAwait(false);
+                            break;
+                        case LinkTopologyState.Ready:
+                            if (_isOnce)
+                            {
+                                _logger.Info("Once topology configured, going to dispose");
+                                newState = LinkTopologyState.Dispose;
+                            }
+                            else
+                            {
+                                await cancellation.WaitCancellation()
+                                    .ConfigureAwait(false);
+                                newState = LinkTopologyState.Configure;
+                            }
+                            break;
+                        case LinkTopologyState.Dispose:
+#pragma warning disable 4014
+                            Task.Factory.StartNew(Dispose, TaskCreationOptions.LongRunning);
+#pragma warning restore 4014
+                            return;
+                        default:
+                            return;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.Error($"Unhandled exception: {ex}");
+                }
+            }
+        }
+
+        private async Task<LinkTopologyState> OnConfigureAsync(IModel model, bool retry, CancellationToken cancellation)
+        {
+
+            if (retry)
+            {
+                try
+                {
+                    _logger.Info($"Retrying in {_configuration.TopologyRecoveryInterval.TotalSeconds:0.###}s");
+                    await Task.Delay(_configuration.TopologyRecoveryInterval, cancellation)
+                        .ConfigureAwait(false);
+                }
+                catch
+                {
+                    return LinkTopologyState.Reconfigure;
+                }
             }
 
-            if (_isOnce && Configured)
-                return;
+            var queue = new ConcurrentWorkQueue<Action<IModel>, object>();
 
-            Configured = false;
+            _logger.Info("Configuring topology");
+            var configTask = RunConfiguration(queue, cancellation);
 
             try
             {
-                _eventLoop.ScheduleAsync(async () =>
-                {
-                    if (delay)
-                    {
-                        _logger.Info($"Retrying in {_configuration.TopologyRecoveryInterval.TotalSeconds:0.###}s");
-
-                        await Task.Delay(_configuration.TopologyRecoveryInterval, _disposedCancellation)
-                            .ConfigureAwait(false);
-                    }
-
-                    await Task.Run(async () =>
-                    {
-                        await ConfigureAsync()
-                            .ConfigureAwait(false);
-                    }, _disposedCancellation)
-                        .ConfigureAwait(false);
-                }, _disposedCancellation)
+                await StartQueueWorker(model, queue, cancellation)
                     .ConfigureAwait(false);
             }
             catch
             {
-                // no op
-            }
-        }
-
-        #endregion
-
-        #region IDisposable implementation
-
-        public void Dispose()
-        {
-            Dispose(false);
-        }
-
-        private void Dispose(bool byChannel)
-        {
-            if (_disposedCancellationSource.IsCancellationRequested)
-                return;
-
-            _logger.Debug("Disposing");
-            _disposedCancellationSource.Cancel();
-            _disposedCancellationSource.Dispose();
-            _eventLoop.Dispose();
-
-            Channel.Ready -= ChannelOnReady;
-            Channel.Disposed -= ChannelOnDisposed;
-
-            if (!byChannel)
-            {
-                Channel.Dispose();
+                // No Op
             }
 
-            _logger.Debug("Disposed");
-            _logger.Dispose();
-
-            Disposed?.Invoke(this, EventArgs.Empty);
-        }
-
-        #endregion
-
-        #region Configure
-
-        private async Task ConfigureAsync()
-        {
-            if (_disposedCancellation.IsCancellationRequested)
-                return;
-
-            if (!Channel.IsOpen)
-                return;
-
-            if (Configured && _isOnce)
-                return;
-
-            _logger.Info("Configuring topology");
             try
             {
-                await _handler.Configure(new LinkTopologyConfig(_logger, Channel))
+                await configTask
                     .ConfigureAwait(false);
-            }           
+            }
             catch (Exception ex)
             {
-                _logger.Warning("Exception on configuration: {0}", ex);
+                _logger.Warning($"Exception on configuration: {ex}");
+
                 try
                 {
                     await _handler.ConfigurationError(ex)
@@ -162,14 +161,11 @@ namespace RabbitLink.Topology.Internal
                 }
                 catch (Exception handlerException)
                 {
-                    _logger.Error("Error in error handler: {0}", handlerException);
+                    _logger.Error($"Error in error handler: {handlerException}");
                 }
 
-                ScheduleConfiguration(true);
-                return;
+                return LinkTopologyState.Reconfigure;
             }
-
-            Configured = true;
 
             try
             {
@@ -178,64 +174,158 @@ namespace RabbitLink.Topology.Internal
             }
             catch (Exception ex)
             {
-                _logger.Error("Error in ready handler: {0}", ex);
+                _logger.Error($"Error in ready handler: {ex}");
             }
 
             _logger.Info("Topology configured");
 
-            if (_isOnce)
+            return LinkTopologyState.Ready;
+        }
+
+        private async Task StartQueueWorker(IModel model, ConcurrentWorkQueue<Action<IModel>, object> queue,
+            CancellationToken cancellation)
+        {
+            if (_configuration.UseThreads)
             {
-                _logger.Info("Once topology configured, disposing");
-#pragma warning disable 4014
-                // ReSharper disable once MethodSupportsCancellation
-                Task.Run(() => Dispose());
-#pragma warning restore 4014
+                await Task.Factory.StartNew(() =>
+                    {
+                        while (true)
+                        {
+                            var item = queue.Wait(cancellation);
+                            try
+                            {
+                                item.Value(model);
+                                item.Completion.TrySetResult(null);
+                            }
+                            catch (Exception ex)
+                            {
+                                item.Completion.TrySetException(ex);
+                            }
+                        }
+                        // ReSharper disable once FunctionNeverReturns
+                    }, cancellation, TaskCreationOptions.LongRunning, TaskScheduler.Current)
+                    .ConfigureAwait(false);
             }
+            else
+            {
+                while (true)
+                {
+                    var item = await queue.WaitAsync(cancellation)
+                        .ConfigureAwait(false);
+
+                    await Task.Factory.StartNew(() =>
+                        {
+                            try
+                            {
+
+                                item.Value(model);
+                                item.Completion.TrySetResult(null);
+                            }
+                            catch (Exception ex)
+                            {
+                                item.Completion.TrySetException(ex);
+                            }
+                        }, cancellation)
+                        .ConfigureAwait(false);
+                }
+            }
+        }
+
+        private Task RunConfiguration(ConcurrentWorkQueue<Action<IModel>, object> queue, CancellationToken cancellation)
+        {
+            return Task.Run(async () =>
+            {
+                try
+                {
+                    var config = new LinkTopologyConfig(_logger, a => queue.PutAsync(a, cancellation));
+                    await _handler.Configure(config)
+                        .ConfigureAwait(false);
+                }
+                finally
+                {
+                    queue.CompleteAdding();
+                }
+            }, cancellation);
+        }
+
+        public Task OnConnecting(CancellationToken cancellation)
+        {
+            return Task.CompletedTask;
+        }
+
+        public void MessageAck(BasicAckEventArgs info)
+        {
+        }
+
+        public void MessageNack(BasicNackEventArgs info)
+        {
+        }
+
+        public void MessageReturn(BasicReturnEventArgs info)
+        {
         }
 
         #endregion
 
-        #region Fields
+        #region ILinkTopology Members
 
-        private readonly CancellationTokenSource _disposedCancellationSource;
-        private readonly CancellationToken _disposedCancellation;
-        private readonly EventLoop _eventLoop = new EventLoop();
-        private readonly ILinkTopologyHandler _handler;
-        private readonly bool _isOnce;
-        private readonly ILinkLogger _logger;
-        private readonly LinkConfiguration _configuration;
+        public LinkTopologyState State { get; private set; } = LinkTopologyState.Init;
 
-        #endregion
+        public event EventHandler Disposed;
 
-        #region Properties
+
+        public void Dispose()
+        {
+            Dispose(false);
+        }
+
 
         public Guid Id { get; } = Guid.NewGuid();
-        public bool Configured { get; private set; }
-        public ILinkChannel Channel { get; }
 
         #endregion
 
-        #region Channel Event Handlers
-
-        private void ChannelOnReady(object sender, EventArgs eventArgs)
+        private void Dispose(bool byChannel)
         {
-            if (!_disposedCancellation.IsCancellationRequested)
+            if (State == LinkTopologyState.Dispose)
+                return;
+
+            lock (_sync)
             {
-                if (_isOnce && Configured)
+                if (State == LinkTopologyState.Dispose)
                     return;
 
-#pragma warning disable 4014
-                ScheduleConfiguration(false);
-#pragma warning restore 4014
+                _logger.Debug("Disposing");
+
+                _channel.Disposed -= ChannelOnDisposed;
+                if (!byChannel)
+                {
+                    _channel.Dispose();
+                }
+
+                State = LinkTopologyState.Dispose;
+
+                _logger.Debug("Disposed");
+                _logger.Dispose();
+
+                Disposed?.Invoke(this, EventArgs.Empty);
             }
         }
+
 
         private void ChannelOnDisposed(object sender, EventArgs eventArgs)
         {
             _logger.Debug("Channel disposed, disposing...");
             Dispose(true);
         }
+    }
 
-        #endregion
+    public enum LinkTopologyState
+    {
+        Init,
+        Configure,
+        Reconfigure,
+        Ready,
+        Stop,
+        Dispose
     }
 }

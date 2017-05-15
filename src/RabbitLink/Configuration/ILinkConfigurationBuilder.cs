@@ -116,5 +116,7 @@ namespace RabbitLink.Configuration
         ///     By default Guit.NewValue().ToString("D")
         /// </summary>
         ILinkConfigurationBuilder AppId(string value);
+
+        ILinkConfigurationBuilder UseThreads();
     }
 }

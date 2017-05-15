@@ -11,7 +11,19 @@ namespace RabbitLink.Configuration
 {
     internal class LinkConfigurationBuilder : ILinkConfigurationBuilder
     {
+        #region Properties
+
         internal LinkConfiguration Configuration { get; } = new LinkConfiguration();
+
+        #endregion
+
+        #region ILinkConfigurationBuilder Members
+
+        public ILinkConfigurationBuilder UseThreads()
+        {
+            Configuration.UseThreads = true;
+            return this;
+        }
 
         public ILinkConfigurationBuilder AutoStart(bool value)
         {
@@ -114,5 +126,7 @@ namespace RabbitLink.Configuration
             Configuration.AppId = value;
             return this;
         }
+
+        #endregion
     }
 }
