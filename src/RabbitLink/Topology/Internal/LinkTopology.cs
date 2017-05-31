@@ -6,7 +6,6 @@ using System.Threading.Tasks;
 using RabbitLink.Async;
 using RabbitLink.Configuration;
 using RabbitLink.Connection;
-using RabbitLink.Internals.Queues;
 using RabbitLink.Logging;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
@@ -25,6 +24,7 @@ namespace RabbitLink.Topology.Internal
         private readonly bool _isOnce;
         private readonly ILinkLogger _logger;
         private readonly object _sync = new object();
+        private readonly LinkTopologyRunner<object> _topologyRunner;
 
         #endregion
 
@@ -45,6 +45,13 @@ namespace RabbitLink.Topology.Internal
             _isOnce = once;
 
             _channel.Disposed += ChannelOnDisposed;
+
+            _topologyRunner = new LinkTopologyRunner<object>(_logger, _configuration.UseThreads, async cfg =>
+            {
+                await _handler.Configure(cfg)
+                    .ConfigureAwait(false);
+                return null;
+            });
 
             _logger.Debug($"Created(channelId: {_channel.Id}, once: {once})");
 
@@ -81,7 +88,8 @@ namespace RabbitLink.Topology.Internal
                             break;
                         case LinkTopologyState.Configure:
                         case LinkTopologyState.Reconfigure:
-                            newState = await OnConfigureAsync(model, State == LinkTopologyState.Reconfigure, cancellation)
+                            newState = await OnConfigureAsync(model, State == LinkTopologyState.Reconfigure,
+                                    cancellation)
                                 .ConfigureAwait(false);
                             break;
                         case LinkTopologyState.Ready:
@@ -111,141 +119,6 @@ namespace RabbitLink.Topology.Internal
                     _logger.Error($"Unhandled exception: {ex}");
                 }
             }
-        }
-
-        private async Task<LinkTopologyState> OnConfigureAsync(IModel model, bool retry, CancellationToken cancellation)
-        {
-
-            if (retry)
-            {
-                try
-                {
-                    _logger.Info($"Retrying in {_configuration.TopologyRecoveryInterval.TotalSeconds:0.###}s");
-                    await Task.Delay(_configuration.TopologyRecoveryInterval, cancellation)
-                        .ConfigureAwait(false);
-                }
-                catch
-                {
-                    return LinkTopologyState.Reconfigure;
-                }
-            }
-
-            var queue = new ConcurrentWorkQueue<Action<IModel>, object>();
-
-            _logger.Info("Configuring topology");
-            var configTask = RunConfiguration(queue, cancellation);
-
-            try
-            {
-                await StartQueueWorker(model, queue, cancellation)
-                    .ConfigureAwait(false);
-            }
-            catch
-            {
-                // No Op
-            }
-
-            try
-            {
-                await configTask
-                    .ConfigureAwait(false);
-            }
-            catch (Exception ex)
-            {
-                _logger.Warning($"Exception on configuration: {ex}");
-
-                try
-                {
-                    await _handler.ConfigurationError(ex)
-                        .ConfigureAwait(false);
-                }
-                catch (Exception handlerException)
-                {
-                    _logger.Error($"Error in error handler: {handlerException}");
-                }
-
-                return LinkTopologyState.Reconfigure;
-            }
-
-            try
-            {
-                await _handler.Ready()
-                    .ConfigureAwait(false);
-            }
-            catch (Exception ex)
-            {
-                _logger.Error($"Error in ready handler: {ex}");
-            }
-
-            _logger.Info("Topology configured");
-
-            return LinkTopologyState.Ready;
-        }
-
-        private async Task StartQueueWorker(IModel model, ConcurrentWorkQueue<Action<IModel>, object> queue,
-            CancellationToken cancellation)
-        {
-            if (_configuration.UseThreads)
-            {
-                await Task.Factory.StartNew(() =>
-                    {
-                        while (true)
-                        {
-                            var item = queue.Wait(cancellation);
-                            try
-                            {
-                                item.Value(model);
-                                item.Completion.TrySetResult(null);
-                            }
-                            catch (Exception ex)
-                            {
-                                item.Completion.TrySetException(ex);
-                            }
-                        }
-                        // ReSharper disable once FunctionNeverReturns
-                    }, cancellation, TaskCreationOptions.LongRunning, TaskScheduler.Current)
-                    .ConfigureAwait(false);
-            }
-            else
-            {
-                while (true)
-                {
-                    var item = await queue.WaitAsync(cancellation)
-                        .ConfigureAwait(false);
-
-                    await Task.Factory.StartNew(() =>
-                        {
-                            try
-                            {
-
-                                item.Value(model);
-                                item.Completion.TrySetResult(null);
-                            }
-                            catch (Exception ex)
-                            {
-                                item.Completion.TrySetException(ex);
-                            }
-                        }, cancellation)
-                        .ConfigureAwait(false);
-                }
-            }
-        }
-
-        private Task RunConfiguration(ConcurrentWorkQueue<Action<IModel>, object> queue, CancellationToken cancellation)
-        {
-            return Task.Run(async () =>
-            {
-                try
-                {
-                    var config = new LinkTopologyConfig(_logger, a => queue.PutAsync(a, cancellation));
-                    await _handler.Configure(config)
-                        .ConfigureAwait(false);
-                }
-                finally
-                {
-                    queue.CompleteAdding();
-                }
-            }, cancellation);
         }
 
         public Task OnConnecting(CancellationToken cancellation)
@@ -284,6 +157,62 @@ namespace RabbitLink.Topology.Internal
 
         #endregion
 
+        private async Task<LinkTopologyState> OnConfigureAsync(IModel model, bool retry, CancellationToken cancellation)
+        {
+            if (retry)
+            {
+                try
+                {
+                    _logger.Info($"Retrying in {_configuration.TopologyRecoveryInterval.TotalSeconds:0.###}s");
+                    await Task.Delay(_configuration.TopologyRecoveryInterval, cancellation)
+                        .ConfigureAwait(false);
+                }
+                catch
+                {
+                    return LinkTopologyState.Reconfigure;
+                }
+            }
+
+            _logger.Info("Configuring topology");
+
+            try
+            {
+                await _topologyRunner
+                    .RunAsync(model, cancellation)
+                    .ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                _logger.Warning($"Exception on configuration: {ex}");
+
+                try
+                {
+                    await _handler.ConfigurationError(ex)
+                        .ConfigureAwait(false);
+                }
+                catch (Exception handlerException)
+                {
+                    _logger.Error($"Error in error handler: {handlerException}");
+                }
+
+                return LinkTopologyState.Reconfigure;
+            }
+
+            try
+            {
+                await _handler.Ready()
+                    .ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                _logger.Error($"Error in ready handler: {ex}");
+            }
+
+            _logger.Info("Topology configured");
+
+            return LinkTopologyState.Ready;
+        }
+
         private void Dispose(bool byChannel)
         {
             if (State == LinkTopologyState.Dispose)
@@ -317,15 +246,5 @@ namespace RabbitLink.Topology.Internal
             _logger.Debug("Channel disposed, disposing...");
             Dispose(true);
         }
-    }
-
-    public enum LinkTopologyState
-    {
-        Init,
-        Configure,
-        Reconfigure,
-        Ready,
-        Stop,
-        Dispose
     }
 }
