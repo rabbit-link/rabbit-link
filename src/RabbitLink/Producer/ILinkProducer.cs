@@ -38,6 +38,8 @@ namespace RabbitLink.Producer
         /// </summary>
         TimeSpan? PublishTimeout { get; }
 
+        LinkProducerState State { get; }
+
         /// <summary>
         ///     Publishes message
         /// </summary>

@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace RabbitLink.Internals.Queues
 {
-    class WorkItem<TValue, TResult> : IWorkQueueItem
+    internal class WorkItem<TValue, TResult> : IWorkQueueItem
     {
         #region Fields
 
@@ -54,6 +54,70 @@ namespace RabbitLink.Internals.Queues
         public bool TrySetResult(TResult result)
         {
             return _tcs.TrySetResult(result);
+        }
+    }
+
+    internal class WorkItem<TValue> : WorkItem
+    {
+        #region Ctor
+
+        public WorkItem(TValue value, CancellationToken cancellationToken) : base(cancellationToken)
+        {
+            Value = value;
+        }
+
+        #endregion
+
+        #region Properties
+
+        public TValue Value { get; }
+
+        #endregion
+    }
+
+    internal abstract class WorkItem : IWorkQueueItem
+    {
+        #region Fields
+
+        private readonly TaskCompletionSource<object> _tcs =
+            new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        #endregion
+
+        #region Ctor
+
+        protected WorkItem(CancellationToken cancellationToken)
+        {
+            Cancellation = cancellationToken;
+        }
+
+        #endregion
+
+        #region Properties
+
+        public Task Completion => _tcs.Task;
+
+        #endregion
+
+        #region IWorkQueueItem Members
+
+        public CancellationToken Cancellation { get; }
+
+        public bool TrySetException(Exception ex)
+        {
+            return _tcs.TrySetException(ex);
+        }
+
+        public bool TrySetCanceled(CancellationToken cancellation)
+        {
+            return _tcs.TrySetCanceled(cancellation);
+        }
+
+        #endregion
+
+        public bool TrySetResult()
+        {
+            return _tcs.TrySetResult(null);
         }
     }
 }

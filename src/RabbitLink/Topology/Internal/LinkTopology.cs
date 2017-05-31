@@ -35,12 +35,6 @@ namespace RabbitLink.Topology.Internal
         {
             _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
             _channel = channel ?? throw new ArgumentNullException(nameof(channel));
-
-            _logger = _configuration.LoggerFactory.CreateLogger($"{GetType().Name}({Id:D})");
-
-            if (_logger == null)
-                throw new ArgumentException("Cannot create logger", nameof(configuration.LoggerFactory));
-
             _handler = handler ?? throw new ArgumentNullException(nameof(handler));
             _isOnce = once;
 
@@ -52,6 +46,10 @@ namespace RabbitLink.Topology.Internal
                     .ConfigureAwait(false);
                 return null;
             });
+
+            _logger = _configuration.LoggerFactory.CreateLogger($"{GetType().Name}({Id:D})");
+            if (_logger == null)
+                throw new ArgumentException("Cannot create logger", nameof(configuration.LoggerFactory));
 
             _logger.Debug($"Created(channelId: {_channel.Id}, once: {once})");
 
@@ -79,44 +77,39 @@ namespace RabbitLink.Topology.Internal
                     State = newState;
                 }
 
-                try
+                switch (State)
                 {
-                    switch (State)
-                    {
-                        case LinkTopologyState.Init:
-                            newState = LinkTopologyState.Configure;
-                            break;
-                        case LinkTopologyState.Configure:
-                        case LinkTopologyState.Reconfigure:
-                            newState = await OnConfigureAsync(model, State == LinkTopologyState.Reconfigure,
-                                    cancellation)
+                    case LinkTopologyState.Init:
+                        newState = LinkTopologyState.Configure;
+                        break;
+                    case LinkTopologyState.Configure:
+                    case LinkTopologyState.Reconfigure:
+                        newState = await OnConfigureAsync(model, State == LinkTopologyState.Reconfigure,
+                                cancellation)
+                            .ConfigureAwait(false);
+                        break;
+                    case LinkTopologyState.Ready:
+                        if (_isOnce)
+                        {
+                            _logger.Info("Once topology configured, going to dispose");
+                            newState = LinkTopologyState.Dispose;
+                        }
+                        else
+                        {
+                            await cancellation.WaitCancellation()
                                 .ConfigureAwait(false);
-                            break;
-                        case LinkTopologyState.Ready:
-                            if (_isOnce)
-                            {
-                                _logger.Info("Once topology configured, going to dispose");
-                                newState = LinkTopologyState.Dispose;
-                            }
-                            else
-                            {
-                                await cancellation.WaitCancellation()
-                                    .ConfigureAwait(false);
-                                newState = LinkTopologyState.Configure;
-                            }
-                            break;
-                        case LinkTopologyState.Dispose:
+                            newState = LinkTopologyState.Configure;
+                        }
+                        break;
+                    case LinkTopologyState.Dispose:
 #pragma warning disable 4014
-                            Task.Factory.StartNew(Dispose, TaskCreationOptions.LongRunning);
+                        Task.Factory.StartNew(Dispose, TaskCreationOptions.LongRunning);
 #pragma warning restore 4014
-                            return;
-                        default:
-                            return;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _logger.Error($"Unhandled exception: {ex}");
+                        return;
+                    case LinkTopologyState.Stop:
+                        return;
+                    default:
+                        throw new NotImplementedException($"Handler for state ${State} not implemeted");
                 }
             }
         }

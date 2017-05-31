@@ -22,7 +22,31 @@ namespace RabbitLink.Consumer
 {
     internal class LinkConsumer : ILinkConsumerInternal
     {
-        #region .ctor
+        #region Fields
+
+        private readonly ILinkChannel _channel;
+
+        private readonly LinkConsumerConfiguration _configuration;
+        private readonly CancellationToken _disposedCancellation;
+
+        private readonly CancellationTokenSource _disposedCancellationSource;
+        private readonly LinkConfiguration _linkConfiguration;
+        private readonly ILinkLogger _logger;
+        private readonly LinkConsumerMessageQueue _messageQueue = new LinkConsumerMessageQueue();
+        private readonly object _sync = new object();
+        private readonly Func<Exception, Task> _topologyConfigErrorHandler;
+        private readonly Func<ILinkTopologyConfig, Task<ILinkQueue>> _topologyConfigHandler;
+        private EventingBasicConsumer _consumer;
+        private CancellationToken _initializeCancellation;
+
+        private CancellationTokenSource _initializeCancellationSource;
+        private Task _initializeTask;
+
+        private ILinkQueue _queue;
+
+        #endregion
+
+        #region Ctor
 
         public LinkConsumer(
             LinkConsumerConfiguration configuration,
@@ -30,59 +54,113 @@ namespace RabbitLink.Consumer
             ILinkChannel channel,
             Func<ILinkTopologyConfig, Task<ILinkQueue>> topologyConfigHandler,
             Func<Exception, Task> topologyConfigErrorHandler
-            )
+        )
         {
-            if (linkConfiguration == null)
-                throw new ArgumentNullException(nameof(linkConfiguration));
+            _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+            _linkConfiguration = linkConfiguration ?? throw new ArgumentNullException(nameof(linkConfiguration));
+            _channel = channel ?? throw new ArgumentNullException(nameof(channel));
+            _topologyConfigHandler = topologyConfigHandler ??
+                                     throw new ArgumentNullException(nameof(topologyConfigHandler));
+            _topologyConfigErrorHandler = topologyConfigErrorHandler ??
+                                          throw new ArgumentNullException(nameof(topologyConfigErrorHandler));
 
-            if (configuration == null)
-                throw new ArgumentNullException(nameof(configuration));
-
-            if (channel == null)
-                throw new ArgumentNullException(nameof(channel));
-
-            if (topologyConfigHandler == null)
-                throw new ArgumentNullException(nameof(topologyConfigHandler));
-
-            if (topologyConfigErrorHandler == null)
-                throw new ArgumentNullException(nameof(topologyConfigErrorHandler));
-
-            _configuration = configuration;
-            _linkConfiguration = linkConfiguration;
             _logger = linkConfiguration.LoggerFactory.CreateLogger($"{GetType().Name}({Id:D})");
 
             if (_logger == null)
                 throw new ArgumentException("Cannot create logger", nameof(linkConfiguration.LoggerFactory));
 
-            _topologyConfigHandler = topologyConfigHandler;
-            _topologyConfigErrorHandler = topologyConfigErrorHandler;
 
             _disposedCancellationSource = new CancellationTokenSource();
             _disposedCancellation = _disposedCancellationSource.Token;
-
-            _channel = channel;
-            _channel.Shutdown += ChannelOnShutdown;
-            _topology = new LinkTopology(linkConfiguration, _channel,
-                new LinkActionsTopologyHandler(TopologyConfigure, TopologyReadyAsync, TopologyConfigurationErrorAsync), false);
-            _topology.Disposed += TopologyOnDisposed;
 
             _logger.Debug($"Created(channelId: {_channel.Id})");
         }
 
         #endregion
 
-        #region Events
+        #region ILinkConsumerInternal Members
 
         public event EventHandler Disposed;
-
-        #endregion
-
-        #region IDisposable implementation
 
         public void Dispose()
         {
             Dispose(false);
         }
+
+        public async Task<ILinkMessage<object>> GetMessageAsync(CancellationToken? cancellation = null)
+        {
+            var rawMessage = await PrivateGetRawMessageAsync(cancellation)
+                .ConfigureAwait(false);
+
+            var typeName = rawMessage.Properties.Type?.Trim();
+
+            if (!string.IsNullOrEmpty(typeName))
+            {
+                var type = _configuration.TypeNameMapping.Map(typeName);
+                if (type != null)
+                {
+                    object body;
+                    try
+                    {
+                        body = _configuration.MessageSerializer.Deserialize(type, rawMessage.Body,
+                            rawMessage.Properties);
+                    }
+                    catch (Exception ex)
+                    {
+#pragma warning disable 4014
+                        rawMessage.NackAsync(CancellationToken.None);
+#pragma warning restore 4014
+                        throw new LinkDeserializationException(rawMessage.Body, rawMessage.Properties,
+                            rawMessage.RecieveProperties, ex);
+                    }
+
+                    return LinkMessage<object>.Create(type, body, rawMessage);
+                }
+            }
+
+            return rawMessage;
+        }
+
+        public async Task<ILinkMessage<T>> GetMessageAsync<T>(CancellationToken? cancellation = null)
+            where T : class
+        {
+            var rawMessage = await PrivateGetRawMessageAsync(cancellation)
+                .ConfigureAwait(false);
+
+            if (typeof(T) == typeof(byte[]))
+            {
+                return rawMessage as ILinkMessage<T>;
+            }
+
+            T body;
+            try
+            {
+                body = _configuration.MessageSerializer.Deserialize<T>(rawMessage.Body, rawMessage.Properties);
+            }
+            catch (Exception ex)
+            {
+#pragma warning disable 4014
+                rawMessage.NackAsync(CancellationToken.None);
+#pragma warning restore 4014
+                throw new LinkDeserializationException(rawMessage.Body, rawMessage.Properties,
+                    rawMessage.RecieveProperties, ex);
+            }
+
+            return new LinkMessage<T>(
+                body,
+                rawMessage
+            );
+        }
+
+        public Guid Id { get; } = Guid.NewGuid();
+        public ushort PrefetchCount => _configuration.PrefetchCount;
+        public bool AutoAck => _configuration.AutoAck;
+        public TimeSpan? GetMessageTimeout => _configuration.GetMessageTimeout;
+        public int Priority => _configuration.Priority;
+        public bool CancelOnHaFailover => _configuration.CancelOnHaFailover;
+        public bool Exclusive => _configuration.Exclusive;
+
+        #endregion
 
         private void Dispose(bool byTopology)
         {
@@ -107,7 +185,7 @@ namespace RabbitLink.Consumer
 
                 _initializeCancellationSource?.Cancel();
                 _initializeCancellationSource?.Dispose();
-                                
+
                 // ReSharper disable once MethodSupportsCancellation
                 _initializeTask.WaitWithoutException();
 
@@ -119,8 +197,6 @@ namespace RabbitLink.Consumer
 
             Disposed?.Invoke(this, EventArgs.Empty);
         }
-
-        #endregion
 
         private async Task<LinkMessage<byte[]>> PrivateGetRawMessageAsync(
             CancellationToken? cancellation = null)
@@ -143,8 +219,6 @@ namespace RabbitLink.Consumer
                 throw new ObjectDisposedException(GetType().Name);
             }
         }
-
-        #region Work
 
         private async Task InitializeConsumer(CancellationToken cancellation)
         {
@@ -201,122 +275,12 @@ namespace RabbitLink.Consumer
             }
         }
 
-        #endregion
-
-        #region Channel handlers
-
         private void ChannelOnShutdown(object sender, ShutdownEventArgs shutdownEventArgs)
         {
             _logger.Info("Channel shutdown, cancelling messages");
             _messageQueue.CancelMessages();
             _logger.Debug("All messages cancelled");
         }
-
-        #endregion
-
-        #region Public methods        
-
-        public async Task<ILinkMessage<object>> GetMessageAsync(CancellationToken? cancellation = null)
-        {
-            var rawMessage = await PrivateGetRawMessageAsync(cancellation)
-                .ConfigureAwait(false);
-
-            var typeName = rawMessage.Properties.Type?.Trim();
-
-            if (!string.IsNullOrEmpty(typeName))
-            {
-                var type = _configuration.TypeNameMapping.Map(typeName);
-                if (type != null)
-                {
-                    object body;
-                    try
-                    {
-                        body = _configuration.MessageSerializer.Deserialize(type, rawMessage.Body, rawMessage.Properties);
-                    }
-                    catch (Exception ex)
-                    {
-#pragma warning disable 4014
-                        rawMessage.NackAsync(CancellationToken.None);
-#pragma warning restore 4014
-                        throw new LinkDeserializationException(rawMessage.Body, rawMessage.Properties, rawMessage.RecieveProperties, ex);
-                    }
-
-                    return LinkMessage<object>.Create(type, body, rawMessage);                    
-                }
-            }
-
-            return rawMessage;
-        }
-
-        public async Task<ILinkMessage<T>> GetMessageAsync<T>(CancellationToken? cancellation = null)
-            where T : class
-        {
-            var rawMessage = await PrivateGetRawMessageAsync(cancellation)
-                .ConfigureAwait(false);
-
-            if (typeof(T) == typeof(byte[]))
-            {
-                return rawMessage as ILinkMessage<T>;
-            }
-
-            T body;
-            try
-            {
-                body = _configuration.MessageSerializer.Deserialize<T>(rawMessage.Body, rawMessage.Properties);
-            }
-            catch (Exception ex)
-            {
-#pragma warning disable 4014
-                rawMessage.NackAsync(CancellationToken.None);
-#pragma warning restore 4014
-                throw new LinkDeserializationException(rawMessage.Body, rawMessage.Properties, rawMessage.RecieveProperties, ex);
-            }
-
-            return new LinkMessage<T>(
-                body,
-                rawMessage
-                );
-        }
-
-        #endregion
-
-        #region .fields
-
-        private readonly LinkConsumerConfiguration _configuration;
-        private readonly LinkConfiguration _linkConfiguration;
-        private readonly ILinkLogger _logger;
-        private readonly Func<ILinkTopologyConfig, Task<ILinkQueue>> _topologyConfigHandler;
-        private readonly Func<Exception, Task> _topologyConfigErrorHandler;
-        private readonly ILinkChannel _channel;
-        private readonly ILinkTopology _topology;
-        private readonly LinkConsumerMessageQueue _messageQueue = new LinkConsumerMessageQueue();
-
-        private ILinkQueue _queue;
-        private Task _initializeTask;
-        private readonly object _sync = new object();
-
-        private readonly CancellationTokenSource _disposedCancellationSource;
-        private readonly CancellationToken _disposedCancellation;
-
-        private CancellationTokenSource _initializeCancellationSource;
-        private CancellationToken _initializeCancellation;
-        private EventingBasicConsumer _consumer;
-
-        #endregion
-
-        #region Properties
-
-        public Guid Id { get; } = Guid.NewGuid();
-        public ushort PrefetchCount => _configuration.PrefetchCount;
-        public bool AutoAck => _configuration.AutoAck;
-        public TimeSpan? GetMessageTimeout => _configuration.GetMessageTimeout;
-        public int Priority => _configuration.Priority;
-        public bool CancelOnHaFailover => _configuration.CancelOnHaFailover;
-        public bool Exclusive => _configuration.Exclusive;
-
-        #endregion
-
-        #region Consumer handlers
 
         private void ConsumerOnRegistered(object sender, ConsumerEventArgs e)
         {
@@ -333,7 +297,7 @@ namespace RabbitLink.Consumer
         }
 
         private void ConsumerOnReceived(object sender, BasicDeliverEventArgs e)
-        {           
+        {
             try
             {
                 _logger.Debug(
@@ -343,7 +307,7 @@ namespace RabbitLink.Consumer
                 LinkMessageOnNackAsyncDelegate nackHandler = null;
 
                 if (!AutoAck)
-                {                    
+                {
                     ackHandler = async (onSuccess, cancellation) =>
                     {
                         cancellation.ThrowIfCancellationRequested();
@@ -352,12 +316,13 @@ namespace RabbitLink.Consumer
                         {
                             await
                                 _channel.InvokeActionAsync(model =>
-                                {
-                                    _logger.Debug($"Sending ACK for message with delivery tag: {e.DeliveryTag}");
-                                    model.BasicAck(e.DeliveryTag, false);
-                                    onSuccess?.Invoke();
-                                },
-                                    cancellation)
+                                        {
+                                            _logger.Debug(
+                                                $"Sending ACK for message with delivery tag: {e.DeliveryTag}");
+                                            model.BasicAck(e.DeliveryTag, false);
+                                            onSuccess?.Invoke();
+                                        },
+                                        cancellation)
                                     .ConfigureAwait(false);
                         }
                         catch (OperationCanceledException)
@@ -366,7 +331,8 @@ namespace RabbitLink.Consumer
                         }
                         catch (Exception ex)
                         {
-                            throw new LinkMessageOperationException("Cannot complete message operation, see inner exception", ex);
+                            throw new LinkMessageOperationException(
+                                "Cannot complete message operation, see inner exception", ex);
                         }
                     };
 
@@ -377,11 +343,11 @@ namespace RabbitLink.Consumer
                         try
                         {
                             await _channel.InvokeActionAsync(model =>
-                            {
-                                model.BasicNack(e.DeliveryTag, false, requeue);
-                                onSuccess?.Invoke();
-                            },
-                                cancellation)
+                                    {
+                                        model.BasicNack(e.DeliveryTag, false, requeue);
+                                        onSuccess?.Invoke();
+                                    },
+                                    cancellation)
                                 .ConfigureAwait(false);
                         }
                         catch (OperationCanceledException)
@@ -390,7 +356,8 @@ namespace RabbitLink.Consumer
                         }
                         catch (Exception ex)
                         {
-                            throw new LinkMessageOperationException("Cannot complete message operation, see inner exception", ex);
+                            throw new LinkMessageOperationException(
+                                "Cannot complete message operation, see inner exception", ex);
                         }
                     };
                 }
@@ -414,28 +381,24 @@ namespace RabbitLink.Consumer
             }
         }
 
-        #endregion
-
-        #region Topology handlers       
-
         private async Task TopologyConfigure(ILinkTopologyConfig config)
         {
             _queue = await Task.Run(async () => await _topologyConfigHandler(config)
-                .ConfigureAwait(false), _disposedCancellation)
+                    .ConfigureAwait(false), _disposedCancellation)
                 .ConfigureAwait(false);
         }
 
         private Task TopologyReadyAsync()
         {
             // ReSharper disable MethodSupportsCancellation
-            return Task.Run(() =>                
+            return Task.Run(() =>
             {
                 lock (_sync)
                 {
                     _logger.Debug("Topology ready");
                     _initializeCancellationSource?.Cancel();
                     _initializeCancellationSource?.Dispose();
-                    _initializeTask?.WaitWithoutException();                    
+                    _initializeTask?.WaitWithoutException();
 
                     _initializeCancellationSource = new CancellationTokenSource();
                     _initializeCancellation = _initializeCancellationSource.Token;
@@ -443,7 +406,7 @@ namespace RabbitLink.Consumer
                     _initializeTask = Task.Run(
                         async () => await InitializeConsumer(_initializeCancellation).ConfigureAwait(false),
                         _initializeCancellation
-                        );
+                    );
                 }
             });
             // ReSharper restore MethodSupportsCancellation
@@ -466,7 +429,5 @@ namespace RabbitLink.Consumer
             _logger.Debug("Topology configurator disposed, disposing...");
             Dispose(true);
         }
-
-        #endregion
     }
 }

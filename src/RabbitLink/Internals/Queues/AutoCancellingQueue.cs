@@ -132,78 +132,76 @@ namespace RabbitLink.Internals.Queues
         public void PutRetry(IEnumerable<TItem> items,
             CancellationToken cancellationToken)
         {
-            var qitems = new Dictionary<QueueItem, Action>();
-
-            foreach (var item in items)
-            {
-                if (item.Cancellation.IsCancellationRequested)
-                {
-                    item.TrySetCanceled(item.Cancellation);
-                    continue;
-                }
-
-                qitems.Add(new QueueItem(item),null);
-            }
+            var enableCancellations = new Stack<Action>();
 
             using (_sync.Lock(cancellationToken))
             {
-                foreach (var item in qitems.Keys)
+                foreach (var item in items)
                 {
-                    var node = _queue.AddLast(item);
-
-                    qitems[item] = () =>
+                    if (item.Cancellation.IsCancellationRequested)
                     {
-                        using (_sync.Lock(CancellationToken.None))
+                        item.TrySetCanceled(item.Cancellation);
+                        continue;
+                    }
+
+                    var qitem = new QueueItem(item);
+                    var node = _queue.AddLast(qitem);
+
+                    enableCancellations.Push(() =>
+                    {
+                        qitem.EnableCancellation(() =>
                         {
-                            node.List?.Remove(node);
-                        }
-                    };
+                            using (_sync.Lock(CancellationToken.None))
+                            {
+                                node.List?.Remove(node);
+                            }
+                        });
+                    });
                 }
             }
 
-            foreach (var kv in qitems)
+            while (enableCancellations.Count > 0)
             {
-                kv.Key.EnableCancellation(kv.Value);
+                var a = enableCancellations.Pop();
+                a();
             }
         }
 
         public async Task PutRetryAsync(IEnumerable<TItem> items,
             CancellationToken cancellationToken)
         {
-            var qitems = new Dictionary<QueueItem, Action>();
-
-            foreach (var item in items)
-            {
-                if (item.Cancellation.IsCancellationRequested)
-                {
-                    item.TrySetCanceled(item.Cancellation);
-                    continue;
-                }
-
-                qitems.Add(new QueueItem(item), null);
-            }
+            var enableCancellations = new Stack<Action>();
 
             using (await _sync.LockAsync(cancellationToken).ConfigureAwait(false))
             {
-                foreach (var item in qitems.Keys)
+                foreach (var item in items)
                 {
-
-
-                    var node = _queue.AddLast(item);
-
-                    qitems[item] = () =>
+                    if (item.Cancellation.IsCancellationRequested)
                     {
-                        using (_sync.Lock(CancellationToken.None))
+                        item.TrySetCanceled(item.Cancellation);
+                        continue;
+                    }
+
+                    var qitem = new QueueItem(item);
+                    var node = _queue.AddLast(qitem);
+
+                    enableCancellations.Push(() =>
+                    {
+                        qitem.EnableCancellation(() =>
                         {
-                            node.List?.Remove(node);
-                        }
-                    };
+                            using (_sync.Lock(CancellationToken.None))
+                            {
+                                node.List?.Remove(node);
+                            }
+                        });
+                    });
                 }
             }
 
-            foreach (var kv in qitems)
+            while (enableCancellations.Count > 0)
             {
-                kv.Key.EnableCancellation(kv.Value);
+                var a = enableCancellations.Pop();
+                a();
             }
         }
 

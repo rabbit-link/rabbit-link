@@ -36,5 +36,10 @@ namespace RabbitLink.Connection
         /// </summary>
         /// <param name="handler">Handler to run callbacks on</param>
         void Initialize(ILinkChannelHandler handler);
+
+        /// <summary>
+        /// Channel's connection
+        /// </summary>
+        ILinkConnection Connection { get; }
     }
 }

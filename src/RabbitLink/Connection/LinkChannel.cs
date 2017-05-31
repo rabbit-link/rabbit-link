@@ -124,6 +124,8 @@ namespace RabbitLink.Connection
             }
         }
 
+        public ILinkConnection Connection => _connection;
+
         #endregion
 
         #region Loop
@@ -165,7 +167,6 @@ namespace RabbitLink.Connection
                             break;
                         case LinkChannelState.Disposed:
                             return;
-
                     }
                 }
                 catch (Exception ex)

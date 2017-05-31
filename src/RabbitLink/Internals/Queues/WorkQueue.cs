@@ -24,9 +24,21 @@ namespace RabbitLink.Internals.Queues
 
         #endregion
 
+        public bool AddingCompleted { get; private set; }
+
         public void Complete()
         {
-            _queue.CompleteAdding();
+            if (AddingCompleted)
+                return;
+
+            using (_sync.Lock(CancellationToken.None))
+            {
+                if (AddingCompleted)
+                    return;
+
+                _queue.CompleteAdding();
+                AddingCompleted = true;
+            }
         }
 
         public void Complete(Action<TItem> completeAction)
@@ -34,20 +46,30 @@ namespace RabbitLink.Internals.Queues
             if (completeAction == null)
                 throw new ArgumentNullException(nameof(completeAction));
 
-            _queue.CompleteAdding();
-            while (true)
-            {
-                TItem item;
-                try
-                {
-                    item = Wait(CancellationToken.None);
-                }
-                catch
-                {
-                    return;
-                }
+            if (AddingCompleted)
+                return;
 
-                completeAction(item);
+            using (_sync.Lock(CancellationToken.None))
+            {
+                if (AddingCompleted)
+                    return;
+
+                _queue.CompleteAdding();
+                while (true)
+                {
+                    TItem item;
+                    try
+                    {
+                        item = Wait(CancellationToken.None);
+                    }
+                    catch
+                    {
+                        AddingCompleted = true;
+                        return;
+                    }
+
+                    completeAction(item);
+                }
             }
         }
 
@@ -99,12 +121,31 @@ namespace RabbitLink.Internals.Queues
 
         public void PutRetry(IEnumerable<TItem> items, CancellationToken cancellation)
         {
-            _tempQueue.PutRetry(items, cancellation);
+            if(AddingCompleted)
+                throw new InvalidOperationException("Adding already completed");
+
+            using (_sync.Lock(cancellation))
+            {
+                if(AddingCompleted)
+                    throw new InvalidOperationException("Adding already completed");
+
+                _tempQueue.PutRetry(items, cancellation);
+            }
         }
 
-        public Task PutRetryAsync(IEnumerable<TItem> items, CancellationToken cancellation)
+        public async Task PutRetryAsync(IEnumerable<TItem> items, CancellationToken cancellation)
         {
-            return _tempQueue.PutRetryAsync(items, cancellation);
+            if (AddingCompleted)
+                throw new InvalidOperationException("Adding already completed");
+
+            using (_sync.Lock(cancellation))
+            {
+                if (AddingCompleted)
+                    throw new InvalidOperationException("Adding already completed");
+
+                await _tempQueue.PutRetryAsync(items, cancellation)
+                    .ConfigureAwait(false);
+            }
         }
 
         public TItem Wait(CancellationToken cancellationToken)

@@ -2,15 +2,16 @@
 
 using System.Threading;
 using RabbitLink.Internals;
+using RabbitLink.Internals.Queues;
 using RabbitLink.Messaging;
 
 #endregion
 
 namespace RabbitLink.Producer
 {
-    internal class LinkProducerQueueMessage : LinkQueueMessage
+    internal class LinkProducerMessage : WorkItem
     {
-        public LinkProducerQueueMessage(byte[] body, LinkMessageProperties properties,
+        public LinkProducerMessage(byte[] body, LinkMessageProperties properties,
             LinkPublishProperties publishProperties, CancellationToken cancellation) : base(cancellation)
         {
             Body = body;
@@ -21,6 +22,5 @@ namespace RabbitLink.Producer
         public byte[] Body { get; }
         public LinkMessageProperties Properties { get; }
         public LinkPublishProperties PublishProperties { get; }
-        public ulong Sequence { get; set; }
     }
 }
