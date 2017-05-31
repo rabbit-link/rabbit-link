@@ -28,6 +28,8 @@ namespace RabbitLink.Internals.Queues
         {
             while (true)
             {
+                QueueItem item;
+
                 using (_sync.Lock(cancellationToken))
                 {
                     var node = _queue.First;
@@ -37,17 +39,19 @@ namespace RabbitLink.Internals.Queues
                     }
 
                     node.List.Remove(node);
-                    node.Value.DisableCancellation();
-
-                    var item = node.Value.Value;
-                    if (item.Cancellation.IsCancellationRequested)
-                    {
-                        item.TrySetCanceled(item.Cancellation);
-                        continue;
-                    }
-
-                    return item;
+                    item = node.Value;
                 }
+
+                item.DisableCancellation();
+                var ret = item.Value;
+
+                if (ret.Cancellation.IsCancellationRequested)
+                {
+                    ret.TrySetCanceled(ret.Cancellation);
+                    continue;
+                }
+
+                return ret;
             }
         }
 
@@ -60,6 +64,8 @@ namespace RabbitLink.Internals.Queues
         {
             while (true)
             {
+                QueueItem item;
+
                 using (await _sync.LockAsync(cancellationToken).ConfigureAwait(false))
                 {
                     var node = _queue.First;
@@ -69,93 +75,135 @@ namespace RabbitLink.Internals.Queues
                     }
 
                     node.List.Remove(node);
-                    node.Value.DisableCancellation();
-
-                    var item = node.Value.Value;
-                    if (item.Cancellation.IsCancellationRequested)
-                    {
-                        item.TrySetCanceled(item.Cancellation);
-                        continue;
-                    }
-
-                    return item;
+                    item = node.Value;
                 }
+
+                item.DisableCancellation();
+                var ret = item.Value;
+
+                if (ret.Cancellation.IsCancellationRequested)
+                {
+                    ret.TrySetCanceled(ret.Cancellation);
+                    continue;
+                }
+
+                return ret;
             }
         }
 
         public void Put(TItem item, CancellationToken cancellationToken)
         {
+            LinkedListNode<QueueItem> node;
+            var qitem = new QueueItem(item);
+
             using (_sync.Lock(cancellationToken))
             {
-                var qitem = new QueueItem(item);
-                var node = _queue.AddLast(qitem);
-
-                qitem.EnableCancellation(async () =>
-                {
-                    using (await _sync.LockAsync(CancellationToken.None).ConfigureAwait(false))
-                    {
-                        node.List?.Remove(node);
-                    }
-                });
+                node = _queue.AddLast(qitem);
             }
+
+            qitem.EnableCancellation(() =>
+            {
+                using (_sync.Lock(CancellationToken.None))
+                {
+                    node.List?.Remove(node);
+                }
+            });
         }
 
         public async Task PutAsync(TItem item, CancellationToken cancellationToken)
         {
+            LinkedListNode<QueueItem> node;
+            var qitem = new QueueItem(item);
+
             using (await _sync.LockAsync(cancellationToken).ConfigureAwait(false))
             {
-                var qitem = new QueueItem(item);
-                var node = _queue.AddLast(qitem);
-
-                qitem.EnableCancellation(async () =>
-                {
-                    using (await _sync.LockAsync(CancellationToken.None).ConfigureAwait(false))
-                    {
-                        node.List?.Remove(node);
-                    }
-                });
+                node = _queue.AddLast(qitem);
             }
+
+            qitem.EnableCancellation(() =>
+            {
+                using (_sync.Lock(CancellationToken.None))
+                {
+                    node.List?.Remove(node);
+                }
+            });
         }
 
         public void PutRetry(IEnumerable<TItem> items,
             CancellationToken cancellationToken)
         {
+            var qitems = new Dictionary<QueueItem, Action>();
+
+            foreach (var item in items)
+            {
+                if (item.Cancellation.IsCancellationRequested)
+                {
+                    item.TrySetCanceled(item.Cancellation);
+                    continue;
+                }
+
+                qitems.Add(new QueueItem(item),null);
+            }
+
             using (_sync.Lock(cancellationToken))
             {
-                foreach (var item in items)
+                foreach (var item in qitems.Keys)
                 {
-                    var qitem = new QueueItem(item);
-                    var node = _queue.AddLast(qitem);
+                    var node = _queue.AddLast(item);
 
-                    qitem.EnableCancellation(async () =>
+                    qitems[item] = () =>
                     {
-                        using (await _sync.LockAsync(CancellationToken.None).ConfigureAwait(false))
+                        using (_sync.Lock(CancellationToken.None))
                         {
                             node.List?.Remove(node);
                         }
-                    });
+                    };
                 }
+            }
+
+            foreach (var kv in qitems)
+            {
+                kv.Key.EnableCancellation(kv.Value);
             }
         }
 
         public async Task PutRetryAsync(IEnumerable<TItem> items,
             CancellationToken cancellationToken)
         {
+            var qitems = new Dictionary<QueueItem, Action>();
+
+            foreach (var item in items)
+            {
+                if (item.Cancellation.IsCancellationRequested)
+                {
+                    item.TrySetCanceled(item.Cancellation);
+                    continue;
+                }
+
+                qitems.Add(new QueueItem(item), null);
+            }
+
             using (await _sync.LockAsync(cancellationToken).ConfigureAwait(false))
             {
-                foreach (var item in items)
+                foreach (var item in qitems.Keys)
                 {
-                    var qitem = new QueueItem(item);
-                    var node = _queue.AddLast(qitem);
 
-                    qitem.EnableCancellation(async () =>
+
+                    var node = _queue.AddLast(item);
+
+                    qitems[item] = () =>
                     {
-                        using (await _sync.LockAsync(CancellationToken.None).ConfigureAwait(false))
+                        using (_sync.Lock(CancellationToken.None))
                         {
                             node.List?.Remove(node);
                         }
-                    });
+                    };
                 }
+            }
+
+            foreach (var kv in qitems)
+            {
+                kv.Key.EnableCancellation(kv.Value);
             }
         }
 
@@ -191,7 +239,7 @@ namespace RabbitLink.Internals.Queues
 
             #endregion
 
-            public void EnableCancellation(Func<Task> cancelAction)
+            public void EnableCancellation(Action cancelAction)
             {
                 if (_cancellationRegistration != null)
                     throw new InvalidOperationException("Cancellation already enabled");
@@ -203,19 +251,12 @@ namespace RabbitLink.Internals.Queues
 
                     _cancellationSource = new CancellationTokenSource();
 
-                    _cancellationRegistration =
-                        Value.Cancellation.Register(() =>
+                    _cancellationRegistration = Value
+                        .Cancellation
+                        .Register(() =>
                         {
                             Value.TrySetCanceled(Value.Cancellation);
-                            Task.Run(async ()=>
-                            {
-                                var ret = cancelAction?.Invoke();
-
-                                if (ret != null)
-                                {
-                                    await ret.ConfigureAwait(false);
-                                }
-                            }, _cancellationSource.Token);
+                            cancelAction?.Invoke();
                         });
                 }
             }
