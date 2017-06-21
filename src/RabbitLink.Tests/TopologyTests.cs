@@ -2,7 +2,6 @@
 
 using System;
 using System.Linq;
-using Nito.AsyncEx.Synchronous;
 using RabbitLink.Topology;
 using Xunit;
 
@@ -16,7 +15,7 @@ namespace RabbitLink.Tests
         public void TologyExchangeOperations()
         {
             var exchangeTypes = Enum
-                .GetValues(typeof (LinkExchangeType))
+                .GetValues(typeof(LinkExchangeType))
                 .Cast<LinkExchangeType>()
                 .ToArray();
 
@@ -74,7 +73,8 @@ namespace RabbitLink.Tests
                         await cfg.Bind(e2, e1);
                         await cfg.Bind(e2, e1, "test");
                     })
-                    .WaitAndUnwrapException();
+                    .GetAwaiter()
+                    .GetResult();
 
                     rabbitModel.ExchangeDeclarePassive(exchangeName);
                     rabbitModel.ExchangeDeclarePassive(exchangeName + "-second");
@@ -87,7 +87,8 @@ namespace RabbitLink.Tests
                         await cfg.ExchangeDelete(e1);
                         await cfg.ExchangeDelete(e2);
                     })
-                    .WaitAndUnwrapException();
+                    .GetAwaiter()
+                    .GetResult();
 
                     Assert.ThrowsAny<Exception>(() => { rabbitModel.ExchangeDeclarePassive(exchangeName); });
                 }

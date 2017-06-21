@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 #endregion
 
-namespace RabbitLink.Async
+namespace RabbitLink.Internals.Async
 {
     internal class AsyncLock
     {

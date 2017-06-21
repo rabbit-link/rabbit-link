@@ -1,4 +1,4 @@
-﻿#region Usings
+#region Usings
 
 using System;
 using System.Threading;
@@ -8,8 +8,10 @@ using System.Threading.Tasks;
 
 namespace RabbitLink.Internals.Queues
 {
-    internal class ActionQueue<TActor> : WorkQueue<ActionQueueItem<TActor>>
+    internal class ConcurrentActionQueue<TActor> : ConcurrentWorkQueue<ActionQueueItem<TActor>>, IActionQueue<TActor>
     {
+        #region IActionQueue<TActor> Members
+
         public async Task<T> PutAsync<T>(Func<TActor, T> action, CancellationToken cancellation)
         {
             if (action == null)
@@ -33,9 +35,6 @@ namespace RabbitLink.Internals.Queues
             }, cancellation);
         }
 
-        public void Complete(Exception ex)
-        {
-            Complete(item => item.TrySetException(ex));
-        }
+        #endregion
     }
 }

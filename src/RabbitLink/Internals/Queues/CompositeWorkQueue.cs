@@ -4,13 +4,13 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using RabbitLink.Async;
+using RabbitLink.Internals.Async;
 
 #endregion
 
 namespace RabbitLink.Internals.Queues
 {
-    class WorkQueue<TItem> where TItem:IWorkQueueItem
+    internal class CompositeWorkQueue<TItem> where TItem : IWorkQueueItem
     {
         #region Fields
 
@@ -19,12 +19,17 @@ namespace RabbitLink.Internals.Queues
 
         private readonly AsyncLock _sync = new AsyncLock();
 
+
         private readonly AutoCancellingQueue<TItem> _tempQueue =
             new AutoCancellingQueue<TItem>();
 
         #endregion
 
+        #region Properties
+
         public bool AddingCompleted { get; private set; }
+
+        #endregion
 
         public void Complete()
         {
@@ -36,7 +41,7 @@ namespace RabbitLink.Internals.Queues
                 if (AddingCompleted)
                     return;
 
-                _queue.CompleteAdding();
+                _queue.Complete();
                 AddingCompleted = true;
             }
         }
@@ -54,13 +59,17 @@ namespace RabbitLink.Internals.Queues
                 if (AddingCompleted)
                     return;
 
-                _queue.CompleteAdding();
+                _queue.Complete();
                 while (true)
                 {
                     TItem item;
                     try
                     {
-                        item = Wait(CancellationToken.None);
+                        item = _tempQueue.Take(CancellationToken.None);
+                        if (item == null)
+                        {
+                            item = _queue.Wait(CancellationToken.None);
+                        }
                     }
                     catch
                     {
@@ -71,25 +80,6 @@ namespace RabbitLink.Internals.Queues
                     completeAction(item);
                 }
             }
-        }
-
-        public void Yield(CancellationToken cancellation)
-        {
-            while (true)
-            {
-                using (_sync.Lock(cancellation))
-                {
-                    var item = _queue.Wait(cancellation);
-                    if (item.Cancellation.IsCancellationRequested)
-                    {
-                        item.TrySetCanceled(item.Cancellation);
-                        continue;
-                    }
-
-                    _tempQueue.Put(item, CancellationToken.None);
-                }
-            }
-            // ReSharper disable once FunctionNeverReturns
         }
 
         public async Task YieldAsync(CancellationToken cancellation)
@@ -121,20 +111,6 @@ namespace RabbitLink.Internals.Queues
 
         public void PutRetry(IEnumerable<TItem> items, CancellationToken cancellation)
         {
-            if(AddingCompleted)
-                throw new InvalidOperationException("Adding already completed");
-
-            using (_sync.Lock(cancellation))
-            {
-                if(AddingCompleted)
-                    throw new InvalidOperationException("Adding already completed");
-
-                _tempQueue.PutRetry(items, cancellation);
-            }
-        }
-
-        public async Task PutRetryAsync(IEnumerable<TItem> items, CancellationToken cancellation)
-        {
             if (AddingCompleted)
                 throw new InvalidOperationException("Adding already completed");
 
@@ -143,8 +119,7 @@ namespace RabbitLink.Internals.Queues
                 if (AddingCompleted)
                     throw new InvalidOperationException("Adding already completed");
 
-                await _tempQueue.PutRetryAsync(items, cancellation)
-                    .ConfigureAwait(false);
+                _tempQueue.PutRetry(items, cancellation);
             }
         }
 

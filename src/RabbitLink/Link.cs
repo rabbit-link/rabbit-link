@@ -166,8 +166,10 @@ namespace RabbitLink
             var configBuilder = new LinkConsumerConfigurationBuilder(_configuration);
             config?.Invoke(configBuilder);
 
-            return new LinkConsumer(configBuilder.Configuration, _configuration, CreateChannel(),
-                topologyConfiguration, configurationError);
+            throw new NotImplementedException();
+               
+            //return new LinkConsumer(configBuilder.Configuration, _configuration, CreateChannel(),
+            //    topologyConfiguration, configurationError);
         }      
 
         #endregion

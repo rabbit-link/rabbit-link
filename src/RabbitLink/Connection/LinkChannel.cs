@@ -4,8 +4,8 @@ using System;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
-using RabbitLink.Async;
 using RabbitLink.Configuration;
+using RabbitLink.Internals.Async;
 using RabbitLink.Logging;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
@@ -136,7 +136,7 @@ namespace RabbitLink.Connection
 
             while (true)
             {
-                if (_disposeCancellation.IsCancellationRequested)
+                if (_disposeCancellation.IsCancellationRequested && newState != LinkChannelState.Disposed)
                 {
                     newState = LinkChannelState.Stop;
                 }

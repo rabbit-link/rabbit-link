@@ -9,8 +9,10 @@ using System.Threading.Tasks;
 
 namespace RabbitLink.Internals.Queues
 {
-    class ConcurrentWorkQueue<TItem> where TItem:IWorkQueueItem
+    internal class ConcurrentWorkQueue<TItem> where TItem : IWorkQueueItem
     {
+        #region Fields
+
         private readonly CancellationTokenSource _addingCompleteSource = new CancellationTokenSource();
         private readonly object _addingCompleteSync = new object();
         private readonly CancellationToken _addingCompleteToken;
@@ -23,10 +25,16 @@ namespace RabbitLink.Internals.Queues
         private long _addingCompleted;
         private long _writeCounter;
 
+        #endregion
+
+        #region Ctor
+
         public ConcurrentWorkQueue()
         {
             _addingCompleteToken = _addingCompleteSource.Token;
         }
+
+        #endregion
 
         public void Put(TItem item)
         {
@@ -102,7 +110,7 @@ namespace RabbitLink.Internals.Queues
             }
         }
 
-        public void CompleteAdding()
+        public void Complete()
         {
             if (_addingCompleteToken.IsCancellationRequested)
                 return;
@@ -170,17 +178,33 @@ namespace RabbitLink.Internals.Queues
             }
         }
 
+        #region Nested types
+
+        #region QueueItem
+
         private class QueueItem
         {
+            #region Fields
+
             private readonly object _cancellationSync = new object();
             private CancellationTokenRegistration? _cancellationRegistration;
+
+            #endregion
+
+            #region Ctor
 
             public QueueItem(TItem value)
             {
                 Value = value;
             }
 
+            #endregion
+
+            #region Properties
+
             public TItem Value { get; }
+
+            #endregion
 
             public void EnableCancellation()
             {
@@ -212,5 +236,9 @@ namespace RabbitLink.Internals.Queues
                 }
             }
         }
+
+        #endregion
+
+        #endregion
     }
 }

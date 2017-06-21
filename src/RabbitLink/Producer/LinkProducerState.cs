@@ -7,6 +7,6 @@
         Reconfigure,
         Active,
         Stop,
-        Dispose
+        Disposed
     }
 }

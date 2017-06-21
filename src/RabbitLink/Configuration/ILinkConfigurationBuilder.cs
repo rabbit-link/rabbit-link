@@ -117,6 +117,10 @@ namespace RabbitLink.Configuration
         /// </summary>
         ILinkConfigurationBuilder AppId(string value);
 
-        ILinkConfigurationBuilder UseThreads();
+        /// <summary>
+        /// Use async for internals instead of threads.
+        /// May cause publication timeouts in high concurency applications or thread pool exhausion.
+        /// </summary>
+        ILinkConfigurationBuilder UseAsync();
     }
 }

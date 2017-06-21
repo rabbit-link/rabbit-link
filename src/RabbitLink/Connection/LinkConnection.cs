@@ -20,18 +20,18 @@ namespace RabbitLink.Connection
 
         private readonly LinkConfiguration _configuration;
         private readonly ILinkConnectionFactory _connectionFactory;
-        private readonly ILinkLogger _logger;
 
         private readonly CancellationToken _disposeCancellation;
         private readonly CancellationTokenSource _disposeCts;
-        private readonly ActionQueue<IConnection> _queue = new ActionQueue<IConnection>();
+        private readonly ILinkLogger _logger;
+        private readonly CompositeActionQueue<IConnection> _queue = new CompositeActionQueue<IConnection>();
 
         private readonly object _sync = new object();
 
         private IConnection _connection;
+        private CancellationTokenSource _connectionActiveCts;
 
         private Task _loopTask;
-        private CancellationTokenSource _connectionActiveCts;
 
         #endregion
 
@@ -51,7 +51,7 @@ namespace RabbitLink.Connection
                 _configuration.AppId,
                 _configuration.ConnectionString,
                 _configuration.ConnectionTimeout
-                );
+            );
 
             _disposeCts = new CancellationTokenSource();
             _disposeCancellation = _disposeCts.Token;
@@ -64,6 +64,8 @@ namespace RabbitLink.Connection
         }
 
         #endregion
+
+        #region ILinkConnection Members
 
         public void Dispose()
         {
@@ -91,7 +93,8 @@ namespace RabbitLink.Connection
 
                 State = LinkConnectionState.Disposed;
 
-                _queue.Complete(new ObjectDisposedException(GetType().Name));
+                var ex = new ObjectDisposedException(GetType().Name);
+                _queue.Complete(item=>item.TrySetException(ex));
 
                 Disposed?.Invoke(this, EventArgs.Empty);
 
@@ -135,7 +138,7 @@ namespace RabbitLink.Connection
             return _queue.PutAsync(conn => conn.CreateModel(), cancellation);
         }
 
-        #region Loop
+        #endregion
 
         private async Task Loop()
         {
@@ -143,7 +146,7 @@ namespace RabbitLink.Connection
 
             while (true)
             {
-                if (_disposeCancellation.IsCancellationRequested)
+                if (_disposeCancellation.IsCancellationRequested && newState != LinkConnectionState.Disposed)
                 {
                     newState = LinkConnectionState.Stop;
                 }
@@ -174,7 +177,6 @@ namespace RabbitLink.Connection
                             break;
                         case LinkConnectionState.Disposed:
                             return;
-
                     }
                 }
                 catch (Exception ex)
@@ -183,8 +185,6 @@ namespace RabbitLink.Connection
                 }
             }
         }
-
-        #region Actions
 
         private async Task<LinkConnectionState> OnOpenReopenAsync(bool reopen)
         {
@@ -206,8 +206,6 @@ namespace RabbitLink.Connection
                     .ConfigureAwait(false);
             }
         }
-
-        #region Connect
 
         private async Task<LinkConnectionState> ConnectAsync(bool reopen, CancellationTokenSource cts)
         {
@@ -277,8 +275,6 @@ namespace RabbitLink.Connection
             return true;
         }
 
-        #endregion
-
         private Task<LinkConnectionState> OnStopAsync()
         {
             _connectionActiveCts?.Cancel();
@@ -315,7 +311,16 @@ namespace RabbitLink.Connection
                     {
                         while (true)
                         {
-                            var item = _queue.Wait(cts.Token);
+                            ActionQueueItem<IConnection> item;
+
+                            try
+                            {
+                                item = _queue.Wait(cts.Token);
+                            }
+                            catch(OperationCanceledException)
+                            {
+                                break;
+                            }
 
                             try
                             {
@@ -323,7 +328,7 @@ namespace RabbitLink.Connection
                             }
                             catch (Exception ex)
                             {
-                                _queue.Put(item);
+                                _queue.PutRetry(new[] {item}, CancellationToken.None);
                                 _logger.Error($"Cannot create model: {ex.Message}");
                                 throw;
                             }
@@ -338,12 +343,6 @@ namespace RabbitLink.Connection
                 Disconnected?.Invoke(this, EventArgs.Empty);
             }, TaskCreationOptions.LongRunning);
         }
-
-        #endregion
-
-        #endregion
-
-        #region Connection event handlers
 
         private void ConnectionOnConnectionUnblocked(object sender, EventArgs e)
         {
@@ -369,7 +368,5 @@ namespace RabbitLink.Connection
 
             _connectionActiveCts?.Cancel();
         }
-
-        #endregion
     }
 }

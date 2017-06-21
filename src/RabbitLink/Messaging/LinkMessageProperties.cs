@@ -3,7 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using RabbitLink.Helpers;
+using RabbitLink.Internals;
 using RabbitMQ.Client;
 
 #endregion

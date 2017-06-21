@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 #endregion
 
-namespace RabbitLink.Async
+namespace RabbitLink.Internals.Async
 {
     internal static class TaskExtensions
     {
@@ -59,7 +59,7 @@ namespace RabbitLink.Async
         public static Task WaitCancellation(this CancellationToken token)
         {
             if (token.IsCancellationRequested)
-                return Task.FromCanceled(token);
+                return Task.FromResult<object>(null);
 
             var tcs = new TaskCompletionSource<object>();
             token.Register(() => tcs.TrySetResult(null));

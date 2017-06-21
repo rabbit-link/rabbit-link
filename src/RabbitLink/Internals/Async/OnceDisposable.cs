@@ -4,7 +4,7 @@ using System;
 
 #endregion
 
-namespace RabbitLink.Async
+namespace RabbitLink.Internals.Async
 {
     internal class OnceDisposable : IDisposable
     {

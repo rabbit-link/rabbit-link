@@ -4,7 +4,7 @@ using System.Collections.Generic;
 
 #endregion
 
-namespace RabbitLink.Helpers
+namespace RabbitLink.Internals
 {
     internal static class DictionaryHelpers
     {
@@ -16,11 +16,11 @@ namespace RabbitLink.Helpers
 
         public static TValue GetOrDefault<TKey, TValue>(this IDictionary<TKey, TValue> @this, TKey key)
         {
-            if (@this.ContainsKey(key))
+            if (@this.TryGetValue(key, out var value))
             {
-                return @this[key];
+                return value;
             }
-
+         
             return default(TValue);
         }
     }

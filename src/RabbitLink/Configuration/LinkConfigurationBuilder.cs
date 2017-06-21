@@ -19,9 +19,9 @@ namespace RabbitLink.Configuration
 
         #region ILinkConfigurationBuilder Members
 
-        public ILinkConfigurationBuilder UseThreads()
+        public ILinkConfigurationBuilder UseAsync()
         {
-            Configuration.UseThreads = true;
+            Configuration.UseThreads = false;
             return this;
         }
 

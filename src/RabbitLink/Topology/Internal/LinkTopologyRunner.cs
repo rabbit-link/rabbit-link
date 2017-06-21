@@ -34,7 +34,7 @@ namespace RabbitLink.Topology.Internal
 
         public async Task<T> RunAsync(IModel model, CancellationToken cancellation)
         {
-            var queue = new ActionQueue<IModel>();
+            var queue = new ConcurrentActionQueue<IModel>();
             var configTask = RunConfiguration(queue, cancellation);
 
             try
@@ -51,7 +51,7 @@ namespace RabbitLink.Topology.Internal
                 .ConfigureAwait(false);
         }
 
-        private async Task StartQueueWorker(IModel model, ActionQueue<IModel> queue,
+        private async Task StartQueueWorker(IModel model, IActionQueue<IModel> queue,
             CancellationToken cancellation)
         {
             if (_useThreads)
@@ -99,7 +99,7 @@ namespace RabbitLink.Topology.Internal
             }
         }
 
-        private Task<T> RunConfiguration(ActionQueue<IModel> queue, CancellationToken cancellation)
+        private Task<T> RunConfiguration(IActionQueue<IModel> queue, CancellationToken cancellation)
         {
             return Task.Run(async () =>
             {

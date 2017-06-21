@@ -4,7 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using RabbitLink.Async;
+using RabbitLink.Internals.Async;
 
 #endregion
 
@@ -91,25 +91,6 @@ namespace RabbitLink.Internals.Queues
             }
         }
 
-        public void Put(TItem item, CancellationToken cancellationToken)
-        {
-            LinkedListNode<QueueItem> node;
-            var qitem = new QueueItem(item);
-
-            using (_sync.Lock(cancellationToken))
-            {
-                node = _queue.AddLast(qitem);
-            }
-
-            qitem.EnableCancellation(() =>
-            {
-                using (_sync.Lock(CancellationToken.None))
-                {
-                    node.List?.Remove(node);
-                }
-            });
-        }
-
         public async Task PutAsync(TItem item, CancellationToken cancellationToken)
         {
             LinkedListNode<QueueItem> node;
@@ -133,6 +114,7 @@ namespace RabbitLink.Internals.Queues
             CancellationToken cancellationToken)
         {
             var enableCancellations = new Stack<Action>();
+            LinkedListNode<QueueItem> prevNode = null;
 
             using (_sync.Lock(cancellationToken))
             {
@@ -145,7 +127,10 @@ namespace RabbitLink.Internals.Queues
                     }
 
                     var qitem = new QueueItem(item);
-                    var node = _queue.AddLast(qitem);
+
+                    var node = prevNode == null 
+                        ? _queue.AddFirst(qitem) 
+                        : _queue.AddAfter(prevNode, qitem);
 
                     enableCancellations.Push(() =>
                     {
@@ -157,44 +142,8 @@ namespace RabbitLink.Internals.Queues
                             }
                         });
                     });
-                }
-            }
 
-            while (enableCancellations.Count > 0)
-            {
-                var a = enableCancellations.Pop();
-                a();
-            }
-        }
-
-        public async Task PutRetryAsync(IEnumerable<TItem> items,
-            CancellationToken cancellationToken)
-        {
-            var enableCancellations = new Stack<Action>();
-
-            using (await _sync.LockAsync(cancellationToken).ConfigureAwait(false))
-            {
-                foreach (var item in items)
-                {
-                    if (item.Cancellation.IsCancellationRequested)
-                    {
-                        item.TrySetCanceled(item.Cancellation);
-                        continue;
-                    }
-
-                    var qitem = new QueueItem(item);
-                    var node = _queue.AddLast(qitem);
-
-                    enableCancellations.Push(() =>
-                    {
-                        qitem.EnableCancellation(() =>
-                        {
-                            using (_sync.Lock(CancellationToken.None))
-                            {
-                                node.List?.Remove(node);
-                            }
-                        });
-                    });
+                    prevNode = node;
                 }
             }
 

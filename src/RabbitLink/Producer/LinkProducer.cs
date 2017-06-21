@@ -1,6 +1,7 @@
 ﻿#region Usings
 
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using RabbitLink.Configuration;
@@ -20,7 +21,16 @@ namespace RabbitLink.Producer
 {
     internal class LinkProducer : ILinkProducerIntenal, ILinkChannelHandler
     {
+        #region Static fields
+
+        private const string CorrelationHeader = "X-Producer-Corellation-Id";
+
+        #endregion
+
         #region Fields
+
+        private readonly LinkProducerAckQueue _ackQueue =
+            new LinkProducerAckQueue();
 
         private readonly ILinkChannel _channel;
         private readonly LinkProducerConfiguration _configuration;
@@ -28,8 +38,8 @@ namespace RabbitLink.Producer
         private readonly LinkConfiguration _linkConfiguration;
         private readonly ILinkLogger _logger;
 
-        private readonly WorkQueue<LinkProducerMessage> _messageQueue =
-            new WorkQueue<LinkProducerMessage>();
+        private readonly CompositeWorkQueue<LinkProducerMessage> _messageQueue =
+            new CompositeWorkQueue<LinkProducerMessage>();
 
         private readonly object _sync = new object();
 
@@ -81,7 +91,7 @@ namespace RabbitLink.Producer
 
             while (true)
             {
-                if (cancellation.IsCancellationRequested)
+                if (cancellation.IsCancellationRequested && newState != LinkProducerState.Disposed)
                 {
                     newState = LinkProducerState.Stop;
                 }
@@ -103,30 +113,56 @@ namespace RabbitLink.Producer
                                 cancellation)
                             .ConfigureAwait(false);
                         break;
+                    case LinkProducerState.Active:
+                        await OnActiveAsync(model, cancellation)
+                            .ConfigureAwait(false);
+                        newState = LinkProducerState.Reconfigure;
+                        break;
+                    case LinkProducerState.Stop:
+                        newState = await OnStopAsync(cancellation)
+                            .ConfigureAwait(false);
+                        break;
+                    case LinkProducerState.Disposed:
+                        return;
                     default:
                         throw new NotImplementedException($"Handler for state ${State} not implemeted");
                 }
             }
         }
 
-        public Task OnConnecting(CancellationToken cancellation)
+        public async Task OnConnecting(CancellationToken cancellation)
         {
-            return _messageQueue.YieldAsync(cancellation);
+            try
+            {
+                await _messageQueue.YieldAsync(cancellation)
+                    .ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                // No op
+            }
         }
 
         public void MessageAck(BasicAckEventArgs info)
         {
-            throw new NotImplementedException();
+            _ackQueue.Ack(info.DeliveryTag, info.Multiple);
         }
 
         public void MessageNack(BasicNackEventArgs info)
         {
-            throw new NotImplementedException();
+            _ackQueue.Nack(info.DeliveryTag, info.Multiple);
         }
 
         public void MessageReturn(BasicReturnEventArgs info)
         {
-            throw new NotImplementedException();
+            if (info.BasicProperties.Headers.TryGetValue(CorrelationHeader, out var correlationValue))
+            {
+                var correlationId = correlationValue as string;
+                if (correlationId != null)
+                {
+                    _ackQueue.Return(correlationId, info.ReplyText);
+                }
+            }
         }
 
         #endregion
@@ -186,6 +222,115 @@ namespace RabbitLink.Producer
 
         #endregion
 
+        private async Task<LinkProducerState> OnStopAsync(CancellationToken cancellation)
+        {
+            await Task.Factory.StartNew(() =>
+                {
+                    var messages = _ackQueue.Reset();
+
+                    if (messages.Count > 0)
+                    {
+                        _logger.Warning($"Requeuing {messages.Count} not ACKed or NACKed messages");
+                    }
+
+                    _messageQueue.PutRetry(messages, CancellationToken.None);
+                }, TaskCreationOptions.LongRunning)
+                .ConfigureAwait(false);
+
+            return cancellation.IsCancellationRequested
+                ? LinkProducerState.Disposed
+                : LinkProducerState.Reconfigure;
+        }
+
+        private async Task OnActiveAsync(IModel model, CancellationToken cancellation)
+        {
+            try
+            {
+                await SetConfirmsModeAsync(model)
+                    .ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                _logger.Warning($"Activation confirms mode error: {ex}");
+            }
+
+            await ProcessQueueAsync(model, cancellation)
+                .ConfigureAwait(false);
+        }
+
+        private Task ProcessQueueAsync(IModel model, CancellationToken cancellation)
+        {
+            if (cancellation.IsCancellationRequested)
+                return Task.CompletedTask;
+            
+            return Task.Factory.StartNew(() => ProcessQueue(model, cancellation), TaskCreationOptions.LongRunning);
+        }
+
+        private void ProcessQueue(IModel model, CancellationToken cancellation)
+        {
+            while (!cancellation.IsCancellationRequested)
+            {
+                LinkProducerMessage message;
+                try
+                {
+                    message = _messageQueue.Wait(cancellation);
+                }
+                catch (OperationCanceledException)
+                {
+                    continue;
+                }
+                catch (Exception ex)
+                {
+                    _logger.Error($"Cannot read message from queue: {ex}");
+                    return;
+                }
+
+                var seq = model.NextPublishSeqNo;
+                var corellationId = _ackQueue.Add(message, seq);
+
+                var properties = model.CreateBasicProperties();
+                message.Properties.CopyTo(properties);
+
+                if (properties.Headers == null)
+                {
+                    properties.Headers = new Dictionary<string, object>();
+                }
+
+                properties.Headers[CorrelationHeader] = corellationId;
+
+                try
+                {
+                    model.BasicPublish(
+                        _exchage.Name,
+                        message.PublishProperties.RoutingKey ?? "",
+                        message.PublishProperties.Mandatory ?? false,
+                        properties,
+                        message.Body
+                    );
+                }
+                catch (Exception ex)
+                {
+                    _logger.Error($"Cannot publish message: {ex.Message}");
+                    return;
+                }
+
+                if (!ConfirmsMode)
+                {
+                    _ackQueue.Ack(seq, false);
+                }
+            }
+        }
+
+        private Task SetConfirmsModeAsync(IModel model)
+        {
+            if (ConfirmsMode)
+            {
+                return Task.Factory.StartNew(model.ConfirmSelect, TaskCreationOptions.LongRunning);
+            }
+
+            return Task.CompletedTask;
+        }
+
         private async Task<LinkProducerState> OnConfigureAsync(IModel model, bool retry, CancellationToken cancellation)
         {
             if (retry)
@@ -240,12 +385,12 @@ namespace RabbitLink.Producer
 
         private void Dispose(bool byChannel)
         {
-            if (State == LinkProducerState.Dispose)
+            if (State == LinkProducerState.Disposed)
                 return;
 
             lock (_sync)
             {
-                if (State == LinkProducerState.Dispose)
+                if (State == LinkProducerState.Disposed)
                     return;
 
                 _logger.Debug("Disposing");
@@ -256,7 +401,7 @@ namespace RabbitLink.Producer
                     _channel.Dispose();
                 }
 
-                State = LinkProducerState.Dispose;
+                State = LinkProducerState.Disposed;
 
                 var ex = new ObjectDisposedException(GetType().Name);
                 _messageQueue.Complete(msg => msg.TrySetException(ex));
@@ -272,7 +417,7 @@ namespace RabbitLink.Producer
             LinkPublishProperties publishProperties = null,
             CancellationToken? cancellation = null)
         {
-            if (State == LinkProducerState.Dispose)
+            if (State == LinkProducerState.Disposed)
                 throw new ObjectDisposedException(GetType().Name);
 
             if (properties == null)

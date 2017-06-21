@@ -13,19 +13,19 @@ namespace RabbitLink.Internals.Queues
         #region Fields
 
         private readonly CancellationToken _cancellation;
-        private readonly ActionQueue<TActor> _queue;
+        private readonly IActionQueue<TActor> _queue;
 
         #endregion
 
         #region Ctor
 
-        public ActionQueueInvoker(ActionQueue<TActor> queue, CancellationToken cancellation)
+        public ActionQueueInvoker(IActionQueue<TActor> queue, CancellationToken cancellation)
         {
             _queue = queue ?? throw new ArgumentNullException(nameof(queue));
             _cancellation = cancellation;
         }
 
-        public ActionQueueInvoker(ActionQueue<TActor> queue) : this(queue, CancellationToken.None)
+        public ActionQueueInvoker(IActionQueue<TActor> queue) : this(queue, CancellationToken.None)
         {
         }
 
