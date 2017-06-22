@@ -12,11 +12,11 @@ namespace RabbitLink.Connection
         /// <summary>
         /// Opening
         /// </summary>
-        Open,
+        Opening,
         /// <summary>
         /// Reopening
         /// </summary>
-        Reopen,
+        Reopening,
         /// <summary>
         /// Active processing
         /// </summary>
@@ -24,7 +24,7 @@ namespace RabbitLink.Connection
         /// <summary>
         /// Stoping
         /// </summary>
-        Stop,
+        Stopping,
         /// <summary>
         /// Disposed
         /// </summary>

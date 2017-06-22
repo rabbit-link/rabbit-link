@@ -12,11 +12,11 @@
         /// <summary>
         /// Opening
         /// </summary>
-        Open,
+        Opening,
         /// <summary>
         /// Reopening
         /// </summary>
-        Reopen,
+        Reopening,
         /// <summary>
         /// Active
         /// </summary>
@@ -24,7 +24,7 @@
         /// <summary>
         /// Stoping
         /// </summary>
-        Stop,
+        Stopping,
         /// <summary>
         /// Disposed
         /// </summary>

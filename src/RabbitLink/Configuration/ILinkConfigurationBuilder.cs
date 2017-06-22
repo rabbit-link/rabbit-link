@@ -116,11 +116,5 @@ namespace RabbitLink.Configuration
         ///     By default Guit.NewValue().ToString("D")
         /// </summary>
         ILinkConfigurationBuilder AppId(string value);
-
-        /// <summary>
-        /// Use async for internals instead of threads.
-        /// May cause publication timeouts in high concurency applications or thread pool exhausion.
-        /// </summary>
-        ILinkConfigurationBuilder UseAsync();
     }
 }

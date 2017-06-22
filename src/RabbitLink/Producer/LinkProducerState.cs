@@ -3,10 +3,10 @@
     public enum LinkProducerState
     {
         Init,
-        Configure,
-        Reconfigure,
+        Configuring,
+        Reconfiguring,
         Active,
-        Stop,
+        Stopping,
         Disposed
     }
 }

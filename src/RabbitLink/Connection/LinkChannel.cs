@@ -5,6 +5,7 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using RabbitLink.Configuration;
+using RabbitLink.Internals;
 using RabbitLink.Internals.Async;
 using RabbitLink.Logging;
 using RabbitMQ.Client;
@@ -14,7 +15,7 @@ using RabbitMQ.Client.Events;
 
 namespace RabbitLink.Connection
 {
-    internal class LinkChannel : ILinkChannel
+    internal class LinkChannel : AsyncStateMachine<LinkChannelState>, ILinkChannel
     {
         #region Fields
 
@@ -38,6 +39,7 @@ namespace RabbitLink.Connection
         #region Ctor
 
         public LinkChannel(LinkConfiguration configuration, ILinkConnection connection)
+            : base(LinkChannelState.Init)
         {
             _connection = connection ?? throw new ArgumentNullException(nameof(connection));
             _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
@@ -84,7 +86,7 @@ namespace RabbitLink.Connection
                 }
 
                 _connection.Disposed -= ConnectionOnDisposed;
-                State = LinkChannelState.Disposed;
+                ChangeState(LinkChannelState.Disposed);
 
                 Disposed?.Invoke(this, EventArgs.Empty);
 
@@ -94,8 +96,6 @@ namespace RabbitLink.Connection
         }
 
         public Guid Id { get; } = Guid.NewGuid();
-
-        public LinkChannelState State { get; private set; }
 
         public event EventHandler Disposed;
 
@@ -119,7 +119,7 @@ namespace RabbitLink.Connection
                     throw new InvalidOperationException("Already initialized");
 
                 _handler = handler;
-                State = LinkChannelState.Open;
+                ChangeState(LinkChannelState.Opening);
                 _loopTask = Task.Run(async () => await Loop().ConfigureAwait(false), _disposeCancellation);
             }
         }
@@ -128,45 +128,54 @@ namespace RabbitLink.Connection
 
         #endregion
 
+        protected override void OnStateChange(LinkChannelState newState)
+        {
+            _logger.Debug($"State change {State} -> {newState}");
+            base.OnStateChange(newState);
+        }
+
         #region Loop
 
         private async Task Loop()
         {
-            var newState = State;
+            var newState = LinkChannelState.Opening;
 
             while (true)
             {
-                if (_disposeCancellation.IsCancellationRequested && newState != LinkChannelState.Disposed)
+                if (_disposeCancellation.IsCancellationRequested)
                 {
-                    newState = LinkChannelState.Stop;
+                    newState = LinkChannelState.Stopping;
                 }
 
-                if (newState != State)
-                {
-                    _logger.Debug($"State change {State} -> {newState}");
-                    State = newState;
-                }
+                ChangeState(newState);
 
                 try
                 {
                     switch (State)
                     {
-                        case LinkChannelState.Open:
-                        case LinkChannelState.Reopen:
-                            newState = await OnOpenAsync(State == LinkChannelState.Reopen)
-                                .ConfigureAwait(false);
+                        case LinkChannelState.Opening:
+                        case LinkChannelState.Reopening:
+                            newState = await OpenReopenAsync(State == LinkChannelState.Reopening)
+                                .ConfigureAwait(false)
+                                ? LinkChannelState.Active
+                                : LinkChannelState.Stopping;
                             break;
                         case LinkChannelState.Active:
-                            await OnActiveAsync()
+                            await ActiveAsync()
                                 .ConfigureAwait(false);
-                            newState = LinkChannelState.Stop;
+                            newState = LinkChannelState.Stopping;
                             break;
-                        case LinkChannelState.Stop:
-                            newState = await OnStopAsync()
-                                .ConfigureAwait(false);
+                        case LinkChannelState.Stopping:
+                            await AsyncHelper.RunAsync(Stop)
+                               .ConfigureAwait(false);
+                            if (_disposeCancellation.IsCancellationRequested)
+                            {
+                                return;
+                            }
+                            newState = LinkChannelState.Reopening;
                             break;
-                        case LinkChannelState.Disposed:
-                            return;
+                        default:
+                            throw new NotImplementedException($"Handler for state ${State} not implemeted");
                     }
                 }
                 catch (Exception ex)
@@ -178,7 +187,7 @@ namespace RabbitLink.Connection
 
         #region Actions
 
-        private async Task<LinkChannelState> OnOpenAsync(bool reopen)
+        private async Task<bool> OpenReopenAsync(bool reopen)
         {
             using (var openCts = new CancellationTokenSource())
             {
@@ -215,7 +224,7 @@ namespace RabbitLink.Connection
                 catch (Exception ex)
                 {
                     _logger.Error($"Cannot create model: {ex.Message}");
-                    return LinkChannelState.Stop;
+                    return false;
                 }
                 finally
                 {
@@ -234,13 +243,14 @@ namespace RabbitLink.Connection
             }
 
             _logger.Info($"Opened(channelNumber: {_model.ChannelNumber})");
-            return LinkChannelState.Active;
+            return true;
         }
 
-        private Task<LinkChannelState> OnStopAsync()
+        private void Stop()
         {
             _modelActiveCts?.Cancel();
             _modelActiveCts?.Dispose();
+            _modelActiveCts = null;
 
             try
             {
@@ -253,14 +263,9 @@ namespace RabbitLink.Connection
             {
                 _logger.Warning($"Model cleaning exception: {ex}");
             }
-
-            return Task.FromResult(_disposeCancellation.IsCancellationRequested
-                ? LinkChannelState.Disposed
-                : LinkChannelState.Reopen
-            );
         }
 
-        private async Task OnActiveAsync()
+        private async Task ActiveAsync()
         {
             using (var activeCts =
                 CancellationTokenSource.CreateLinkedTokenSource(_disposeCancellation, _modelActiveCts.Token))

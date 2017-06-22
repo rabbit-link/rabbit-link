@@ -19,12 +19,6 @@ namespace RabbitLink.Configuration
 
         #region ILinkConfigurationBuilder Members
 
-        public ILinkConfigurationBuilder UseAsync()
-        {
-            Configuration.UseThreads = false;
-            return this;
-        }
-
         public ILinkConfigurationBuilder AutoStart(bool value)
         {
             Configuration.AutoStart = value;

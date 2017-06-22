@@ -5,6 +5,8 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using RabbitLink.Configuration;
+using RabbitLink.Internals;
+using RabbitLink.Internals.Async;
 using RabbitLink.Internals.Queues;
 using RabbitLink.Logging;
 using RabbitMQ.Client;
@@ -14,7 +16,7 @@ using RabbitMQ.Client.Events;
 
 namespace RabbitLink.Connection
 {
-    internal class LinkConnection : ILinkConnection
+    internal class LinkConnection : AsyncStateMachine<LinkConnectionState>, ILinkConnection
     {
         #region Fields
 
@@ -37,7 +39,7 @@ namespace RabbitLink.Connection
 
         #region Ctor
 
-        public LinkConnection(LinkConfiguration configuration)
+        public LinkConnection(LinkConfiguration configuration) : base(LinkConnectionState.Init)
         {
             _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
 
@@ -91,10 +93,10 @@ namespace RabbitLink.Connection
                     // no op
                 }
 
-                State = LinkConnectionState.Disposed;
-
                 var ex = new ObjectDisposedException(GetType().Name);
-                _queue.Complete(item=>item.TrySetException(ex));
+                _queue.Complete(item => item.TrySetException(ex));
+
+                ChangeState(LinkConnectionState.Disposed);
 
                 Disposed?.Invoke(this, EventArgs.Empty);
 
@@ -108,7 +110,6 @@ namespace RabbitLink.Connection
         public event EventHandler Disconnected;
 
         public Guid Id { get; } = Guid.NewGuid();
-        public LinkConnectionState State { get; private set; }
 
         public string UserId => _connectionFactory.UserName;
 
@@ -128,7 +129,7 @@ namespace RabbitLink.Connection
                 if (State != LinkConnectionState.Init)
                     throw new InvalidOperationException("Already initialized");
 
-                State = LinkConnectionState.Open;
+                ChangeState(LinkConnectionState.Opening);
                 _loopTask = Task.Run(async () => await Loop().ConfigureAwait(false), _disposeCancellation);
             }
         }
@@ -140,43 +141,53 @@ namespace RabbitLink.Connection
 
         #endregion
 
+
+        protected override void OnStateChange(LinkConnectionState newState)
+        {
+            _logger.Debug($"State change {State} -> {newState}");
+            base.OnStateChange(newState);
+        }
+
         private async Task Loop()
         {
-            var newState = State;
+            var newState = LinkConnectionState.Opening;
 
             while (true)
             {
-                if (_disposeCancellation.IsCancellationRequested && newState != LinkConnectionState.Disposed)
+                if (_disposeCancellation.IsCancellationRequested)
                 {
-                    newState = LinkConnectionState.Stop;
+                    newState = LinkConnectionState.Stopping;
                 }
 
-                if (newState != State)
-                {
-                    _logger.Debug($"State change {State} -> {newState}");
-                    State = newState;
-                }
+                ChangeState(newState);
 
                 try
                 {
                     switch (State)
                     {
-                        case LinkConnectionState.Open:
-                        case LinkConnectionState.Reopen:
-                            newState = await OnOpenReopenAsync(State == LinkConnectionState.Reopen)
-                                .ConfigureAwait(false);
+                        case LinkConnectionState.Opening:
+                        case LinkConnectionState.Reopening:
+                            newState = await OpenReopenAsync(State == LinkConnectionState.Reopening)
+                                .ConfigureAwait(false)
+                                ? LinkConnectionState.Active
+                                : LinkConnectionState.Stopping;
                             break;
                         case LinkConnectionState.Active:
-                            await OnActiveAsync()
+                            await AsyncHelper.RunAsync(Active)
                                 .ConfigureAwait(false);
-                            newState = LinkConnectionState.Stop;
+                            newState = LinkConnectionState.Stopping;
                             break;
-                        case LinkConnectionState.Stop:
-                            newState = await OnStopAsync()
+                        case LinkConnectionState.Stopping:
+                            await AsyncHelper.RunAsync(Stop)
                                 .ConfigureAwait(false);
+                            if (_disposeCancellation.IsCancellationRequested)
+                            {
+                                return;
+                            }
+                            newState = LinkConnectionState.Reopening;
                             break;
-                        case LinkConnectionState.Disposed:
-                            return;
+                        default:
+                            throw new NotImplementedException($"Handler for state ${State} not implemeted");
                     }
                 }
                 catch (Exception ex)
@@ -186,7 +197,7 @@ namespace RabbitLink.Connection
             }
         }
 
-        private async Task<LinkConnectionState> OnOpenReopenAsync(bool reopen)
+        private async Task<bool> OpenReopenAsync(bool reopen)
         {
             using (var yieldCts = new CancellationTokenSource())
             {
@@ -207,12 +218,12 @@ namespace RabbitLink.Connection
             }
         }
 
-        private async Task<LinkConnectionState> ConnectAsync(bool reopen, CancellationTokenSource cts)
+        private async Task<bool> ConnectAsync(bool reopen, CancellationTokenSource cts)
         {
             try
             {
                 if (_disposeCancellation.IsCancellationRequested)
-                    return LinkConnectionState.Stop;
+                    return false;
 
                 if (reopen)
                 {
@@ -226,19 +237,18 @@ namespace RabbitLink.Connection
                     }
                     catch (OperationCanceledException)
                     {
-                        return LinkConnectionState.Stop;
+                        return false;
                     }
                 }
 
                 // start long-running task for syncronyous connect
-                if (await Task.Factory
-                    .StartNew(Connect, CancellationToken.None)
+                if (await AsyncHelper.RunAsync(Connect)
                     .ConfigureAwait(false))
                 {
-                    return LinkConnectionState.Active;
+                    return true;
                 }
 
-                return LinkConnectionState.Stop;
+                return false;
             }
             finally
             {
@@ -275,10 +285,11 @@ namespace RabbitLink.Connection
             return true;
         }
 
-        private Task<LinkConnectionState> OnStopAsync()
+        private void Stop()
         {
             _connectionActiveCts?.Cancel();
             _connectionActiveCts?.Dispose();
+            _connectionActiveCts = null;
 
             try
             {
@@ -292,56 +303,49 @@ namespace RabbitLink.Connection
                 _logger.Warning($"Cleaning exception: {ex}");
             }
 
-            return Task.FromResult(_disposeCancellation.IsCancellationRequested
-                ? LinkConnectionState.Disposed
-                : LinkConnectionState.Reopen
-            );
         }
 
-        private Task OnActiveAsync()
+        private void Active()
         {
-            return Task.Factory.StartNew(() =>
+            Connected?.Invoke(this, EventArgs.Empty);
+
+            using (var cts =
+                CancellationTokenSource.CreateLinkedTokenSource(_disposeCancellation, _connectionActiveCts.Token))
             {
-                Connected?.Invoke(this, EventArgs.Empty);
-
-                using (var cts =
-                    CancellationTokenSource.CreateLinkedTokenSource(_disposeCancellation, _connectionActiveCts.Token))
+                try
                 {
-                    try
+                    while (true)
                     {
-                        while (true)
+                        ActionQueueItem<IConnection> item;
+
+                        try
                         {
-                            ActionQueueItem<IConnection> item;
+                            item = _queue.Wait(cts.Token);
+                        }
+                        catch (OperationCanceledException)
+                        {
+                            break;
+                        }
 
-                            try
-                            {
-                                item = _queue.Wait(cts.Token);
-                            }
-                            catch(OperationCanceledException)
-                            {
-                                break;
-                            }
-
-                            try
-                            {
-                                item.TrySetResult(item.Value(_connection));
-                            }
-                            catch (Exception ex)
-                            {
-                                _queue.PutRetry(new[] {item}, CancellationToken.None);
-                                _logger.Error($"Cannot create model: {ex.Message}");
-                                throw;
-                            }
+                        try
+                        {
+                            item.TrySetResult(item.Value(_connection));
+                        }
+                        catch (Exception ex)
+                        {
+                            _queue.PutRetry(new[] { item }, CancellationToken.None);
+                            _logger.Error($"Cannot create model: {ex.Message}");
+                            throw;
                         }
                     }
-                    catch (Exception ex)
-                    {
-                        _logger.Debug($"Processing stopped: {ex}");
-                    }
                 }
+                catch (Exception ex)
+                {
+                    _logger.Debug($"Processing stopped: {ex}");
+                }
+            }
 
-                Disconnected?.Invoke(this, EventArgs.Empty);
-            }, TaskCreationOptions.LongRunning);
+            Disconnected?.Invoke(this, EventArgs.Empty);
         }
 
         private void ConnectionOnConnectionUnblocked(object sender, EventArgs e)

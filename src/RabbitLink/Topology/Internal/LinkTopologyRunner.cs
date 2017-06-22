@@ -3,6 +3,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using RabbitLink.Internals.Async;
 using RabbitLink.Internals.Queues;
 using RabbitLink.Logging;
 using RabbitMQ.Client;
@@ -17,17 +18,15 @@ namespace RabbitLink.Topology.Internal
 
         private readonly Func<ILinkTopologyConfig, Task<T>> _configureFunc;
         private readonly ILinkLogger _logger;
-        private readonly bool _useThreads;
 
         #endregion
 
         #region Ctor
 
-        public LinkTopologyRunner(ILinkLogger logger, bool useThreads, Func<ILinkTopologyConfig, Task<T>> configureFunc)
+        public LinkTopologyRunner(ILinkLogger logger, Func<ILinkTopologyConfig, Task<T>> configureFunc)
         {
             _configureFunc = configureFunc;
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _useThreads = useThreads;
         }
 
         #endregion
@@ -37,84 +36,59 @@ namespace RabbitLink.Topology.Internal
             var queue = new ConcurrentActionQueue<IModel>();
             var configTask = RunConfiguration(queue, cancellation);
 
-            try
-            {
-                await StartQueueWorker(model, queue, cancellation)
-                    .ConfigureAwait(false);
-            }
-            catch
-            {
-                // No Op
-            }
+            await StartQueueWorker(model, queue, cancellation)
+                .ConfigureAwait(false);
 
             return await configTask
                 .ConfigureAwait(false);
         }
 
-        private async Task StartQueueWorker(IModel model, IActionQueue<IModel> queue,
+        private Task StartQueueWorker(IModel model, IActionQueue<IModel> queue,
             CancellationToken cancellation)
         {
-            if (_useThreads)
+            return AsyncHelper.RunAsync(() =>
             {
-                await Task.Factory.StartNew(() =>
-                    {
-                        while (true)
-                        {
-                            var item = queue.Wait(cancellation);
-                            try
-                            {
-                                var result = item.Value(model);
-                                item.TrySetResult(result);
-                            }
-                            catch (Exception ex)
-                            {
-                                item.TrySetException(ex);
-                            }
-                        }
-                        // ReSharper disable once FunctionNeverReturns
-                    }, cancellation, TaskCreationOptions.LongRunning, TaskScheduler.Current)
-                    .ConfigureAwait(false);
-            }
-            else
-            {
-                while (true)
+                while (!cancellation.IsCancellationRequested)
                 {
-                    var item = await queue.WaitAsync(cancellation)
-                        .ConfigureAwait(false);
+                    ActionQueueItem<IModel> item;
+                    try
+                    {
+                        item = queue.Wait(cancellation);
+                    }
+                    catch
+                    {
+                        break;
+                    }
 
-                    await Task.Factory.StartNew(() =>
-                        {
-                            try
-                            {
-                                var result = item.Value(model);
-                                item.TrySetResult(result);
-                            }
-                            catch (Exception ex)
-                            {
-                                item.TrySetException(ex);
-                            }
-                        }, cancellation)
-                        .ConfigureAwait(false);
+                    try
+                    {
+                        var result = item.Value(model);
+                        item.TrySetResult(result);
+                    }
+                    catch (Exception ex)
+                    {
+                        item.TrySetException(ex);
+                    }
                 }
-            }
+            });
         }
 
-        private Task<T> RunConfiguration(IActionQueue<IModel> queue, CancellationToken cancellation)
+        private async Task<T> RunConfiguration(IActionQueue<IModel> queue, CancellationToken cancellation)
         {
-            return Task.Run(async () =>
+            try
             {
-                try
-                {
-                    var invoker = new ActionQueueInvoker<IModel>(queue, cancellation);
-                    var config = new LinkTopologyConfig(_logger, invoker);
-                    return await _configureFunc(config)
-                        .ConfigureAwait(false);
-                }
-                finally
-                {
-                    queue.Complete();
-                }
-            }, cancellation);
+                return await Task.Run(() =>
+                    {
+                        var invoker = new ActionQueueInvoker<IModel>(queue, cancellation);
+                        var config = new LinkTopologyConfig(_logger, invoker);
+                        return _configureFunc(config);
+                    }, cancellation)
+                    .ConfigureAwait(false);
+            }
+            finally
+            {
+                queue.Complete();
+            }
         }
     }
 }

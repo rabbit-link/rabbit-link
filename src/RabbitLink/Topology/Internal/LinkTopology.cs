@@ -40,7 +40,7 @@ namespace RabbitLink.Topology.Internal
 
             _channel.Disposed += ChannelOnDisposed;
 
-            _topologyRunner = new LinkTopologyRunner<object>(_logger, _configuration.UseThreads, async cfg =>
+            _topologyRunner = new LinkTopologyRunner<object>(_logger, async cfg =>
             {
                 await _handler.Configure(cfg)
                     .ConfigureAwait(false);

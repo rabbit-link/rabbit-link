@@ -32,8 +32,6 @@ namespace RabbitLink.Configuration
 
         public bool AutoStart { get; set; } = true;
 
-        public bool UseThreads { get; set; } = true;
-
         public string ConnectionString { get; set; }
 
         public TimeSpan ConnectionTimeout

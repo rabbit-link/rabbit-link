@@ -7,6 +7,8 @@ using System.Threading.Tasks;
 using RabbitLink.Configuration;
 using RabbitLink.Connection;
 using RabbitLink.Exceptions;
+using RabbitLink.Internals;
+using RabbitLink.Internals.Async;
 using RabbitLink.Internals.Queues;
 using RabbitLink.Logging;
 using RabbitLink.Messaging;
@@ -19,7 +21,7 @@ using RabbitMQ.Client.Events;
 
 namespace RabbitLink.Producer
 {
-    internal class LinkProducer : ILinkProducerIntenal, ILinkChannelHandler
+    internal class LinkProducer : AsyncStateMachine<LinkProducerState>, ILinkProducerIntenal, ILinkChannelHandler
     {
         #region Static fields
 
@@ -55,7 +57,7 @@ namespace RabbitLink.Producer
         public LinkProducer(LinkProducerConfiguration configuration, LinkConfiguration linkConfiguration,
             ILinkChannel channel,
             Func<ILinkTopologyConfig, Task<ILinkExchage>> topologyConfigHandler,
-            Func<Exception, Task> topologyConfigErrorHandler)
+            Func<Exception, Task> topologyConfigErrorHandler) : base(LinkProducerState.Init)
         {
             _linkConfiguration = linkConfiguration ?? throw new ArgumentNullException(nameof(linkConfiguration));
             _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
@@ -73,7 +75,7 @@ namespace RabbitLink.Producer
                 throw new ArgumentException("Cannot create logger", nameof(linkConfiguration.LoggerFactory));
 
             _topologyRunner =
-                new LinkTopologyRunner<ILinkExchage>(_logger, _linkConfiguration.UseThreads, topologyConfigHandler);
+                new LinkTopologyRunner<ILinkExchage>(_logger, topologyConfigHandler);
             _channel.Disposed += ChannelOnDisposed;
 
             _logger.Debug($"Created(channelId: {_channel.Id})");
@@ -87,47 +89,58 @@ namespace RabbitLink.Producer
 
         public async Task OnActive(IModel model, CancellationToken cancellation)
         {
-            var newState = State;
+            var newState = LinkProducerState.Init;
 
             while (true)
             {
-                if (cancellation.IsCancellationRequested && newState != LinkProducerState.Disposed)
+                if (cancellation.IsCancellationRequested)
                 {
-                    newState = LinkProducerState.Stop;
+                    newState = LinkProducerState.Stopping;
                 }
 
-                if (newState != State)
-                {
-                    _logger.Debug($"State change {State} -> {newState}");
-                    State = newState;
-                }
+                ChangeState(newState);
 
                 switch (State)
                 {
                     case LinkProducerState.Init:
-                        newState = LinkProducerState.Configure;
+                        newState = LinkProducerState.Configuring;
                         break;
-                    case LinkProducerState.Configure:
-                    case LinkProducerState.Reconfigure:
-                        newState = await OnConfigureAsync(model, State == LinkProducerState.Reconfigure,
-                                cancellation)
-                            .ConfigureAwait(false);
+                    case LinkProducerState.Configuring:
+                    case LinkProducerState.Reconfiguring:
+                        newState = await ConfigureAsync(
+                                model,
+                                State == LinkProducerState.Reconfiguring,
+                                cancellation
+                            )
+                            .ConfigureAwait(false)
+                            ? LinkProducerState.Active
+                            : LinkProducerState.Reconfiguring;
                         break;
                     case LinkProducerState.Active:
-                        await OnActiveAsync(model, cancellation)
+                        await ActiveAsync(model, cancellation)
                             .ConfigureAwait(false);
-                        newState = LinkProducerState.Reconfigure;
+                        newState = LinkProducerState.Reconfiguring;
                         break;
-                    case LinkProducerState.Stop:
-                        newState = await OnStopAsync(cancellation)
+                    case LinkProducerState.Stopping:
+                        await AsyncHelper.RunAsync(Stop)
                             .ConfigureAwait(false);
+                        if (cancellation.IsCancellationRequested)
+                        {
+                            ChangeState(LinkProducerState.Init);
+                            return;
+                        }
+                        newState = LinkProducerState.Reconfiguring;
                         break;
-                    case LinkProducerState.Disposed:
-                        return;
                     default:
                         throw new NotImplementedException($"Handler for state ${State} not implemeted");
                 }
             }
+        }
+
+        protected override void OnStateChange(LinkProducerState newState)
+        {
+            _logger.Debug($"State change {State} -> {newState}");
+            base.OnStateChange(newState);
         }
 
         public async Task OnConnecting(CancellationToken cancellation)
@@ -176,8 +189,6 @@ namespace RabbitLink.Producer
             Dispose(false);
         }
 
-        public LinkProducerState State { get; private set; } = LinkProducerState.Init;
-
         public Task PublishAsync<T>(T body, LinkMessageProperties properties = null,
             LinkPublishProperties publishProperties = null,
             CancellationToken? cancellation = null) where T : class
@@ -222,27 +233,19 @@ namespace RabbitLink.Producer
 
         #endregion
 
-        private async Task<LinkProducerState> OnStopAsync(CancellationToken cancellation)
+        private void Stop()
         {
-            await Task.Factory.StartNew(() =>
-                {
-                    var messages = _ackQueue.Reset();
+            var messages = _ackQueue.Reset();
 
-                    if (messages.Count > 0)
-                    {
-                        _logger.Warning($"Requeuing {messages.Count} not ACKed or NACKed messages");
-                    }
+            if (messages.Count > 0)
+            {
+                _logger.Warning($"Requeuing {messages.Count} not ACKed or NACKed messages");
+            }
 
-                    _messageQueue.PutRetry(messages, CancellationToken.None);
-                }, TaskCreationOptions.LongRunning)
-                .ConfigureAwait(false);
-
-            return cancellation.IsCancellationRequested
-                ? LinkProducerState.Disposed
-                : LinkProducerState.Reconfigure;
+            _messageQueue.PutRetry(messages, CancellationToken.None);
         }
 
-        private async Task OnActiveAsync(IModel model, CancellationToken cancellation)
+        private async Task ActiveAsync(IModel model, CancellationToken cancellation)
         {
             try
             {
@@ -251,19 +254,12 @@ namespace RabbitLink.Producer
             }
             catch (Exception ex)
             {
-                _logger.Warning($"Activation confirms mode error: {ex}");
+                _logger.Warning($"Confirms mode activation error: {ex}");
+                return;
             }
 
-            await ProcessQueueAsync(model, cancellation)
+            await AsyncHelper.RunAsync(()=>ProcessQueue(model, cancellation))
                 .ConfigureAwait(false);
-        }
-
-        private Task ProcessQueueAsync(IModel model, CancellationToken cancellation)
-        {
-            if (cancellation.IsCancellationRequested)
-                return Task.CompletedTask;
-            
-            return Task.Factory.StartNew(() => ProcessQueue(model, cancellation), TaskCreationOptions.LongRunning);
         }
 
         private void ProcessQueue(IModel model, CancellationToken cancellation)
@@ -325,13 +321,13 @@ namespace RabbitLink.Producer
         {
             if (ConfirmsMode)
             {
-                return Task.Factory.StartNew(model.ConfirmSelect, TaskCreationOptions.LongRunning);
+                return AsyncHelper.RunAsync(model.ConfirmSelect);
             }
 
             return Task.CompletedTask;
         }
 
-        private async Task<LinkProducerState> OnConfigureAsync(IModel model, bool retry, CancellationToken cancellation)
+        private async Task<bool> ConfigureAsync(IModel model, bool retry, CancellationToken cancellation)
         {
             if (retry)
             {
@@ -343,7 +339,7 @@ namespace RabbitLink.Producer
                 }
                 catch
                 {
-                    return LinkProducerState.Reconfigure;
+                    return false;
                 }
             }
 
@@ -369,12 +365,12 @@ namespace RabbitLink.Producer
                     _logger.Error($"Exception in topology error handler: {handlerException}");
                 }
 
-                return LinkProducerState.Reconfigure;
+                return false;
             }
 
             _logger.Info("Topology configured");
 
-            return LinkProducerState.Active;
+            return true;
         }
 
         private void ChannelOnDisposed(object sender, EventArgs eventArgs)
@@ -401,11 +397,10 @@ namespace RabbitLink.Producer
                     _channel.Dispose();
                 }
 
-                State = LinkProducerState.Disposed;
-
                 var ex = new ObjectDisposedException(GetType().Name);
                 _messageQueue.Complete(msg => msg.TrySetException(ex));
 
+                ChangeState(LinkProducerState.Disposed);
                 _logger.Debug("Disposed");
                 _logger.Dispose();
 
