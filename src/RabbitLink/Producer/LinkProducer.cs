@@ -45,7 +45,7 @@ namespace RabbitLink.Producer
 
         private readonly object _sync = new object();
 
-        private readonly Func<Exception, Task> _topologyConfigErrorHandler;
+        private readonly ILinkProducerTopologyHandler _topologyHandler;
         private readonly LinkTopologyRunner<ILinkExchage> _topologyRunner;
 
         private ILinkExchage _exchage;
@@ -54,20 +54,17 @@ namespace RabbitLink.Producer
 
         #region Ctor
 
-        public LinkProducer(LinkProducerConfiguration configuration, LinkConfiguration linkConfiguration,
+        public LinkProducer(
+            LinkProducerConfiguration configuration, 
+            LinkConfiguration linkConfiguration,
             ILinkChannel channel,
-            Func<ILinkTopologyConfig, Task<ILinkExchage>> topologyConfigHandler,
-            Func<Exception, Task> topologyConfigErrorHandler) : base(LinkProducerState.Init)
+            ILinkProducerTopologyHandler topologyHandler
+        ) : base(LinkProducerState.Init)
         {
             _linkConfiguration = linkConfiguration ?? throw new ArgumentNullException(nameof(linkConfiguration));
             _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
 
-            if (topologyConfigHandler == null)
-                throw new ArgumentNullException(nameof(topologyConfigHandler));
-
-            _topologyConfigErrorHandler = topologyConfigErrorHandler ??
-                                          throw new ArgumentNullException(nameof(topologyConfigErrorHandler));
-
+            _topologyHandler = topologyHandler ?? throw new ArgumentNullException(nameof(topologyHandler));
             _channel = channel ?? throw new ArgumentNullException(nameof(channel));
 
             _logger = linkConfiguration.LoggerFactory.CreateLogger($"{GetType().Name}({Id:D})");
@@ -75,7 +72,7 @@ namespace RabbitLink.Producer
                 throw new ArgumentException("Cannot create logger", nameof(linkConfiguration.LoggerFactory));
 
             _topologyRunner =
-                new LinkTopologyRunner<ILinkExchage>(_logger, topologyConfigHandler);
+                new LinkTopologyRunner<ILinkExchage>(_logger, _topologyHandler.Configure);
             _channel.Disposed += ChannelOnDisposed;
 
             _logger.Debug($"Created(channelId: {_channel.Id})");
@@ -357,7 +354,7 @@ namespace RabbitLink.Producer
 
                 try
                 {
-                    await _topologyConfigErrorHandler(ex)
+                    await _topologyHandler.ConfigurationError(ex)
                         .ConfigureAwait(false);
                 }
                 catch (Exception handlerException)

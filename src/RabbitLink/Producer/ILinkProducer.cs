@@ -5,14 +5,18 @@ using System.Threading;
 using System.Threading.Tasks;
 using RabbitLink.Exceptions;
 using RabbitLink.Messaging;
-using RabbitLink.Serialization;
 
 #endregion
 
 namespace RabbitLink.Producer
 {
+    /// <summary>
+    ///     Represents RabbitMQ message producer
+    /// </summary>
     public interface ILinkProducer : IDisposable
     {
+        #region Properties
+
         /// <summary>
         ///     Producer Id
         /// </summary>
@@ -38,20 +42,24 @@ namespace RabbitLink.Producer
         /// </summary>
         TimeSpan? PublishTimeout { get; }
 
+        /// <summary>
+        ///     Orational state
+        /// </summary>
         LinkProducerState State { get; }
+
+        #endregion
 
         /// <summary>
         ///     Publishes message
         /// </summary>
-        /// <param name="message">
-        ///     message to publish, it will be serialized by <see cref="ILinkMessageSerializer" /> if needed
-        /// </param>
         /// <typeparam name="T">
         ///     If byte[] will send raw message
         ///     Else send serialized message
         ///     If TypeMap contains map for this type then adds Type header
         /// </typeparam>
-        /// <param name="properties">publication properties</param>
+        /// <param name="body">message body</param>
+        /// <param name="properties">message properties</param>
+        /// <param name="publishProperties">publication properties</param>
         /// <param name="cancellation">cancellation token, if null <see cref="Timeout" /> will be used</param>
         /// <returns><see cref="Task" /> which completed when message acked by brocker</returns>
         /// <exception cref="LinkSerializationException">On serialization error</exception>
@@ -60,6 +68,6 @@ namespace RabbitLink.Producer
             LinkMessageProperties properties = null,
             LinkPublishProperties publishProperties = null,
             CancellationToken? cancellation = null
-            ) where T : class;
+        ) where T : class;
     }
 }

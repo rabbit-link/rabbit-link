@@ -97,18 +97,12 @@ namespace RabbitLink
         #region Producer
 
         public ILinkProducer CreateProducer(
-            Func<ILinkTopologyConfig, Task<ILinkExchage>> topologyConfiguration,
-            Func<Exception, Task> configurationError = null,
+            ILinkProducerTopologyHandler topologyHandler,
             Action<ILinkProducerConfigurationBuilder> config = null
             )
         {
-            if (topologyConfiguration == null)
-                throw new ArgumentNullException(nameof(topologyConfiguration));
-
-            if (configurationError == null)
-            {
-                configurationError = ex => Task.FromResult((object) null);
-            }
+            if (topologyHandler == null)
+                throw new ArgumentNullException(nameof(topologyHandler));
 
             var configBuilder = new LinkProducerConfigurationBuilder(_configuration);
             config?.Invoke(configBuilder);
@@ -170,7 +164,7 @@ namespace RabbitLink
                
             //return new LinkConsumer(configBuilder.Configuration, _configuration, CreateChannel(),
             //    topologyConfiguration, configurationError);
-        }      
+        }
 
         #endregion
 

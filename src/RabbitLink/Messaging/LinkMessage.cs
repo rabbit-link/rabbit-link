@@ -9,7 +9,84 @@ using RabbitLink.Exceptions;
 
 namespace RabbitLink.Messaging
 {
-    internal class LinkMessage<T> : ILinkMessage<T> where T : class
+    internal class LinkMessage<T> where T : class
+    {
+        public LinkMessage(
+            T body,
+            LinkMessageProperties properties
+        )
+        {
+            Body = body;
+            Properties = properties;
+        }
+
+        public LinkMessage(
+            T body,
+            LinkMessage<byte[]> rawMessage
+        )
+        : this(
+            body,
+            rawMessage.Properties
+        )
+        {
+        }
+
+
+        public LinkMessageProperties Properties { get; }
+        public T Body { get; }
+    }
+
+
+    internal class LinkPushMessage<T> : LinkMessage<T>, ILinkPushMessage<T> where T : class
+    {
+        public LinkPushMessage(
+            T body,
+            LinkMessageProperties properties,
+            LinkRecieveMessageProperties recieveProperties
+        )
+        : base(
+            body,
+            properties
+        )
+        {
+            RecieveProperties = recieveProperties ?? throw new ArgumentNullException(nameof(recieveProperties));
+        }
+
+        public LinkPushMessage(
+            T body,
+            LinkPushMessage<byte[]> rawMessage
+        ) : this(
+            body,
+            rawMessage.Properties,
+            rawMessage.RecieveProperties
+        )
+        {
+            
+        }
+
+        public LinkPushMessage(
+            LinkMessage<T> msg,
+            LinkRecieveMessageProperties recieveProperties
+        ) : this(
+            msg.Body,
+            msg.Properties,
+            recieveProperties
+        )
+        {
+
+        }
+
+        public LinkRecieveMessageProperties RecieveProperties { get; }
+
+        public static LinkPushMessage<object> Create(Type bodyType, object body, LinkPushMessage<byte[]> rawMessage)
+        {
+            var genericType = typeof(LinkPushMessage<>).MakeGenericType(bodyType);
+            var ret = Activator.CreateInstance(genericType, body, rawMessage);
+            return ret as LinkPushMessage<object>;
+        }
+    }
+
+    internal class LinkConsumedMessage<T> : LinkPushMessage<T>, ILinkMessage<T> where T : class
     {
         private readonly CancellationToken _messageCancellation;
         private readonly LinkMessageOnAckAsyncDelegate _onAck;
@@ -18,19 +95,20 @@ namespace RabbitLink.Messaging
         private readonly CancellationToken _messageOperationCancellation;
         private readonly object _sync = new object();
 
-        public LinkMessage(T body, LinkMessageProperties properties, LinkRecieveMessageProperties recieveProperties,
-            LinkMessageOnAckAsyncDelegate onAck, LinkMessageOnNackAsyncDelegate onNack,
-            CancellationToken messageCancellation)
+        public LinkConsumedMessage(
+            T body,
+            LinkMessageProperties properties,
+            LinkRecieveMessageProperties recieveProperties,
+            LinkMessageOnAckAsyncDelegate onAck,
+            LinkMessageOnNackAsyncDelegate onNack,
+            CancellationToken messageCancellation
+        ) : base(
+            body,
+            properties,
+            recieveProperties
+        )
         {
-            if (properties == null)
-                throw new ArgumentNullException(nameof(properties));
 
-            if (recieveProperties == null)
-                throw new ArgumentNullException(nameof(recieveProperties));
-
-            Body = body;
-            Properties = properties;
-            RecieveProperties = recieveProperties;
             _onAck = onAck;
             _onNack = onNack;
             _messageCancellation = messageCancellation;
@@ -39,24 +117,44 @@ namespace RabbitLink.Messaging
             _messageOperationCancellation = _messageOperationCancellationSource.Token;
         }
 
-        public LinkMessage(T body, LinkMessage<byte[]> rawMessage)
+        public LinkConsumedMessage(T body, LinkConsumedMessage<byte[]> rawMessage)
             : this(
-                body, rawMessage.Properties, rawMessage.RecieveProperties, rawMessage._onAck, rawMessage._onNack,
-                rawMessage._messageCancellation)
+                body,
+                rawMessage.Properties,
+                rawMessage.RecieveProperties,
+                rawMessage._onAck,
+                rawMessage._onNack,
+                rawMessage._messageCancellation
+        )
         {
         }
 
-        public LinkMessageProperties Properties { get; }
-        public LinkRecieveMessageProperties RecieveProperties { get; }
-        public T Body { get; }
+        public LinkMessage(
+            LinkPushMessage<T> msg,
+            LinkMessageOnAckAsyncDelegate onAck,
+            LinkMessageOnNackAsyncDelegate onNack,
+            CancellationToken messageCancellation
+        ) : this(
+            msg.Body,
+            msg.Properties,
+            msg.RecieveProperties,
+            onAck,
+            onNack,
+            messageCancellation
+        )
+        {
+
+        }
+
+
 
         #region Factory
 
-        public static ILinkMessage<object> Create(Type bodyType, object body, LinkMessage<byte[]> rawMessage)
+        public new static LinkMessage<object> Create(Type bodyType, object body, LinkMessage<byte[]> rawMessage)
         {
             var genericType = typeof(LinkMessage<>).MakeGenericType(bodyType);
-            var ret =  Activator.CreateInstance(genericType, body, rawMessage);
-            return ret as ILinkMessage<object>;
+            var ret = Activator.CreateInstance(genericType, body, rawMessage);
+            return ret as LinkMessage<object>;
         }
 
         #endregion
@@ -65,8 +163,8 @@ namespace RabbitLink.Messaging
 
         private void OnOperationSuccess()
         {
-            if(_messageOperationCancellationSource == null)
-                return;            
+            if (_messageOperationCancellationSource == null)
+                return;
 
             lock (_sync)
             {
@@ -114,7 +212,7 @@ namespace RabbitLink.Messaging
                     throw;
                 }
             }
-        }        
+        }
 
         #endregion
 
@@ -141,7 +239,7 @@ namespace RabbitLink.Messaging
                 operation = (onSuccess, token) => _onNack(false, onSuccess, token);
             }
 
-            return DoMessageOperationAsync(operation, cancellation);            
+            return DoMessageOperationAsync(operation, cancellation);
         }
 
         public virtual Task RequeueAsync(CancellationToken? cancellation)

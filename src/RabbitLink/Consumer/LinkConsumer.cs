@@ -74,6 +74,7 @@ namespace RabbitLink.Consumer
             _disposedCancellation = _disposedCancellationSource.Token;
 
             _logger.Debug($"Created(channelId: {_channel.Id})");
+            
         }
 
         #endregion

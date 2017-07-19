@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace RabbitLink.Messaging
 {
-    public interface ILinkMessage<out T> where T : class
+    public interface ILinkPushMessage<out T> where T : class
     {
         /// <summary>
         ///     The message properties.
@@ -22,8 +22,11 @@ namespace RabbitLink.Messaging
         /// <summary>
         ///     The message body as a .NET type.
         /// </summary>
-        T Body { get; }        
-
+        T Body { get; }
+    }
+    
+    public interface ILinkMessage<out T> :ILinkPushMessage<T> where T : class
+    {
         /// <summary>
         ///     ACK message
         /// </summary>
@@ -39,4 +42,6 @@ namespace RabbitLink.Messaging
         /// </summary>
         Task RequeueAsync(CancellationToken? cancellation = null);
     }
+    
+    
 }

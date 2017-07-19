@@ -3,6 +3,7 @@
 using System;
 using RabbitLink.Messaging;
 using RabbitLink.Tests.Helpers;
+using RabbitMQ.Client.Impl;
 using Xunit;
 
 #endregion
@@ -13,11 +14,6 @@ namespace RabbitLink.Tests.Messaging
     {
         [Fact]
         public void Ctor()
-        {
-            var props = new LinkMessageProperties();
-        }
-
-        public void CopyTo()
         {
             var props = new LinkMessageProperties();
         }
@@ -92,6 +88,10 @@ namespace RabbitLink.Tests.Messaging
 
             Assert.Equal(props.CorrelationId, "test");
             Assert.True(props.CorrelationIdPresent);
+
+            props.CorrelationId = null;
+            Assert.Null(props.CorrelationId);
+            Assert.Equal(props.CorrelationIdPresent, true);
         }
 
         [Fact]
