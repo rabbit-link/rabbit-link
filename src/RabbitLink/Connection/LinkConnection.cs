@@ -4,8 +4,9 @@ using System;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
-using RabbitLink.Configuration;
+using RabbitLink.Builders;
 using RabbitLink.Internals;
+using RabbitLink.Internals.Actions;
 using RabbitLink.Internals.Async;
 using RabbitLink.Internals.Queues;
 using RabbitLink.Logging;
@@ -26,7 +27,7 @@ namespace RabbitLink.Connection
         private readonly CancellationToken _disposeCancellation;
         private readonly CancellationTokenSource _disposeCts;
         private readonly ILinkLogger _logger;
-        private readonly CompositeActionQueue<IConnection> _queue = new CompositeActionQueue<IConnection>();
+        private readonly CompositeActionStorage<IConnection> _storage = new CompositeActionStorage<IConnection>();
 
         private readonly object _sync = new object();
 
@@ -41,7 +42,7 @@ namespace RabbitLink.Connection
 
         public LinkConnection(LinkConfiguration configuration) : base(LinkConnectionState.Init)
         {
-            _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+            _configuration = configuration;
 
             _logger = _configuration.LoggerFactory.CreateLogger($"{GetType().Name}({Id:D})");
 
@@ -52,7 +53,7 @@ namespace RabbitLink.Connection
                 "default",
                 _configuration.AppId,
                 _configuration.ConnectionString,
-                _configuration.ConnectionTimeout
+                _configuration.Timeout
             );
 
             _disposeCts = new CancellationTokenSource();
@@ -94,7 +95,7 @@ namespace RabbitLink.Connection
                 }
 
                 var ex = new ObjectDisposedException(GetType().Name);
-                _queue.Complete(item => item.TrySetException(ex));
+                _storage.Complete(item => item.TrySetException(ex));
 
                 ChangeState(LinkConnectionState.Disposed);
 
@@ -136,8 +137,10 @@ namespace RabbitLink.Connection
 
         public Task<IModel> CreateModelAsync(CancellationToken cancellation)
         {
-            return _queue.PutAsync(conn => conn.CreateModel(), cancellation);
+            return _storage.PutAsync(conn => conn.CreateModel(), cancellation);
         }
+
+        public LinkConfiguration Configuration => _configuration;
 
         #endregion
 
@@ -205,7 +208,7 @@ namespace RabbitLink.Connection
 
                 try
                 {
-                    await _queue.YieldAsync(yieldCts.Token)
+                    await _storage.YieldAsync(yieldCts.Token)
                         .ConfigureAwait(false);
                 }
                 catch (OperationCanceledException)
@@ -227,7 +230,7 @@ namespace RabbitLink.Connection
 
                 if (reopen)
                 {
-                    var timeout = _configuration.ConnectionRecoveryInterval;
+                    var timeout = _configuration.RecoveryInterval;
                     _logger.Info($"Reopening in {timeout.TotalSeconds:0.###}s");
 
                     try
@@ -316,11 +319,11 @@ namespace RabbitLink.Connection
                 {
                     while (true)
                     {
-                        ActionQueueItem<IConnection> item;
+                        ActionItem<IConnection> item;
 
                         try
                         {
-                            item = _queue.Wait(cts.Token);
+                            item = _storage.Wait(cts.Token);
                         }
                         catch (OperationCanceledException)
                         {
@@ -333,7 +336,7 @@ namespace RabbitLink.Connection
                         }
                         catch (Exception ex)
                         {
-                            _queue.PutRetry(new[] { item }, CancellationToken.None);
+                            _storage.PutRetry(new[] { item }, CancellationToken.None);
                             _logger.Error($"Cannot create model: {ex.Message}");
                             throw;
                         }

@@ -2,7 +2,7 @@
 
 using System;
 using System.Threading.Tasks;
-using RabbitLink.Configuration;
+using RabbitLink.Builders;
 using RabbitLink.Connection;
 using RabbitLink.Consumer;
 using RabbitLink.Producer;
@@ -16,25 +16,15 @@ namespace RabbitLink
     /// <summary>
     /// Represents connection to RabbitMQ
     /// </summary>
-    public sealed class Link : IDisposable
+    internal sealed class Link : ILink
     {
         #region Ctor
         /// <summary>
         /// Creates new <see cref="Link"/> instance
         /// </summary>
-        /// <param name="connectionString">AMQP connection string</param>
-        /// <param name="configAction">Action to configure instance settings</param>
-        public Link(string connectionString, Action<ILinkConfigurationBuilder> configAction = null)
+        public Link(LinkConfiguration configuration)
         {
-            if (string.IsNullOrWhiteSpace(connectionString))
-                throw new ArgumentNullException(nameof(connectionString));
-
-            var configBuilder = new LinkConfigurationBuilder();
-            configAction?.Invoke(configBuilder);
-
-            _configuration = configBuilder.Configuration;
-            _configuration.ConnectionString = connectionString;
-
+            _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
             _connection = new LinkConnection(_configuration);
         }
 
@@ -104,7 +94,7 @@ namespace RabbitLink
             if (topologyHandler == null)
                 throw new ArgumentNullException(nameof(topologyHandler));
 
-            var configBuilder = new LinkProducerConfigurationBuilder(_configuration);
+            var configBuilder = new LinkProducerBuilder(_configuration);
             config?.Invoke(configBuilder);
 
             return new LinkProducer(configBuilder.Configuration, _configuration, CreateChannel(), topologyConfiguration,

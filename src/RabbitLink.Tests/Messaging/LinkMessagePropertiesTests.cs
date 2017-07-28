@@ -100,21 +100,21 @@ namespace RabbitLink.Tests.Messaging
             var props = new LinkMessageProperties();
 
             Assert.False(props.DeliveryModePresent);
-            Assert.Equal(props.DeliveryMode, LinkMessageDeliveryMode.Transient);
+            Assert.Equal(props.DeliveryMode, LinkDeliveryMode.Transient);
 
-            props.DeliveryMode = LinkMessageDeliveryMode.Persistent;
+            props.DeliveryMode = LinkDeliveryMode.Persistent;
 
-            Assert.Equal(LinkMessageDeliveryMode.Persistent, props.DeliveryMode);
+            Assert.Equal(LinkDeliveryMode.Persistent, props.DeliveryMode);
             Assert.True(props.DeliveryModePresent);
 
             props = new LinkMessageProperties();
 
             Assert.False(props.DeliveryModePresent);
-            Assert.Equal(LinkMessageDeliveryMode.Transient, props.DeliveryMode);
+            Assert.Equal(LinkDeliveryMode.Transient, props.DeliveryMode);
 
-            props.DeliveryMode = LinkMessageDeliveryMode.Transient;
+            props.DeliveryMode = LinkDeliveryMode.Transient;
 
-            Assert.Equal(LinkMessageDeliveryMode.Transient, props.DeliveryMode);
+            Assert.Equal(LinkDeliveryMode.Transient, props.DeliveryMode);
             Assert.True(props.DeliveryModePresent);
         }
 

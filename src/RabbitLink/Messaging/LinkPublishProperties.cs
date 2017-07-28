@@ -1,28 +1,25 @@
-﻿#region Usings
-
-using System;
-
-#endregion
-
+﻿
 namespace RabbitLink.Messaging
 {
-    public class LinkPublishProperties 
+    /// <summary>
+    /// Message publish properties
+    /// </summary>
+    public class LinkPublishProperties
     {
-        public string RoutingKey { get; set; }
+        private string _routingKey;
+
+        /// <summary>
+        /// Routing key
+        /// </summary>
+        public string RoutingKey
+        {
+            get => _routingKey;
+            set => _routingKey = string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+        }
+
+        /// <summary>
+        /// Is message mandatory
+        /// </summary>
         public bool? Mandatory { get; set; }
-        
-        public LinkPublishProperties Clone()
-        {
-            return (LinkPublishProperties) MemberwiseClone();
-        }
-
-        public virtual void Extend(LinkPublishProperties properties)
-        {
-            if (properties == null)
-                throw new ArgumentNullException(nameof(properties));
-
-            if (properties.Mandatory != null) Mandatory = properties.Mandatory;
-            if (properties.RoutingKey != null) RoutingKey = properties.RoutingKey;
-        }
     }
 }

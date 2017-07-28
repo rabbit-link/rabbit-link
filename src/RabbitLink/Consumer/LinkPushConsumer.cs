@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
-using RabbitLink.Configuration;
+using RabbitLink.Builders;
 using RabbitLink.Connection;
 using RabbitLink.Internals;
 using RabbitLink.Topology;

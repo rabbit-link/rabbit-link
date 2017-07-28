@@ -9,7 +9,7 @@ namespace RabbitLink.Exceptions
 {
     public class LinkDeserializationException : LinkException
     {
-        public LinkDeserializationException(byte[] body, LinkMessageProperties properties, LinkRecieveMessageProperties recieveProperties, Exception innerException)
+        public LinkDeserializationException(byte[] body, LinkMessageProperties properties, LinkRecieveProperties recieveProperties, Exception innerException)
             : base("Cannot deserialize message, see InnerException for details", innerException)
         {
             Body = body;
@@ -21,6 +21,6 @@ namespace RabbitLink.Exceptions
 
         public LinkMessageProperties Properties { get; }        
 
-        public LinkRecieveMessageProperties RecieveProperties { get; }
+        public LinkRecieveProperties RecieveProperties { get; }
     }
 }

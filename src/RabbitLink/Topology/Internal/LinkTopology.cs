@@ -3,7 +3,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using RabbitLink.Configuration;
+using RabbitLink.Builders;
 using RabbitLink.Connection;
 using RabbitLink.Internals.Async;
 using RabbitLink.Logging;

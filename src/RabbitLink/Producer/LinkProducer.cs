@@ -4,11 +4,11 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using RabbitLink.Configuration;
+using RabbitLink.Builders;
 using RabbitLink.Connection;
-using RabbitLink.Exceptions;
 using RabbitLink.Internals;
 using RabbitLink.Internals.Async;
+using RabbitLink.Internals.Channels;
 using RabbitLink.Internals.Queues;
 using RabbitLink.Logging;
 using RabbitLink.Messaging;
@@ -37,11 +37,10 @@ namespace RabbitLink.Producer
         private readonly ILinkChannel _channel;
         private readonly LinkProducerConfiguration _configuration;
 
-        private readonly LinkConfiguration _linkConfiguration;
         private readonly ILinkLogger _logger;
 
-        private readonly CompositeWorkQueue<LinkProducerMessage> _messageQueue =
-            new CompositeWorkQueue<LinkProducerMessage>();
+        private readonly CompositeChannel<LinkProducerMessage> _messageQueue =
+            new CompositeChannel<LinkProducerMessage>();
 
         private readonly object _sync = new object();
 
@@ -61,8 +60,7 @@ namespace RabbitLink.Producer
             ILinkProducerTopologyHandler topologyHandler
         ) : base(LinkProducerState.Init)
         {
-            _linkConfiguration = linkConfiguration ?? throw new ArgumentNullException(nameof(linkConfiguration));
-            _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+            _configuration = configuration;
 
             _topologyHandler = topologyHandler ?? throw new ArgumentNullException(nameof(topologyHandler));
             _channel = channel ?? throw new ArgumentNullException(nameof(channel));
@@ -186,38 +184,48 @@ namespace RabbitLink.Producer
             Dispose(false);
         }
 
-        public Task PublishAsync<T>(T body, LinkMessageProperties properties = null,
-            LinkPublishProperties publishProperties = null,
-            CancellationToken? cancellation = null) where T : class
+        public Task PublishAsync(
+            LinkPublishMessage message,
+            CancellationToken? cancellation = null
+        )
         {
-            var msgProperties = _configuration.MessageProperties.Clone();
-            if (properties != null)
+            if (State == LinkProducerState.Disposed)
+                throw new ObjectDisposedException(GetType().Name);
+
+            if (message == null)
+                throw new ArgumentNullException(nameof(message));
+
+            if (cancellation == null)
             {
-                msgProperties.CopyFrom(properties);
+                cancellation = _configuration.PublishTimeout != null
+                    ? new CancellationTokenSource(_configuration.PublishTimeout.Value).Token
+                    : CancellationToken.None;
             }
 
-            if (typeof(T) == typeof(byte[]))
-            {
-                return PublishRawAsync(body as byte[], msgProperties, publishProperties, cancellation);
-            }
+            var msgProperties = message.Properties.Clone();
+            msgProperties.AppId = _linkConfiguration.AppId;
 
-            byte[] rawBody;
+            if (_configuration.SetUserId)
+                msgProperties.UserId = _channel.Connection.UserId;
+
+            _configuration.MessageIdGenerator.SetMessageId(
+                message.Body, 
+                msgProperties.Clone(), 
+                message.PublishProperties.Clone()
+            );
+            
+            var msg = new LinkProducerMessage(message.Body, msgProperties, message.PublishProperties, cancellation.Value);
+
             try
             {
-                rawBody = _configuration.MessageSerializer.Serialize(body, msgProperties);
+                _messageQueue.Put(msg);
             }
-            catch (Exception ex)
+            catch
             {
-                throw new LinkSerializationException(ex);
+                throw new ObjectDisposedException(GetType().Name);
             }
 
-            var typeName = _configuration.TypeNameMapping.Map<T>();
-            if (typeName != null)
-            {
-                msgProperties.Type = typeName;
-            }
-
-            return PublishRawAsync(rawBody, msgProperties, publishProperties, cancellation);
+            return msg.Completion;
         }
 
         public Guid Id { get; } = Guid.NewGuid();
@@ -282,12 +290,10 @@ namespace RabbitLink.Producer
                 var corellationId = _ackQueue.Add(message, seq);
 
                 var properties = model.CreateBasicProperties();
-                message.Properties.CopyTo(properties);
+                properties.Extend(message.Properties);
 
                 if (properties.Headers == null)
-                {
                     properties.Headers = new Dictionary<string, object>();
-                }
 
                 properties.Headers[CorrelationHeader] = corellationId;
 
@@ -403,52 +409,6 @@ namespace RabbitLink.Producer
 
                 Disposed?.Invoke(this, EventArgs.Empty);
             }
-        }
-
-        private Task PublishRawAsync(byte[] body, LinkMessageProperties properties,
-            LinkPublishProperties publishProperties = null,
-            CancellationToken? cancellation = null)
-        {
-            if (State == LinkProducerState.Disposed)
-                throw new ObjectDisposedException(GetType().Name);
-
-            if (properties == null)
-                throw new ArgumentNullException(nameof(properties));
-
-            if (cancellation == null)
-            {
-                cancellation = _configuration.PublishTimeout != null
-                    ? new CancellationTokenSource(_configuration.PublishTimeout.Value).Token
-                    : CancellationToken.None;
-            }
-
-            var msgPublishProperties = _configuration.PublishProperties.Clone();
-            if (publishProperties != null)
-            {
-                msgPublishProperties.Extend(publishProperties);
-            }
-
-            var msgProperties = properties.Clone();
-            msgProperties.AppId = _linkConfiguration.AppId;
-
-            if (_configuration.SetUserId)
-            {
-                msgProperties.UserId = _channel.Connection.UserId;
-            }
-
-            _configuration.MessageIdGenerator.SetMessageId(body, msgProperties, msgPublishProperties);
-            var msg = new LinkProducerMessage(body, msgProperties, msgPublishProperties, cancellation.Value);
-
-            try
-            {
-                _messageQueue.Put(msg);
-            }
-            catch
-            {
-                throw new ObjectDisposedException(GetType().Name);
-            }
-
-            return msg.Completion;
         }
     }
 }

@@ -2,6 +2,7 @@
 
 using System.Threading;
 using RabbitLink.Internals;
+using RabbitLink.Internals.Channels;
 using RabbitLink.Internals.Queues;
 using RabbitLink.Messaging;
 
@@ -9,7 +10,7 @@ using RabbitLink.Messaging;
 
 namespace RabbitLink.Producer
 {
-    internal class LinkProducerMessage : WorkItem
+    internal class LinkProducerMessage : ChannelItem
     {
         public LinkProducerMessage(byte[] body, LinkMessageProperties properties,
             LinkPublishProperties publishProperties, CancellationToken cancellation) : base(cancellation)

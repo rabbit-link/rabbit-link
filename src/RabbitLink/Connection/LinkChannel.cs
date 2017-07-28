@@ -4,7 +4,6 @@ using System;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
-using RabbitLink.Configuration;
 using RabbitLink.Internals;
 using RabbitLink.Internals.Async;
 using RabbitLink.Logging;
@@ -19,9 +18,9 @@ namespace RabbitLink.Connection
     {
         #region Fields
 
-        private readonly LinkConfiguration _configuration;
         private readonly ILinkConnection _connection;
         private readonly ILinkLogger _logger;
+        private readonly TimeSpan _recoveryInterval;
 
         private readonly CancellationTokenSource _disposeCts;
         private readonly CancellationToken _disposeCancellation;
@@ -38,16 +37,18 @@ namespace RabbitLink.Connection
 
         #region Ctor
 
-        public LinkChannel(LinkConfiguration configuration, ILinkConnection connection)
+        public LinkChannel(ILinkConnection connection, TimeSpan recoveryInterval)
             : base(LinkChannelState.Init)
         {
             _connection = connection ?? throw new ArgumentNullException(nameof(connection));
-            _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+            _logger = 
+                connection.Configuration.LoggerFactory.CreateLogger($"{GetType().Name}({Id:D})")
+                ?? throw new ArgumentException("Cannot create logger", nameof(connection.Configuration.LoggerFactory));
+            
+            if(recoveryInterval <= TimeSpan.Zero)
+                throw new ArgumentOutOfRangeException(nameof(recoveryInterval), "Must be greater than zero");
 
-            _logger = _configuration.LoggerFactory.CreateLogger($"{GetType().Name}({Id:D})");
-
-            if (_logger == null)
-                throw new ArgumentException("Cannot create logger", nameof(configuration.LoggerFactory));
+            _recoveryInterval = recoveryInterval;
 
             _disposeCts = new CancellationTokenSource();
             _disposeCancellation = _disposeCts.Token;
@@ -201,8 +202,8 @@ namespace RabbitLink.Connection
                 {
                     if (reopen && _connection.State == LinkConnectionState.Active)
                     {
-                        _logger.Info($"Reopening in {_configuration.ChannelRecoveryInterval.TotalSeconds:0.###}s");
-                        await Task.Delay(_configuration.ChannelRecoveryInterval, _disposeCancellation)
+                        _logger.Info($"Reopening in {_recoveryInterval.TotalSeconds:0.###}s");
+                        await Task.Delay(_recoveryInterval, _disposeCancellation)
                             .ConfigureAwait(false);
                     }
 

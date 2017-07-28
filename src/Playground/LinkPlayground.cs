@@ -4,7 +4,6 @@ using System;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
-using ColoredConsole;
 using Newtonsoft.Json;
 using RabbitLink;
 using RabbitLink.Messaging;
@@ -18,12 +17,12 @@ namespace Playground
     {
         public static void Run()
         {
-            Console.WriteLine("Ready to run press enter");
+            Console.WriteLine("--- Ready to run press enter ---");
             Console.ReadLine();
 
             using (var link = new Link("amqp://localhost/", cfg => cfg
                 .AutoStart(false)
-                .LoggerFactory(new ColoredConsoleLinkLoggerFactory())
+                .LoggerFactory(new ConsoleLinkLoggerFactory())
             ))
             {
                 // ReSharper disable once AccessToDisposedClosure
@@ -31,7 +30,7 @@ namespace Playground
                 TestPublish(link);
 
 
-                ColorConsole.WriteLine("Running...");
+                Console.WriteLine("--- Running ---");
                 Console.ReadLine();
             }
         }
@@ -41,7 +40,7 @@ namespace Playground
             await Task.Delay(0)
                 .ConfigureAwait(false);
 
-            Console.WriteLine("Creating consumer");
+            Console.WriteLine("--- Creating consumer ---");
             using (var consumer = link.CreateConsumer(
                 async cfg =>
                 {
@@ -72,14 +71,17 @@ namespace Playground
 
                         if (msg == oldMsg)
                         {
-                            ColorConsole.WriteLine("DUPE MESSAGE".Red());
+                            Console.WriteLine("--- DUPE MESSAGE ---");
                         }
 
                         oldMsg = msg;
-
-                        ColorConsole.WriteLine("Message recieved(".Green(), msg.GetType().GenericTypeArguments[0].Name,
-                            "):\n".Green(), JsonConvert.SerializeObject(msg, Formatting.Indented));
-
+                        
+                        Console.WriteLine(
+                            "Message recieved ( {0} ):\n{1}", 
+                            msg.GetType().GenericTypeArguments[0].Name,
+                            JsonConvert.SerializeObject(msg, Formatting.Indented)
+                        );
+                        
                         try
                         {
                             await msg.AckAsync()
@@ -87,7 +89,7 @@ namespace Playground
                         }
                         catch (Exception ex)
                         {
-                            ColorConsole.WriteLine("Consume ACK exception:".Red(), ex.ToString());
+                            Console.WriteLine("--> Consume ACK exception: {0}", ex.ToString());
                         }
                     }
                     catch (ObjectDisposedException)
@@ -96,7 +98,7 @@ namespace Playground
                     }
                     catch (Exception ex)
                     {
-                        ColorConsole.WriteLine("Consume exception:".Red(), ex.ToString());
+                        Console.WriteLine("--> Consume exception: {0}", ex.ToString());
                     }
                 }
             }
@@ -104,9 +106,9 @@ namespace Playground
 
         private static void TestPublish(Link link)
         {
-            ColorConsole.WriteLine("Starting...".Green());
+            Console.WriteLine("--- Starting ---");
             link.Initialize();
-            ColorConsole.WriteLine("Started".Green());
+            Console.WriteLine("--- Started ---");
 
             using (
                 var producer =
@@ -115,10 +117,10 @@ namespace Playground
                         config: cfg => cfg.TypeNameMap(map => map.Set<string>("string").Set<MyClass>("woot")))
             )
             {
-                ColorConsole.WriteLine("Producer started, press enter");
+                Console.WriteLine("--- Producer started, press [ENTER] ---");
                 Console.ReadLine();
 
-                ColorConsole.WriteLine("Publish");
+                Console.WriteLine("--- Publish ---");
                 var sw = Stopwatch.StartNew();
 
                 var tasks = Enumerable
@@ -136,40 +138,40 @@ namespace Playground
                 {
                     producer.PublishAsync(
                             body,
-                            new LinkMessageProperties {DeliveryMode = LinkMessageDeliveryMode.Persistent},
+                            new LinkMessageProperties {DeliveryMode = LinkDeliveryMode.Persistent},
                             new LinkPublishProperties {Mandatory = false}
                         )
                         .GetAwaiter().GetResult();
                 }
 
-                ColorConsole.WriteLine("Waiting for publish end...");
+                Console.WriteLine("--- Waiting for publish end ---");
                 //Task.WaitAll(tasks);
-                ColorConsole.WriteLine("Publish done");
+                Console.WriteLine("--- Publish done ---");
 
                 sw.Stop();
-                Console.WriteLine("Done in {0:0.###}s", sw.Elapsed.TotalSeconds);
+                Console.WriteLine("--> Done in {0:0.###}s", sw.Elapsed.TotalSeconds);
             }
         }
 
         private static void TestTopology(Link link)
         {
-            ColorConsole.WriteLine("Creating topology configurators");
+            Console.WriteLine("--- Creating topology configurators ---");
 
             link.CreatePersistentTopologyConfigurator(PersConfigure, configurationError: PersOnException);
 
-            ColorConsole.WriteLine("Starting...");
+            Console.WriteLine("--- Starting ---");
             link.Initialize();
 
-            ColorConsole.WriteLine("Configuring topology");
+            Console.WriteLine("--- Configuring topology ---");
             try
             {
                 link.ConfigureTopologyAsync(OnceConfigure, TimeSpan.FromSeconds(10))
                     .GetAwaiter().GetResult();
-                ColorConsole.WriteLine("Topology configured");
+                Console.WriteLine("--- Topology configured ---");
             }
             catch (Exception ex)
             {
-                ColorConsole.WriteLine($"Topology config exception: {ex}");
+                Console.WriteLine($"--> Topology config exception: {ex}");
             }
         }
 
@@ -183,7 +185,7 @@ namespace Playground
 
         private static Task PersOnException(Exception exception)
         {
-            ColorConsole.WriteLine("PersTopology exception:".Red(), exception.ToString());
+            Console.WriteLine("--> PersTopology exception: {0}", exception.ToString());
             return Task.FromResult((object) null);
         }
 

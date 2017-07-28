@@ -3,6 +3,8 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using RabbitLink.Internals;
+using RabbitLink.Internals.Actions;
 using RabbitLink.Internals.Async;
 using RabbitLink.Internals.Queues;
 using RabbitLink.Logging;
@@ -33,7 +35,7 @@ namespace RabbitLink.Topology.Internal
 
         public async Task<T> RunAsync(IModel model, CancellationToken cancellation)
         {
-            var queue = new ConcurrentActionQueue<IModel>();
+            var queue = new ActionStorage<IModel>();
             var configTask = RunConfiguration(queue, cancellation);
 
             await StartQueueWorker(model, queue, cancellation)
@@ -43,17 +45,17 @@ namespace RabbitLink.Topology.Internal
                 .ConfigureAwait(false);
         }
 
-        private Task StartQueueWorker(IModel model, IActionQueue<IModel> queue,
+        private Task StartQueueWorker(IModel model, IActionStorage<IModel> storage,
             CancellationToken cancellation)
         {
             return AsyncHelper.RunAsync(() =>
             {
                 while (!cancellation.IsCancellationRequested)
                 {
-                    ActionQueueItem<IModel> item;
+                    ActionItem<IModel> item;
                     try
                     {
-                        item = queue.Wait(cancellation);
+                        item = storage.Wait(cancellation);
                     }
                     catch
                     {
@@ -73,13 +75,13 @@ namespace RabbitLink.Topology.Internal
             });
         }
 
-        private async Task<T> RunConfiguration(IActionQueue<IModel> queue, CancellationToken cancellation)
+        private async Task<T> RunConfiguration(IActionStorage<IModel> storage, CancellationToken cancellation)
         {
             try
             {
                 return await Task.Run(() =>
                     {
-                        var invoker = new ActionQueueInvoker<IModel>(queue, cancellation);
+                        var invoker = new ActionInvoker<IModel>(storage, cancellation);
                         var config = new LinkTopologyConfig(_logger, invoker);
                         return _configureFunc(config);
                     }, cancellation)
@@ -87,7 +89,7 @@ namespace RabbitLink.Topology.Internal
             }
             finally
             {
-                queue.Complete();
+                storage.Dispose();
             }
         }
     }
