@@ -19,6 +19,11 @@ namespace RabbitLink.Builders
         /// Amqp connection string
         /// </summary>
         ILinkBuilder Uri(string value);
+        
+        /// <summary>
+        /// Amqp connection string
+        /// </summary>
+        ILinkBuilder Uri(Uri value);
 
         /// <summary>
         ///     Is connection must start automatically

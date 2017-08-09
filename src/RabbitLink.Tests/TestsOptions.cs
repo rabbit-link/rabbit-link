@@ -1,6 +1,7 @@
 ﻿#region Usings
 
 using System;
+using RabbitLink.Builders;
 using RabbitMQ.Client;
 
 #endregion
@@ -18,12 +19,17 @@ namespace RabbitLink.Tests
         {
             var factory = new ConnectionFactory
             {
-                Uri = ConnectionString,
+                Uri = new Uri(ConnectionString),
                 AutomaticRecoveryEnabled = false,
                 RequestedConnectionTimeout = (int) TimeSpan.FromSeconds(10).TotalMilliseconds
             };
 
             return factory.CreateConnection();
+        }
+
+        public static ILinkBuilder GetLinkBuilder()
+        {
+            return LinkBuilder.Configure.Uri(ConnectionString);
         }
     }
 }

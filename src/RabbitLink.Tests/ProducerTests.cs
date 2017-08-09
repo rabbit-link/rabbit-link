@@ -19,21 +19,26 @@ namespace RabbitLink.Tests
             var exchangeName = TestsOptions.TestExchangeName;
             var queueName = TestsOptions.TestQueueName;
 
-            using (var link = new Link(TestsOptions.ConnectionString))
+            using (var link = TestsOptions.GetLinkBuilder().Build())
             {
                 try
                 {
-                    using (var producer = link.CreateProducer(async cfg =>
-                    {
-                        var ex = await cfg.ExchangeDeclare(exchangeName, LinkExchangeType.Fanout, autoDelete: true);
-                        var q = await cfg.QueueDeclare(queueName, true, false, true, expires: TimeSpan.FromMinutes(1));
+                    using (var producer = link.Producer
+                        .Queue(async cfg =>
+                        {
+                            var ex = await cfg.ExchangeDeclare(exchangeName, LinkExchangeType.Fanout, autoDelete: true);
+                            var q = await cfg.QueueDeclare(queueName, true, false, true,
+                                expires: TimeSpan.FromMinutes(1));
 
-                        await cfg.Bind(q, ex);
+                            await cfg.Bind(q, ex);
 
-                        return ex;
-                    }, config: cfg => cfg.ConfirmsMode(true)))
+                            return ex;
+                        })
+                        .ConfirmsMode(true)
+                        .Build()
+                    )
                     {
-                        producer.PublishAsync(new byte[] { })
+                        producer.PublishAsync(new LinkPublishMessage(new byte[0]))
                             .GetAwaiter()
                             .GetResult();
                     }
@@ -67,24 +72,29 @@ namespace RabbitLink.Tests
             var exchangeName = TestsOptions.TestExchangeName;
             var queueName = TestsOptions.TestQueueName;
 
-            using (var link = new Link(TestsOptions.ConnectionString))
+            using (var link = TestsOptions.GetLinkBuilder().Build())
             {
                 try
                 {
-                    using (var producer = link.CreateProducer(async cfg =>
-                    {
-                        var ex = await cfg.ExchangeDeclare(exchangeName, LinkExchangeType.Fanout, autoDelete: true);
-                        var q = await cfg.QueueDeclare(queueName, true, false, true, expires: TimeSpan.FromMinutes(1));
+                    using (var producer = link.Producer
+                        .Queue(async cfg =>
+                        {
+                            var ex = await cfg.ExchangeDeclare(exchangeName, LinkExchangeType.Fanout, autoDelete: true);
+                            var q = await cfg.QueueDeclare(queueName, true, false, true,
+                                expires: TimeSpan.FromMinutes(1));
 
-                        await cfg.Bind(q, ex);
+                            await cfg.Bind(q, ex);
 
-                        return ex;
-                    }, config: cfg => cfg.ConfirmsMode(true)))
+                            return ex;
+                        })
+                        .ConfirmsMode(true)
+                        .Build()
+                    )
                     {
-                        producer.PublishAsync(new byte[] { }, publishProperties: new LinkPublishProperties
-                            {
-                                Mandatory = true
-                            })
+                        producer.PublishAsync(new LinkPublishMessage(
+                                new byte[0],
+                                publishProperties: new LinkPublishProperties {Mandatory = true}
+                            ))
                             .GetAwaiter()
                             .GetResult();
                     }
@@ -112,19 +122,25 @@ namespace RabbitLink.Tests
 
                 try
                 {
-                    using (var producer = link.CreateProducer(async cfg =>
-                    {
-                        var ex = await cfg.ExchangeDeclare(exchangeName, LinkExchangeType.Fanout, autoDelete: true);
+                    using (var producer = link.Producer
+                        .Queue(async cfg =>
+                        {
+                            var ex = await cfg.ExchangeDeclare(exchangeName, LinkExchangeType.Fanout, autoDelete: true);
 
-                        return ex;
-                    }, config: cfg => cfg.ConfirmsMode(true)))
+                            return ex;
+                        })
+                        .ConfirmsMode(true)
+                        .Build())
                     {
                         Assert.Throws<LinkMessageReturnedException>(() =>
                         {
-                            producer.PublishAsync(new byte[] { }, publishProperties: new LinkPublishProperties
-                                {
-                                    Mandatory = true
-                                })
+                            producer.PublishAsync(new LinkPublishMessage(
+                                    new byte[0],
+                                    publishProperties: new LinkPublishProperties
+                                    {
+                                        Mandatory = true
+                                    }
+                                ))
                                 .GetAwaiter()
                                 .GetResult();
                         });
@@ -156,21 +172,26 @@ namespace RabbitLink.Tests
             var exchangeName = TestsOptions.TestExchangeName;
             var queueName = TestsOptions.TestQueueName;
 
-            using (var link = new Link(TestsOptions.ConnectionString))
+            using (var link = TestsOptions.GetLinkBuilder().Build())
             {
                 try
                 {
-                    using (var producer = link.CreateProducer(async cfg =>
-                    {
-                        var ex = await cfg.ExchangeDeclare(exchangeName, LinkExchangeType.Fanout, autoDelete: true);
-                        var q = await cfg.QueueDeclare(queueName, false, false, true, expires: TimeSpan.FromMinutes(1));
+                    using (var producer = link.Producer
+                        .Queue(async cfg =>
+                        {
+                            var ex = await cfg.ExchangeDeclare(exchangeName, LinkExchangeType.Fanout, autoDelete: true);
+                            var q = await cfg.QueueDeclare(queueName, false, false, true,
+                                expires: TimeSpan.FromMinutes(1));
 
-                        await cfg.Bind(q, ex);
+                            await cfg.Bind(q, ex);
 
-                        return ex;
-                    }, config: cfg => cfg.ConfirmsMode(false)))
+                            return ex;
+                        })
+                        .ConfirmsMode(false)
+                        .Build()
+                    )
                     {
-                        producer.PublishAsync(new byte[] { })
+                        producer.PublishAsync(new LinkPublishMessage(new byte[0]))
                             .GetAwaiter()
                             .GetResult();
                     }
@@ -204,21 +225,25 @@ namespace RabbitLink.Tests
         {
             var exchangeName = TestsOptions.TestExchangeName;
 
-            using (var link = new Link(TestsOptions.ConnectionString))
+            using (var link = TestsOptions.GetLinkBuilder().Build())
             {
                 try
                 {
-                    using (var producer = link.CreateProducer(async cfg =>
-                    {
-                        var ex = await cfg.ExchangeDeclare(exchangeName, LinkExchangeType.Fanout, autoDelete: true);
+                    using (var producer = link.Producer
+                        .Queue(async cfg =>
+                        {
+                            var ex = await cfg.ExchangeDeclare(exchangeName, LinkExchangeType.Fanout, autoDelete: true);
 
-                        return ex;
-                    }, config: cfg => cfg.ConfirmsMode(false)))
+                            return ex;
+                        })
+                        .ConfirmsMode(false)
+                        .Build()
+                    )
                     {
                         Assert.ThrowsAny<OperationCanceledException>(
                             () =>
                             {
-                                producer.PublishAsync(new byte[] {}, TimeSpan.Zero)
+                                producer.PublishAsync(new byte[0], TimeSpan.Zero)
                                     .GetAwaiter()
                                     .GetResult();
                             });

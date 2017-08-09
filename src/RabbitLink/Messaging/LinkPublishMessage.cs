@@ -15,14 +15,14 @@ namespace RabbitLink.Messaging
         /// <param name="publishProperties">Publish properties</param>
         public LinkPublishMessage(
             byte[] body, 
-            LinkMessageProperties properties, 
-            LinkPublishProperties publishProperties
+            LinkMessageProperties properties = null, 
+            LinkPublishProperties publishProperties = null
         ) : base(
             body, 
             properties
         )
         {
-            PublishProperties = publishProperties ?? throw new ArgumentNullException(nameof(publishProperties));
+            PublishProperties = publishProperties ?? new LinkPublishProperties();
         }
         
         /// <summary>

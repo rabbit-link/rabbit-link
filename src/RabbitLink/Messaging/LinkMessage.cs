@@ -18,22 +18,11 @@ namespace RabbitLink.Messaging
         /// <param name="properties">Message properties</param>
         public LinkMessage(
             byte[] body,
-            LinkMessageProperties properties
+            LinkMessageProperties properties = null
         )
         {
             Body = body;
-            Properties = properties ?? throw new ArgumentNullException(nameof(properties));
-        }
-        
-        /// <summary>
-        /// Makes instance with defailt Properties
-        /// </summary>
-        /// <param name="body">Body value</param>
-        public LinkMessage(
-            byte[] body
-        ) : this(body, new LinkMessageProperties())
-        {
-            Body = body;
+            Properties = properties ?? new LinkMessageProperties();
         }
 
         /// <summary>

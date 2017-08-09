@@ -28,4 +28,7 @@
     <PackageReference Include="Newtonsoft.Json" Version="10.0.3" />
     <PackageReference Include="RabbitMQ.Client" Version="5.0.1" />
   </ItemGroup>
+    <ItemGroup>
+        <Compile Remove="Consumer\LinkConsumerMessageHandler.cs"/>
+    </ItemGroup>
 </Project>

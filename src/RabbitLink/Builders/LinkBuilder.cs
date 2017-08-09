@@ -67,6 +67,14 @@ namespace RabbitLink.Builders
             return new LinkBuilder(this, connectionString: value.Trim());
         }
 
+        public ILinkBuilder Uri(Uri value)
+        {
+            if(value == null)
+                throw new ArgumentNullException(nameof(value));
+
+            return Uri(value.ToString());
+        }
+
         public ILinkBuilder AutoStart(bool value)
         {
             return new LinkBuilder(this, autoStart: value);

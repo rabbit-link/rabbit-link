@@ -13,7 +13,13 @@
         /// <param name="routingKey">Message was published with this routing key</param>
         /// <param name="queueName">Message was consumed from this queue</param>
         /// <param name="isFromThisApp">Message was published from this application</param>
-        public LinkRecieveProperties(bool redelivered, string exchangeName, string routingKey, string queueName, bool isFromThisApp)
+        public LinkRecieveProperties(
+            bool redelivered, 
+            string exchangeName, 
+            string routingKey, 
+            string queueName, 
+            bool isFromThisApp
+        )
         {
             Redelivered = redelivered;
             ExchangeName = exchangeName;

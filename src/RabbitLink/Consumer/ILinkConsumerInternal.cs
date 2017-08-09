@@ -1,12 +1,9 @@
-﻿#region Usings
-
-
-
-#endregion
+﻿using System;
 
 namespace RabbitLink.Consumer
 {
-    internal interface ILinkConsumerInternal :  ILinkPushConsumerInternal, ILinkConsumer
+    internal interface ILinkConsumerInternal : ILinkConsumer
     {
+        event EventHandler Disposed;
     }
 }
