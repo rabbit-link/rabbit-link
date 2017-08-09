@@ -1,4 +1,5 @@
 ﻿using System;
+using RabbitLink.Builders;
 
 namespace RabbitLink
 {
@@ -11,6 +12,11 @@ namespace RabbitLink
         ///     Is Link connected
         /// </summary>
         bool IsConnected { get; }
+
+        /// <summary>
+        /// Gets new producer builder
+        /// </summary>
+        ILinkProducerBuilder Producer { get; }
 
         /// <summary>
         ///     Invokes when connected, must not perform blocking operations.

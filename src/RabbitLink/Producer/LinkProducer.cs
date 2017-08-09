@@ -8,8 +8,6 @@ using RabbitLink.Builders;
 using RabbitLink.Connection;
 using RabbitLink.Internals;
 using RabbitLink.Internals.Async;
-using RabbitLink.Internals.Channels;
-using RabbitLink.Internals.Queues;
 using RabbitLink.Logging;
 using RabbitLink.Messaging;
 using RabbitLink.Topology;
@@ -44,7 +42,6 @@ namespace RabbitLink.Producer
 
         private readonly object _sync = new object();
 
-        private readonly ILinkProducerTopologyHandler _topologyHandler;
         private readonly LinkTopologyRunner<ILinkExchage> _topologyRunner;
 
         private ILinkExchage _exchage;
@@ -54,23 +51,18 @@ namespace RabbitLink.Producer
         #region Ctor
 
         public LinkProducer(
-            LinkProducerConfiguration configuration, 
-            LinkConfiguration linkConfiguration,
-            ILinkChannel channel,
-            ILinkProducerTopologyHandler topologyHandler
+            LinkProducerConfiguration configuration,
+            ILinkChannel channel
         ) : base(LinkProducerState.Init)
         {
             _configuration = configuration;
-
-            _topologyHandler = topologyHandler ?? throw new ArgumentNullException(nameof(topologyHandler));
             _channel = channel ?? throw new ArgumentNullException(nameof(channel));
 
-            _logger = linkConfiguration.LoggerFactory.CreateLogger($"{GetType().Name}({Id:D})");
-            if (_logger == null)
-                throw new ArgumentException("Cannot create logger", nameof(linkConfiguration.LoggerFactory));
+            _logger = _channel.Connection.Configuration.LoggerFactory.CreateLogger($"{GetType().Name}({Id:D})") 
+                      ?? throw new InvalidOperationException("Cannot create logger");
 
             _topologyRunner =
-                new LinkTopologyRunner<ILinkExchage>(_logger, _topologyHandler.Configure);
+                new LinkTopologyRunner<ILinkExchage>(_logger, _configuration.TopologyHandler.Configure);
             _channel.Disposed += ChannelOnDisposed;
 
             _logger.Debug($"Created(channelId: {_channel.Id})");
@@ -135,6 +127,16 @@ namespace RabbitLink.Producer
         protected override void OnStateChange(LinkProducerState newState)
         {
             _logger.Debug($"State change {State} -> {newState}");
+
+            try
+            {
+                _configuration.StateHandler(State, newState);
+            }
+            catch (Exception ex)
+            {
+                _logger.Warning($"Exception in state handler: {ex}");
+            }
+            
             base.OnStateChange(newState);
         }
 
@@ -178,6 +180,7 @@ namespace RabbitLink.Producer
         #region ILinkProducerIntenal Members
 
         public event EventHandler Disposed;
+        public ILinkChannel Channel => _channel;
 
         public void Dispose()
         {
@@ -197,24 +200,26 @@ namespace RabbitLink.Producer
 
             if (cancellation == null)
             {
-                cancellation = _configuration.PublishTimeout != null
-                    ? new CancellationTokenSource(_configuration.PublishTimeout.Value).Token
+                cancellation = _configuration.PublishTimeout != TimeSpan.Zero
+                    ? new CancellationTokenSource(_configuration.PublishTimeout).Token
                     : CancellationToken.None;
             }
 
-            var msgProperties = message.Properties.Clone();
-            msgProperties.AppId = _linkConfiguration.AppId;
+            var msgProperties = _configuration.MessageProperties.Extend(message.Properties);
+            msgProperties.AppId = _channel.Connection.Configuration.AppId;
+
+            var publishProperties = _configuration.PublishProperties.Extend(message.PublishProperties);
 
             if (_configuration.SetUserId)
                 msgProperties.UserId = _channel.Connection.UserId;
 
             _configuration.MessageIdGenerator.SetMessageId(
-                message.Body, 
+                message.Body,
                 msgProperties.Clone(), 
-                message.PublishProperties.Clone()
+                publishProperties.Clone()
             );
             
-            var msg = new LinkProducerMessage(message.Body, msgProperties, message.PublishProperties, cancellation.Value);
+            var msg = new LinkProducerMessage(message.Body, msgProperties, publishProperties, cancellation.Value);
 
             try
             {
@@ -336,8 +341,8 @@ namespace RabbitLink.Producer
             {
                 try
                 {
-                    _logger.Info($"Retrying in {_linkConfiguration.TopologyRecoveryInterval.TotalSeconds:0.###}s");
-                    await Task.Delay(_linkConfiguration.TopologyRecoveryInterval, cancellation)
+                    _logger.Info($"Retrying in {_configuration.RecoveryInterval.TotalSeconds:0.###}s");
+                    await Task.Delay(_configuration.RecoveryInterval, cancellation)
                         .ConfigureAwait(false);
                 }
                 catch
@@ -360,7 +365,7 @@ namespace RabbitLink.Producer
 
                 try
                 {
-                    await _topologyHandler.ConfigurationError(ex)
+                    await _configuration.TopologyHandler.ConfigurationError(ex)
                         .ConfigureAwait(false);
                 }
                 catch (Exception handlerException)

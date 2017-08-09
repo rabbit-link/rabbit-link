@@ -1,6 +1,8 @@
 ﻿#region Usings
 
 using System;
+using System.Runtime.CompilerServices;
+using RabbitLink.Connection;
 using RabbitLink.Logging;
 using RabbitLink.Messaging;
 
@@ -16,8 +18,8 @@ namespace RabbitLink.Builders
         /// <summary>
         /// Amqp connection string
         /// </summary>
-        ILinkBuilder ConnectionString(string value);
-        
+        ILinkBuilder Uri(string value);
+
         /// <summary>
         ///     Is connection must start automatically
         ///     By default true
@@ -40,7 +42,7 @@ namespace RabbitLink.Builders
         ///     Logger factory
         ///     By default uses <see cref="LinkNullLogger" />
         /// </summary>
-        ILinkBuilder LoggerFactory(ILinkLoggerFactory value);      
+        ILinkBuilder LoggerFactory(ILinkLoggerFactory value);
 
         /// <summary>
         ///     Sets <see cref="LinkMessageProperties.AppId" /> to all published messages, white spaces will be trimmed, must be
@@ -48,6 +50,12 @@ namespace RabbitLink.Builders
         ///     By default Guit.NewValue().ToString("D")
         /// </summary>
         ILinkBuilder AppId(string value);
+
+        /// <summary>
+        /// Sets handler for state changes
+        /// </summary>
+        ILinkBuilder OnStateChange(LinkStateHandler<LinkConnectionState> handler);
+
 
         /// <summary>
         /// Builds <see cref="ILink"/> instance

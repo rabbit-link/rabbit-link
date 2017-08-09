@@ -8,8 +8,10 @@ namespace RabbitLink.Topology.Internal
         private readonly LinkProducerTopologyConfigDelegate _configAction;
         private readonly LinkTopologyErrorDelegate _errorAction;
 
-        public LinkProducerTopologyHandler(LinkProducerTopologyConfigDelegate configAction,
-            LinkTopologyErrorDelegate errorAction)
+        public LinkProducerTopologyHandler(
+            LinkProducerTopologyConfigDelegate configAction,
+            LinkTopologyErrorDelegate errorAction = null
+        )
         {
             _configAction = configAction ?? throw new ArgumentNullException(nameof(configAction));
             _errorAction = errorAction ?? throw new ArgumentNullException(nameof(errorAction));

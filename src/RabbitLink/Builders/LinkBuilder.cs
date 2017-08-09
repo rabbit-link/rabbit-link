@@ -1,6 +1,7 @@
 ﻿#region Usings
 
 using System;
+using RabbitLink.Connection;
 using RabbitLink.Logging;
 
 #endregion
@@ -15,7 +16,7 @@ namespace RabbitLink.Builders
         private readonly TimeSpan? _recoveryInterval;
         private readonly ILinkLoggerFactory _loggerFactory;
         private readonly string _appId;
-        
+        private readonly LinkStateHandler<LinkConnectionState> _stateHandler;
 
         public LinkBuilder(
             string connectionString = null, 
@@ -23,7 +24,8 @@ namespace RabbitLink.Builders
             TimeSpan? timeout = null, 
             TimeSpan? recoveryInterval = null, 
             ILinkLoggerFactory loggerFactory = null, 
-            string appId = null
+            string appId = null,
+            LinkStateHandler<LinkConnectionState> stateHandler = null
         )
         {
             _connectionString = connectionString;
@@ -32,6 +34,7 @@ namespace RabbitLink.Builders
             _recoveryInterval = recoveryInterval;
             _loggerFactory = loggerFactory ?? new LinkNullLoggingFactory();
             _appId = appId ?? Guid.NewGuid().ToString("D");
+            _stateHandler = stateHandler ?? ((old, @new) => { });
         }
         
         private LinkBuilder(
@@ -41,22 +44,24 @@ namespace RabbitLink.Builders
             TimeSpan? timeout = null, 
             TimeSpan? recoveryInterval = null, 
             ILinkLoggerFactory loggerFactory = null, 
-            string appId = null
+            string appId = null,
+            LinkStateHandler<LinkConnectionState> stateHandler = null
         ) : this (
             connectionString ?? prev._connectionString,
             autoStart ?? prev._autoStart,
             timeout ?? prev._timeout,
             recoveryInterval ?? prev._recoveryInterval,
             loggerFactory ?? prev._loggerFactory,
-            appId ?? prev._appId
+            appId ?? prev._appId,
+            stateHandler ?? prev._stateHandler
         )
         {
             
         }
 
-        public ILinkBuilder ConnectionString(string value)
+        public ILinkBuilder Uri(string value)
         {
-            if (String.IsNullOrWhiteSpace(value))
+            if (string.IsNullOrWhiteSpace(value))
                 throw new ArgumentNullException(nameof(value));
 
             return new LinkBuilder(this, connectionString: value.Trim());
@@ -74,8 +79,9 @@ namespace RabbitLink.Builders
                 value.TotalMilliseconds > int.MaxValue
             )
             {
-                throw new ArgumentOutOfRangeException(nameof(value),
-                    "TotalMilliseconds must be greater than 0 and less than Int32.MaxValue");
+                throw new ArgumentOutOfRangeException(
+                    nameof(value), "Must be greater than 0 and less than Int32.MaxValue"
+                );
             }
 
             return new LinkBuilder(this, timeout: value);
@@ -105,20 +111,28 @@ namespace RabbitLink.Builders
             return new LinkBuilder(this, appId: value.Trim());
         }
 
+        public ILinkBuilder OnStateChange(LinkStateHandler<LinkConnectionState> handler)
+        {
+            if(handler == null)
+                throw new ArgumentNullException(nameof(handler));
+            
+            return new LinkBuilder(this, stateHandler: handler);
+        }
+
         public ILink Build()
         {
             if (string.IsNullOrWhiteSpace(_connectionString))
-                throw new InvalidOperationException($"{nameof(ConnectionString)} must be set");
+                throw new InvalidOperationException($"{nameof(Uri)} must be set");
             
-            var config = new LinkConfiguration
-            {
-                AppId = _appId,
-                AutoStart = _autoStart,
-                ConnectionString = _connectionString,
-                LoggerFactory = _loggerFactory,
-                Timeout = _timeout,
-                RecoveryInterval = _recoveryInterval ?? _timeout
-            };
+            var config = new LinkConfiguration(
+                _connectionString, 
+                _autoStart, 
+                _timeout, 
+                _recoveryInterval ?? _timeout,
+                _loggerFactory,
+                _appId,
+                _stateHandler
+            );
 
             return new Link(config);
         }

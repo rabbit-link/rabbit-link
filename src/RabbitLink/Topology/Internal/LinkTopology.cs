@@ -19,7 +19,6 @@ namespace RabbitLink.Topology.Internal
         #region Fields
 
         private readonly ILinkChannel _channel;
-        private readonly LinkConfiguration _configuration;
         private readonly ILinkTopologyHandler _handler;
         private readonly bool _isOnce;
         private readonly ILinkLogger _logger;
@@ -30,10 +29,8 @@ namespace RabbitLink.Topology.Internal
 
         #region Ctor
 
-        public LinkTopology(LinkConfiguration configuration, ILinkChannel channel, ILinkTopologyHandler handler,
-            bool once)
+        public LinkTopology(ILinkChannel channel, ILinkTopologyHandler handler, bool once)
         {
-            _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
             _channel = channel ?? throw new ArgumentNullException(nameof(channel));
             _handler = handler ?? throw new ArgumentNullException(nameof(handler));
             _isOnce = once;
@@ -47,9 +44,8 @@ namespace RabbitLink.Topology.Internal
                 return null;
             });
 
-            _logger = _configuration.LoggerFactory.CreateLogger($"{GetType().Name}({Id:D})");
-            if (_logger == null)
-                throw new ArgumentException("Cannot create logger", nameof(configuration.LoggerFactory));
+            _logger = _channel.Connection.Configuration.LoggerFactory.CreateLogger($"{GetType().Name}({Id:D})")
+                      ?? throw new InvalidOperationException("Cannot create logger");
 
             _logger.Debug($"Created(channelId: {_channel.Id}, once: {once})");
 

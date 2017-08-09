@@ -3,7 +3,7 @@ namespace RabbitLink.Connection
     /// <summary>
     /// Operational state of <see cref="ILinkChannel"/>
     /// </summary>
-    internal enum LinkChannelState
+    public enum LinkChannelState
     {
         /// <summary>
         /// Waiting for initialization

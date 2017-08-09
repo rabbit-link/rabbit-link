@@ -24,7 +24,7 @@ namespace RabbitLink
         /// </summary>
         public Link(LinkConfiguration configuration)
         {
-            _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+            _configuration = configuration;
             _connection = new LinkConnection(_configuration);
         }
 
@@ -71,9 +71,9 @@ namespace RabbitLink
 
         #endregion
 
-        private ILinkChannel CreateChannel()
+        internal ILinkChannel CreateChannel( LinkStateHandler<LinkChannelState> stateHandler, TimeSpan recoveryInterval)
         {
-            return new LinkChannel(_configuration, _connection);
+            return new LinkChannel(_connection, recoveryInterval);
         }
 
         /// <summary>
@@ -84,24 +84,7 @@ namespace RabbitLink
             _connection.Initialize();
         }
 
-        #region Producer
-
-        public ILinkProducer CreateProducer(
-            ILinkProducerTopologyHandler topologyHandler,
-            Action<ILinkProducerConfigurationBuilder> config = null
-            )
-        {
-            if (topologyHandler == null)
-                throw new ArgumentNullException(nameof(topologyHandler));
-
-            var configBuilder = new LinkProducerBuilder(_configuration);
-            config?.Invoke(configBuilder);
-
-            return new LinkProducer(configBuilder.Configuration, _configuration, CreateChannel(), topologyConfiguration,
-                configurationError);
-        }
-
-        #endregion
+        public ILinkProducerBuilder Producer => new LinkProducerBuilder(this, _configuration.RecoveryInterval);
 
         #region Fields
 

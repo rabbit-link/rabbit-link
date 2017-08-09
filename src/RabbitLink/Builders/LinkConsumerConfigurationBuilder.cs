@@ -6,6 +6,8 @@ using System;
 
 namespace RabbitLink.Builders
 {
+    
+    
     internal class LinkConsumerConfigurationBuilder :
         ILinkConsumerConfigurationBuilder        
     {

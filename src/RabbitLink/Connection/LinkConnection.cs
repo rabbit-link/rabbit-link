@@ -148,6 +148,16 @@ namespace RabbitLink.Connection
         protected override void OnStateChange(LinkConnectionState newState)
         {
             _logger.Debug($"State change {State} -> {newState}");
+
+            try
+            {
+                _configuration.StateHandler(State, newState);
+            }
+            catch (Exception ex)
+            {
+                _logger.Warning($"Exception in state handler: {ex}");
+            }
+            
             base.OnStateChange(newState);
         }
 

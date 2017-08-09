@@ -5,13 +5,12 @@ namespace RabbitLink
     /// <summary>
     /// Builder for <see cref="ILink"/>
     /// </summary>
-    public sealed class LinkFactory
+    public sealed class LinkBuilder
     {
         /// <summary>
-        /// Returns new Builder
+        /// Gets new <see cref="ILinkBuilder"/>
         /// </summary>
-        public static ILinkBuilder Builder 
-            => new LinkBuilder();
-        
+        public static ILinkBuilder Configure
+            => new Builders.LinkBuilder();
     }
 }

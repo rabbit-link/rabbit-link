@@ -3,6 +3,7 @@
 using System;
 using System.Diagnostics;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 using RabbitLink;
@@ -19,11 +20,15 @@ namespace Playground
         {
             Console.WriteLine("--- Ready to run press enter ---");
             Console.ReadLine();
+            
+            
 
-            using (var link = new Link("amqp://localhost/", cfg => cfg
+            using (var link = LinkBuilder.Configure
+                .Uri("amqp://localhost/")
                 .AutoStart(false)
                 .LoggerFactory(new ConsoleLinkLoggerFactory())
-            ))
+                .Build()
+            )
             {
                 // ReSharper disable once AccessToDisposedClosure
                 //Task.Factory.StartNew(() => TestPullConsumer(link));                
@@ -35,7 +40,7 @@ namespace Playground
             }
         }
 
-        private static async Task TestPullConsumer(Link link)
+        private static async Task TestPullConsumer(ILink link)
         {
             await Task.Delay(0)
                 .ConfigureAwait(false);
@@ -104,17 +109,15 @@ namespace Playground
             }
         }
 
-        private static void TestPublish(Link link)
+        private static void TestPublish(ILink link)
         {
             Console.WriteLine("--- Starting ---");
             link.Initialize();
             Console.WriteLine("--- Started ---");
 
-            using (
-                var producer =
-                    link.CreateProducer(
-                        async cfg => await cfg.ExchangeDeclare("link.consume", LinkExchangeType.Fanout),
-                        config: cfg => cfg.TypeNameMap(map => map.Set<string>("string").Set<MyClass>("woot")))
+            using (var producer = link.Producer
+                .Queue(async cfg => await cfg.ExchangeDeclare("link.consume", LinkExchangeType.Fanout))
+                .Build()
             )
             {
                 Console.WriteLine("--- Producer started, press [ENTER] ---");
@@ -124,15 +127,9 @@ namespace Playground
                 var sw = Stopwatch.StartNew();
 
                 var tasks = Enumerable
-                        .Range(0, 100)
-                        .Select(i => $"Item {i + 1}")
-                    //.Select(body => producer.PublishAsync(
-                    //    body,
-                    //    new LinkMessageProperties {DeliveryMode = LinkMessageDeliveryMode.Persistent},
-                    //    new LinkPublishProperties {Mandatory = false}
-                    //))
-                    //.ToArray();
-                    ;
+                    .Range(0, 10)
+                    .Select(i => $"Item {i + 1}")
+                    .Select(x => Encoding.UTF8.GetBytes(x));
 
                 foreach (var body in tasks)
                 {

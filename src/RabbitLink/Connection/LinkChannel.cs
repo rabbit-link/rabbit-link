@@ -21,6 +21,7 @@ namespace RabbitLink.Connection
         private readonly ILinkConnection _connection;
         private readonly ILinkLogger _logger;
         private readonly TimeSpan _recoveryInterval;
+        private readonly LinkStateHandler<LinkChannelState> _stateHandler;
 
         private readonly CancellationTokenSource _disposeCts;
         private readonly CancellationToken _disposeCancellation;
@@ -37,7 +38,7 @@ namespace RabbitLink.Connection
 
         #region Ctor
 
-        public LinkChannel(ILinkConnection connection, TimeSpan recoveryInterval)
+        public LinkChannel(ILinkConnection connection, LinkStateHandler<LinkChannelState>stateHandler,  TimeSpan recoveryInterval)
             : base(LinkChannelState.Init)
         {
             _connection = connection ?? throw new ArgumentNullException(nameof(connection));
@@ -47,6 +48,8 @@ namespace RabbitLink.Connection
             
             if(recoveryInterval <= TimeSpan.Zero)
                 throw new ArgumentOutOfRangeException(nameof(recoveryInterval), "Must be greater than zero");
+
+            _stateHandler = stateHandler ?? throw new ArgumentNullException(nameof(stateHandler));
 
             _recoveryInterval = recoveryInterval;
 
@@ -132,6 +135,16 @@ namespace RabbitLink.Connection
         protected override void OnStateChange(LinkChannelState newState)
         {
             _logger.Debug($"State change {State} -> {newState}");
+
+            try
+            {
+                _stateHandler(State, newState);
+            }
+            catch (Exception ex)
+            {
+                _logger.Warning($"Exception in state handler: {ex}");
+            }
+            
             base.OnStateChange(newState);
         }
 
