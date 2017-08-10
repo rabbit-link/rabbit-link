@@ -85,20 +85,6 @@ namespace RabbitLink.Builders
         {
         }
 
-        public LinkProducerBuilder(Link link, LinkProducerConfiguration configuration)
-        {
-            _link = link ?? throw new ArgumentNullException(nameof(link));
-
-            _confirmsMode = configuration.ConfirmsMode;
-            _setUserId = configuration.SetUserId;
-            _publishTimeout = configuration.PublishTimeout;
-            _recoveryInterval = configuration.RecoveryInterval;
-            _messageIdGenerator = configuration.MessageIdGenerator;
-            _publishProperties = configuration.PublishProperties.Clone();
-            _messageProperties = configuration.MessageProperties.Clone();
-            _topologyHandler = configuration.TopologyHandler;
-        }
-
         public ILinkProducerBuilder ConfirmsMode(bool value)
         {
             return new LinkProducerBuilder(this, confirmsMode: value);
@@ -131,7 +117,7 @@ namespace RabbitLink.Builders
         public ILinkProducerBuilder RecoveryInterval(TimeSpan value)
         {
             if (value <= TimeSpan.Zero)
-                throw new ArgumentOutOfRangeException(nameof(value), "Must be greater than zero");
+                throw new ArgumentOutOfRangeException(nameof(value), "Must be greater than TimeSpan.Zero");
 
             return new LinkProducerBuilder(this, recoveryInterval: value);
         }

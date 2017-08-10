@@ -2,6 +2,7 @@
 
 using System;
 using System.Threading.Tasks;
+using System.Xml.Linq;
 using RabbitLink.Builders;
 using RabbitLink.Connection;
 using RabbitLink.Consumer;
@@ -73,7 +74,7 @@ namespace RabbitLink
 
         internal ILinkChannel CreateChannel( LinkStateHandler<LinkChannelState> stateHandler, TimeSpan recoveryInterval)
         {
-            return new LinkChannel(_connection, recoveryInterval);
+            return new LinkChannel(_connection, stateHandler, recoveryInterval);
         }
 
         /// <summary>
@@ -85,32 +86,13 @@ namespace RabbitLink
         }
 
         public ILinkProducerBuilder Producer => new LinkProducerBuilder(this, _configuration.RecoveryInterval);
+        public ILinkTopologyBuilder Topology => new LinkTopologyBuilder(this, _configuration.RecoveryInterval);
 
         #region Fields
 
         private readonly LinkConfiguration _configuration;
         private readonly ILinkConnection _connection;
         private bool _disposed;
-
-        #endregion
-
-        #region Topology configurators
-
-        public IDisposable CreatePersistentTopologyConfigurator(ILinkTopologyHandler handler)
-        {
-            if (handler == null)
-                throw new ArgumentNullException(nameof(handler));
-
-            return new LinkTopology(_configuration, CreateChannel(), handler, false);
-        }
-
-        public IDisposable CreateTopologyConfigurator(ILinkTopologyHandler handler)
-        {
-            if (handler == null)
-                throw new ArgumentNullException(nameof(handler));
-
-            return new LinkTopology(_configuration, CreateChannel(), handler, true);
-        }
 
         #endregion
 

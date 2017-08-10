@@ -19,6 +19,11 @@ namespace RabbitLink
         ILinkProducerBuilder Producer { get; }
 
         /// <summary>
+        /// Gets new topology builder
+        /// </summary>
+        ILinkTopologyBuilder Topology { get; }
+
+        /// <summary>
         ///     Invokes when connected, must not perform blocking operations.
         /// </summary>
         event EventHandler Connected;

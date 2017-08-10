@@ -16,13 +16,25 @@ namespace RabbitLink.Builders
             LinkStateHandler<LinkConnectionState> stateHandler
         )
         {
-            ConnectionString = connectionString;
+            if(string.IsNullOrWhiteSpace(connectionString))
+                throw new ArgumentNullException(nameof(connectionString));
+            
+            if(timeout <= TimeSpan.Zero)
+                throw new ArgumentOutOfRangeException(nameof(timeout), "Must be greater than TimeSpan.Zero");
+            
+            if(recoveryInterval <= TimeSpan.Zero)
+                throw new ArgumentOutOfRangeException(nameof(recoveryInterval), "Must be greater than TimeSpan.Zero");
+            
+            if(string.IsNullOrWhiteSpace(appId))
+                throw new ArgumentNullException(nameof(appId));
+            
+            ConnectionString = connectionString.Trim();
             AutoStart = autoStart;
             Timeout = timeout;
             RecoveryInterval = recoveryInterval;
-            LoggerFactory = loggerFactory;
-            AppId = appId;
-            StateHandler = stateHandler;
+            LoggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
+            AppId = appId.Trim();
+            StateHandler = stateHandler ?? throw new ArgumentNullException(nameof(stateHandler));
         }
         
         public string ConnectionString { get; }

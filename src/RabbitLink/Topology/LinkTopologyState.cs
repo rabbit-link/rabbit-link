@@ -1,9 +1,9 @@
-﻿namespace RabbitLink.Producer
+namespace RabbitLink.Topology
 {
     /// <summary>
-    /// State of <see cref="ILinkProducer"/>
+    /// State of <see cref="ILinkTopology"/>
     /// </summary>
-    public enum LinkProducerState
+    public enum LinkTopologyState
     {
         /// <summary>
         /// Initializing
@@ -21,9 +21,9 @@
         Reconfiguring,
         
         /// <summary>
-        /// Active
+        /// Topology sucessfully configured
         /// </summary>
-        Active,
+        Ready,
         
         /// <summary>
         /// Stopping

@@ -1,10 +1,12 @@
 ﻿#region Usings
 
 using System;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using RabbitLink.Builders;
 using RabbitLink.Connection;
+using RabbitLink.Internals;
 using RabbitLink.Internals.Async;
 using RabbitLink.Logging;
 using RabbitMQ.Client;
@@ -14,13 +16,12 @@ using RabbitMQ.Client.Events;
 
 namespace RabbitLink.Topology.Internal
 {
-    internal class LinkTopology : ILinkTopology, ILinkChannelHandler
+    internal class LinkTopology : AsyncStateMachine<LinkTopologyState>, ILinkTopologyInternal, ILinkChannelHandler
     {
         #region Fields
 
         private readonly ILinkChannel _channel;
-        private readonly ILinkTopologyHandler _handler;
-        private readonly bool _isOnce;
+        private readonly LinkTopologyConfiguration _configuration;
         private readonly ILinkLogger _logger;
         private readonly object _sync = new object();
         private readonly LinkTopologyRunner<object> _topologyRunner;
@@ -29,17 +30,17 @@ namespace RabbitLink.Topology.Internal
 
         #region Ctor
 
-        public LinkTopology(ILinkChannel channel, ILinkTopologyHandler handler, bool once)
+        public LinkTopology(ILinkChannel channel, LinkTopologyConfiguration configuration)
+            :base(LinkTopologyState.Init)
         {
             _channel = channel ?? throw new ArgumentNullException(nameof(channel));
-            _handler = handler ?? throw new ArgumentNullException(nameof(handler));
-            _isOnce = once;
+            _configuration = configuration;
 
             _channel.Disposed += ChannelOnDisposed;
 
             _topologyRunner = new LinkTopologyRunner<object>(_logger, async cfg =>
             {
-                await _handler.Configure(cfg)
+                await _configuration.TopologyHandler.Configure(cfg)
                     .ConfigureAwait(false);
                 return null;
             });
@@ -47,7 +48,7 @@ namespace RabbitLink.Topology.Internal
             _logger = _channel.Connection.Configuration.LoggerFactory.CreateLogger($"{GetType().Name}({Id:D})")
                       ?? throw new InvalidOperationException("Cannot create logger");
 
-            _logger.Debug($"Created(channelId: {_channel.Id}, once: {once})");
+            _logger.Debug($"Created(channelId: {_channel.Id})");
 
             _channel.Initialize(this);
         }
@@ -64,50 +65,46 @@ namespace RabbitLink.Topology.Internal
             {
                 if (cancellation.IsCancellationRequested)
                 {
-                    newState = LinkTopologyState.Stop;
+                    newState = LinkTopologyState.Stopping;
                 }
 
-                if (newState != State)
-                {
-                    _logger.Debug($"State change {State} -> {newState}");
-                    State = newState;
-                }
+                ChangeState(newState);
 
                 switch (State)
                 {
                     case LinkTopologyState.Init:
-                        newState = LinkTopologyState.Configure;
+                        newState = LinkTopologyState.Configuring;
                         break;
-                    case LinkTopologyState.Configure:
-                    case LinkTopologyState.Reconfigure:
-                        newState = await OnConfigureAsync(model, State == LinkTopologyState.Reconfigure,
+                    case LinkTopologyState.Configuring:
+                    case LinkTopologyState.Reconfiguring:
+                        newState = await OnConfigureAsync(model, State == LinkTopologyState.Reconfiguring,
                                 cancellation)
                             .ConfigureAwait(false);
                         break;
                     case LinkTopologyState.Ready:
-                        if (_isOnce)
-                        {
-                            _logger.Info("Once topology configured, going to dispose");
-                            newState = LinkTopologyState.Dispose;
-                        }
-                        else
-                        {
+                            _readyCompletion.SetResult(null);
                             await cancellation.WaitCancellation()
                                 .ConfigureAwait(false);
-                            newState = LinkTopologyState.Configure;
-                        }
+                            newState = LinkTopologyState.Configuring;
                         break;
-                    case LinkTopologyState.Dispose:
+                    case LinkTopologyState.Disposed:
 #pragma warning disable 4014
                         Task.Factory.StartNew(Dispose, TaskCreationOptions.LongRunning);
 #pragma warning restore 4014
                         return;
-                    case LinkTopologyState.Stop:
+                    case LinkTopologyState.Stopping:
                         return;
                     default:
                         throw new NotImplementedException($"Handler for state ${State} not implemeted");
                 }
             }
+        }
+
+        protected override void OnStateChange(LinkTopologyState newState)
+        {
+            _logger.Debug($"State change {State} -> {newState}");
+            
+            base.OnStateChange(newState);
         }
 
         public Task OnConnecting(CancellationToken cancellation)
@@ -131,8 +128,6 @@ namespace RabbitLink.Topology.Internal
 
         #region ILinkTopology Members
 
-        public LinkTopologyState State { get; private set; } = LinkTopologyState.Init;
-
         public event EventHandler Disposed;
 
 
@@ -143,6 +138,15 @@ namespace RabbitLink.Topology.Internal
 
 
         public Guid Id { get; } = Guid.NewGuid();
+        public Task WaitReadyAsync(CancellationToken cancellation)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task WaitReadyAsync()
+        {
+            throw new NotImplementedException();
+        }
 
         #endregion
 
@@ -152,13 +156,13 @@ namespace RabbitLink.Topology.Internal
             {
                 try
                 {
-                    _logger.Info($"Retrying in {_configuration.TopologyRecoveryInterval.TotalSeconds:0.###}s");
-                    await Task.Delay(_configuration.TopologyRecoveryInterval, cancellation)
+                    _logger.Info($"Retrying in {_configuration.RecoveryInterval.TotalSeconds:0.###}s");
+                    await Task.Delay(_configuration.RecoveryInterval, cancellation)
                         .ConfigureAwait(false);
                 }
                 catch
                 {
-                    return LinkTopologyState.Reconfigure;
+                    return LinkTopologyState.Reconfiguring;
                 }
             }
 
@@ -176,7 +180,7 @@ namespace RabbitLink.Topology.Internal
 
                 try
                 {
-                    await _handler.ConfigurationError(ex)
+                    await _configuration.TopologyHandler.ConfigurationError(ex)
                         .ConfigureAwait(false);
                 }
                 catch (Exception handlerException)
@@ -184,12 +188,12 @@ namespace RabbitLink.Topology.Internal
                     _logger.Error($"Error in error handler: {handlerException}");
                 }
 
-                return LinkTopologyState.Reconfigure;
+                return LinkTopologyState.Reconfiguring;
             }
 
             try
             {
-                await _handler.Ready()
+                await _configuration.TopologyHandler.Ready()
                     .ConfigureAwait(false);
             }
             catch (Exception ex)
@@ -204,12 +208,12 @@ namespace RabbitLink.Topology.Internal
 
         private void Dispose(bool byChannel)
         {
-            if (State == LinkTopologyState.Dispose)
+            if (State == LinkTopologyState.Disposed)
                 return;
 
             lock (_sync)
             {
-                if (State == LinkTopologyState.Dispose)
+                if (State == LinkTopologyState.Disposed)
                     return;
 
                 _logger.Debug("Disposing");
@@ -220,8 +224,7 @@ namespace RabbitLink.Topology.Internal
                     _channel.Dispose();
                 }
 
-                State = LinkTopologyState.Dispose;
-
+                ChangeState(LinkTopologyState.Disposed);
                 _logger.Debug("Disposed");
                 _logger.Dispose();
 

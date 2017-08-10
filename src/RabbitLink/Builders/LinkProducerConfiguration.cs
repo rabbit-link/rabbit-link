@@ -27,15 +27,21 @@ namespace RabbitLink.Builders
             LinkStateHandler<LinkProducerState> stateHandler
         )
         {
+            if(publishTimeout < TimeSpan.Zero)
+                throw new ArgumentOutOfRangeException(nameof(publishTimeout), "Must be greater or equal TimeSpan.Zero");
+            
+            if(recoveryInterval < TimeSpan.Zero)
+                throw new ArgumentOutOfRangeException(nameof(recoveryInterval), "Must be greater than TimeSpan.Zero");
+            
             PublishTimeout = publishTimeout;
             RecoveryInterval = recoveryInterval;
-            MessageIdGenerator = messageIdGenerator;
+            MessageIdGenerator = messageIdGenerator ?? throw new ArgumentNullException(nameof(messageIdGenerator));
             ConfirmsMode = confirmsMode;
             SetUserId = setUserId;
-            _publishProperties = publishProperties;
-            _messageProperties = messageProperties;
-            TopologyHandler = topologyHandler;
-            StateHandler = stateHandler;
+            _publishProperties = publishProperties ?? throw new ArgumentNullException(nameof(publishProperties));
+            _messageProperties = messageProperties ?? throw new ArgumentNullException(nameof(messageProperties));
+            TopologyHandler = topologyHandler ?? throw new ArgumentNullException(nameof(topologyHandler));
+            StateHandler = stateHandler ?? throw new ArgumentNullException(nameof(stateHandler));
         }
         
         public TimeSpan PublishTimeout { get; }
