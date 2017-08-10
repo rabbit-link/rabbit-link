@@ -4,6 +4,7 @@ using System;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 using RabbitLink;
@@ -154,45 +155,54 @@ namespace Playground
             }
         }
 
-//        private static void TestTopology(Link link)
-//        {
-//            Console.WriteLine("--- Creating topology configurators ---");
-//
-//            link.CreatePersistentTopologyConfigurator(PersConfigure, configurationError: PersOnException);
-//
-//            Console.WriteLine("--- Starting ---");
-//            link.Initialize();
-//
-//            Console.WriteLine("--- Configuring topology ---");
-//            try
-//            {
-//                link.ConfigureTopologyAsync(OnceConfigure, TimeSpan.FromSeconds(10))
-//                    .GetAwaiter().GetResult();
-//                Console.WriteLine("--- Topology configured ---");
-//            }
-//            catch (Exception ex)
-//            {
-//                Console.WriteLine($"--> Topology config exception: {ex}");
-//            }
-//        }
-//
-//        private static async Task OnceConfigure(ILinkTopologyConfig config)
-//        {
-//            var ex = await config.ExchangeDeclare("link.playground.once", LinkExchangeType.Fanout, autoDelete: true);
-//            var q = await config.QueueDeclareExclusiveByServer();
-//
-//            await config.Bind(q, ex);
-//        }
-//
-//        private static Task PersOnException(Exception exception)
-//        {
-//            Console.WriteLine("--> PersTopology exception: {0}", exception.ToString());
-//            return Task.FromResult((object) null);
-//        }
-//
-//        private static async Task PersConfigure(ILinkTopologyConfig config)
-//        {
-//            var exchange = await config.QueueDeclareExclusive();
-//        }
+        private static void TestTopology(ILink link)
+        {
+            Console.WriteLine("--- Creating topology configurators ---");
+
+            link.Topology
+                .Handler(PersConfigure, () => Task.CompletedTask, PersOnException)
+                .Build();
+
+            Console.WriteLine("--- Starting ---");
+            link.Initialize();
+
+            Console.WriteLine("--- Configuring topology ---");
+            try
+            {
+                using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10)))
+                {
+                    link.Topology
+                        .Handler(OnceConfigure)
+                        .WaitAsync(cts.Token)
+                        .GetAwaiter()
+                        .GetResult();
+                }
+
+                Console.WriteLine("--- Topology configured ---");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"--> Topology config exception: {ex}");
+            }
+        }
+
+        private static async Task OnceConfigure(ILinkTopologyConfig config)
+        {
+            var ex = await config.ExchangeDeclare("link.playground.once", LinkExchangeType.Fanout, autoDelete: true);
+            var q = await config.QueueDeclareExclusiveByServer();
+
+            await config.Bind(q, ex);
+        }
+
+        private static Task PersOnException(Exception exception)
+        {
+            Console.WriteLine("--> PersTopology exception: {0}", exception.ToString());
+            return Task.FromResult((object) null);
+        }
+
+        private static async Task PersConfigure(ILinkTopologyConfig config)
+        {
+            await config.QueueDeclareExclusive();
+        }
     }
 }

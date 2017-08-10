@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading;
 using System.Threading.Tasks;
 using RabbitLink.Connection;
 using RabbitLink.Topology;
@@ -72,7 +73,7 @@ namespace RabbitLink.Builders
             return new LinkTopologyBuilder(this, channelStateHandler: handler);
         }
 
-        public ILinkTopologyBuilder Topology(ILinkTopologyHandler handler)
+        public ILinkTopologyBuilder Handler(ILinkTopologyHandler handler)
         {
             if (handler == null)
                 throw new ArgumentNullException(nameof(handler));
@@ -80,21 +81,17 @@ namespace RabbitLink.Builders
             return new LinkTopologyBuilder(this, topologyHandler: handler);
         }
 
-        public ILinkTopologyBuilder Topology(LinkTopologyConfigDelegate config, LinkTopologyReadyDelegate ready)
+        public ILinkTopologyBuilder Handler(LinkTopologyConfigDelegate config)
         {
-            if (config == null)
-                throw new ArgumentNullException(nameof(config));
-
-            if (ready == null)
-                throw new ArgumentNullException(nameof(ready));
-
-            return new LinkTopologyBuilder(
-                this,
-                topologyHandler: new LinkTopologyHandler(config, ready, ex => Task.CompletedTask)
-            );
+            return Handler(config, () => Task.CompletedTask);
         }
 
-        public ILinkTopologyBuilder Topology(
+        public ILinkTopologyBuilder Handler(LinkTopologyConfigDelegate config, LinkTopologyReadyDelegate ready)
+        {
+            return Handler(config, ready, ex => Task.CompletedTask);
+        }
+
+        public ILinkTopologyBuilder Handler(
             LinkTopologyConfigDelegate config,
             LinkTopologyReadyDelegate ready,
             LinkTopologyErrorDelegate error
@@ -109,7 +106,7 @@ namespace RabbitLink.Builders
             if (error == null)
                 throw new ArgumentNullException(nameof(error));
 
-            return new LinkTopologyBuilder(this, topologyHandler: new LinkTopologyHandler(config, ready, error));
+            return Handler(new LinkTopologyHandler(config, ready, error));
         }
 
         public ILinkTopology Build()
@@ -123,7 +120,16 @@ namespace RabbitLink.Builders
                 _topologyHandler
             );
 
-            return new LinkTopology(_link.CreateChannel(_channelStateHandler, config.RecoveryInterval));
+            return new LinkTopology(_link.CreateChannel(_channelStateHandler, config.RecoveryInterval), config);
+        }
+
+        public async Task WaitAsync(CancellationToken? cancellation = null)
+        {
+            using (var topology = Build())
+            {
+                await topology.WaitReadyAsync(cancellation)
+                    .ConfigureAwait(false);
+            }
         }
     }
 }

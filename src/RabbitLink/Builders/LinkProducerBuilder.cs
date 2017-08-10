@@ -1,6 +1,7 @@
 ﻿#region Usings
 
 using System;
+using System.Threading.Tasks;
 using RabbitLink.Connection;
 using RabbitLink.Messaging;
 using RabbitLink.Producer;
@@ -137,10 +138,7 @@ namespace RabbitLink.Builders
 
         public ILinkProducerBuilder Queue(LinkProducerTopologyConfigDelegate config)
         {
-            if (config == null)
-                throw new ArgumentNullException(nameof(config));
-
-            return new LinkProducerBuilder(this, topologyHandler: new LinkProducerTopologyHandler(config));
+            return Queue(config, ex => Task.CompletedTask);
         }
 
         public ILinkProducerBuilder Queue(LinkProducerTopologyConfigDelegate config, LinkTopologyErrorDelegate error)
@@ -151,7 +149,7 @@ namespace RabbitLink.Builders
             if (error == null)
                 throw new ArgumentNullException(nameof(error));
 
-            return new LinkProducerBuilder(this, topologyHandler: new LinkProducerTopologyHandler(config, error));
+            return Queue(new LinkProducerTopologyHandler(config, error));
         }
 
         public ILinkProducerBuilder Queue(ILinkProducerTopologyHandler handler)

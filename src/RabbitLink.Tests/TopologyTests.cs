@@ -49,46 +49,51 @@ namespace RabbitLink.Tests
 
                 var exchangeName = TestsOptions.TestExchangeName;
 
-                using (var link = new Link(TestsOptions.ConnectionString))
+                using (var link = TestsOptions.GetLinkBuilder().Build())
                 {
                     Assert.ThrowsAny<Exception>(() => { rabbitModel.ExchangeDeclarePassive(exchangeName); });
 
                     rabbitModel = rabbitConneciton.CreateModel();
 
-                    link.ConfigureTopologyAsync(async cfg =>
-                    {
-                        var e1 =
-                            await
-                                cfg.ExchangeDeclare(exchangeName, exchangeType, durable, autoDelete, alternateExhange,
-                                    delayed);
-                        var e2 =
-                            await
-                                cfg.ExchangeDeclare(exchangeName + "-second", exchangeType, durable, autoDelete,
-                                    alternateExhange, delayed);
+                    link.Topology
+                        .Handler(async cfg =>
+                        {
+                            var e1 =
+                                await
+                                    cfg.ExchangeDeclare(exchangeName, exchangeType, durable, autoDelete,
+                                        alternateExhange,
+                                        delayed);
+                            var e2 =
+                                await
+                                    cfg.ExchangeDeclare(exchangeName + "-second", exchangeType, durable, autoDelete,
+                                        alternateExhange, delayed);
 
-                        await cfg.ExchangeDeclarePassive(exchangeName);
+                            await cfg.ExchangeDeclarePassive(exchangeName);
 
-                        await cfg.ExchangeDeclareDefault();
+                            await cfg.ExchangeDeclareDefault();
 
-                        await cfg.Bind(e2, e1);
-                        await cfg.Bind(e2, e1, "test");
-                    })
-                    .GetAwaiter()
-                    .GetResult();
+                            await cfg.Bind(e2, e1);
+                            await cfg.Bind(e2, e1, "test");
+                        })
+                        .WaitAsync()
+                        .GetAwaiter()
+                        .GetResult();
 
                     rabbitModel.ExchangeDeclarePassive(exchangeName);
                     rabbitModel.ExchangeDeclarePassive(exchangeName + "-second");
 
-                    link.ConfigureTopologyAsync(async cfg =>
-                    {
-                        var e1 = await cfg.ExchangeDeclarePassive(exchangeName);
-                        var e2 = await cfg.ExchangeDeclarePassive(exchangeName + "-second");
+                    link.Topology
+                        .Handler(async cfg =>
+                        {
+                            var e1 = await cfg.ExchangeDeclarePassive(exchangeName);
+                            var e2 = await cfg.ExchangeDeclarePassive(exchangeName + "-second");
 
-                        await cfg.ExchangeDelete(e1);
-                        await cfg.ExchangeDelete(e2);
-                    })
-                    .GetAwaiter()
-                    .GetResult();
+                            await cfg.ExchangeDelete(e1);
+                            await cfg.ExchangeDelete(e2);
+                        })
+                        .WaitAsync()
+                        .GetAwaiter()
+                        .GetResult();
 
                     Assert.ThrowsAny<Exception>(() => { rabbitModel.ExchangeDeclarePassive(exchangeName); });
                 }

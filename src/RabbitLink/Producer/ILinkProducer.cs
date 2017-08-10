@@ -39,6 +39,11 @@ namespace RabbitLink.Producer
         #endregion
 
         /// <summary>
+        /// Waits for producer ready
+        /// </summary>
+        Task WaitReadyAsync(CancellationToken? cancellation = null);
+
+        /// <summary>
         /// Publishes message
         /// </summary>
         /// <param name="message">message</param>

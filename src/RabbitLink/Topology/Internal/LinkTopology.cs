@@ -26,12 +26,15 @@ namespace RabbitLink.Topology.Internal
         private readonly object _sync = new object();
         private readonly LinkTopologyRunner<object> _topologyRunner;
 
+        private volatile TaskCompletionSource<object> _readyCompletion =
+            new TaskCompletionSource<object>();
+
         #endregion
 
         #region Ctor
 
         public LinkTopology(ILinkChannel channel, LinkTopologyConfiguration configuration)
-            :base(LinkTopologyState.Init)
+            : base(LinkTopologyState.Init)
         {
             _channel = channel ?? throw new ArgumentNullException(nameof(channel));
             _configuration = configuration;
@@ -82,10 +85,15 @@ namespace RabbitLink.Topology.Internal
                             .ConfigureAwait(false);
                         break;
                     case LinkTopologyState.Ready:
-                            _readyCompletion.SetResult(null);
-                            await cancellation.WaitCancellation()
-                                .ConfigureAwait(false);
-                            newState = LinkTopologyState.Configuring;
+                        _readyCompletion.TrySetResult(null);
+
+                        await cancellation.WaitCancellation()
+                            .ConfigureAwait(false);
+
+                        _readyCompletion =
+                            new TaskCompletionSource<object>();
+
+                        newState = LinkTopologyState.Configuring;
                         break;
                     case LinkTopologyState.Disposed:
 #pragma warning disable 4014
@@ -103,7 +111,7 @@ namespace RabbitLink.Topology.Internal
         protected override void OnStateChange(LinkTopologyState newState)
         {
             _logger.Debug($"State change {State} -> {newState}");
-            
+
             base.OnStateChange(newState);
         }
 
@@ -138,14 +146,16 @@ namespace RabbitLink.Topology.Internal
 
 
         public Guid Id { get; } = Guid.NewGuid();
-        public Task WaitReadyAsync(CancellationToken cancellation)
-        {
-            throw new NotImplementedException();
-        }
 
-        public Task WaitReadyAsync()
+        public Task WaitReadyAsync(CancellationToken? cancellation = null)
         {
-            throw new NotImplementedException();
+            return _readyCompletion.Task
+                .ContinueWith(
+                    t => t.Result, 
+                    cancellation ?? CancellationToken.None, 
+                    TaskContinuationOptions.RunContinuationsAsynchronously,
+                    TaskScheduler.Current
+                );
         }
 
         #endregion
@@ -225,6 +235,9 @@ namespace RabbitLink.Topology.Internal
                 }
 
                 ChangeState(LinkTopologyState.Disposed);
+
+                _readyCompletion.TrySetException(new ObjectDisposedException(GetType().Name));
+
                 _logger.Debug("Disposed");
                 _logger.Dispose();
 

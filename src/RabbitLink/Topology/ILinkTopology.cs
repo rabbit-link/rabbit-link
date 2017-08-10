@@ -27,11 +27,6 @@ namespace RabbitLink.Topology
         /// <summary>
         /// Waits for topology ready
         /// </summary>
-        Task WaitReadyAsync(CancellationToken cancellation);
-        
-        /// <summary>
-        /// Waits for topology ready
-        /// </summary>
-        Task WaitReadyAsync();
+        Task WaitReadyAsync(CancellationToken? cancellation = null);
     }
 }

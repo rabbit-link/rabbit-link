@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Threading;
+using System.Threading.Tasks;
 using RabbitLink.Connection;
 using RabbitLink.Topology;
 using RabbitLink.Topology.Internal;
@@ -29,17 +31,22 @@ namespace RabbitLink.Builders
         // <summary>
         /// Sets topology handler
         /// </summary>
-        ILinkTopologyBuilder Topology(ILinkTopologyHandler handler);
+        ILinkTopologyBuilder Handler(ILinkTopologyHandler handler);
+        
+        /// <summary>
+        /// Sets topology configuration handler
+        /// </summary>
+        ILinkTopologyBuilder Handler(LinkTopologyConfigDelegate config);
         
         /// <summary>
         /// Sets topology configuration and ready handlers
         /// </summary>
-        ILinkTopologyBuilder Topology(LinkTopologyConfigDelegate config, LinkTopologyReadyDelegate ready);
+        ILinkTopologyBuilder Handler(LinkTopologyConfigDelegate config, LinkTopologyReadyDelegate ready);
 
         /// <summary>
         /// Sets topology configuration, ready and error handlers
         /// </summary>
-        ILinkTopologyBuilder Topology(
+        ILinkTopologyBuilder Handler(
             LinkTopologyConfigDelegate config,
             LinkTopologyReadyDelegate ready,
             LinkTopologyErrorDelegate error
@@ -49,5 +56,10 @@ namespace RabbitLink.Builders
         /// Builds <see cref="ILinkTopology"/> instance
         /// </summary>
         ILinkTopology Build();
+
+        /// <summary>
+        /// Builds <see cref="ILinkTopology"/> instance, waits when it will be ready and then dispose it
+        /// </summary>
+        Task WaitAsync(CancellationToken? cancellation = null);
     }
 }

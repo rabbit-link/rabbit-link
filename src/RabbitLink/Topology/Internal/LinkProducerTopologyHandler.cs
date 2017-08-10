@@ -10,7 +10,7 @@ namespace RabbitLink.Topology.Internal
 
         public LinkProducerTopologyHandler(
             LinkProducerTopologyConfigDelegate configAction,
-            LinkTopologyErrorDelegate errorAction = null
+            LinkTopologyErrorDelegate errorAction
         )
         {
             _configAction = configAction ?? throw new ArgumentNullException(nameof(configAction));

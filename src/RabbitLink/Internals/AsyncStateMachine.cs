@@ -8,7 +8,7 @@ namespace RabbitLink.Internals
 {
     internal abstract class AsyncStateMachine<TState>
         where TState : IComparable
-    {
+    {        
         protected AsyncStateMachine(TState initialState)
         {
             State = initialState;

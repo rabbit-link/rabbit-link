@@ -45,6 +45,9 @@ namespace RabbitLink.Producer
         private readonly LinkTopologyRunner<ILinkExchage> _topologyRunner;
 
         private ILinkExchage _exchage;
+        
+        private volatile TaskCompletionSource<object> _readyCompletion =
+            new TaskCompletionSource<object>();
 
         #endregion
 
@@ -187,6 +190,17 @@ namespace RabbitLink.Producer
             Dispose(false);
         }
 
+        public Task WaitReadyAsync(CancellationToken? cancellation = null)
+        {
+            return _readyCompletion.Task
+                .ContinueWith(
+                    t => t.Result, 
+                    cancellation ?? CancellationToken.None, 
+                    TaskContinuationOptions.RunContinuationsAsynchronously,
+                    TaskScheduler.Current
+                );
+        }
+
         public Task PublishAsync(
             LinkPublishMessage message,
             CancellationToken? cancellation = null
@@ -268,8 +282,16 @@ namespace RabbitLink.Producer
                 return;
             }
 
-            await AsyncHelper.RunAsync(()=>ProcessQueue(model, cancellation))
-                .ConfigureAwait(false);
+            try
+            {
+                _readyCompletion.TrySetResult(null);
+                await AsyncHelper.RunAsync(() => ProcessQueue(model, cancellation))
+                    .ConfigureAwait(false);
+            }
+            finally
+            {
+                _readyCompletion = new TaskCompletionSource<object>();
+            }
         }
 
         private void ProcessQueue(IModel model, CancellationToken cancellation)
@@ -409,6 +431,9 @@ namespace RabbitLink.Producer
                 _messageQueue.Complete(msg => msg.TrySetException(ex));
 
                 ChangeState(LinkProducerState.Disposed);
+
+                _readyCompletion.TrySetException(ex);
+      
                 _logger.Debug("Disposed");
                 _logger.Dispose();
 

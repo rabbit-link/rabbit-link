@@ -1,6 +1,7 @@
 ﻿#region Usings
 
 using System;
+using System.Reflection.Metadata;
 using RabbitLink.Exceptions;
 using RabbitLink.Messaging;
 using RabbitLink.Producer;
@@ -45,7 +46,8 @@ namespace RabbitLink.Tests
                 }
                 finally
                 {
-                    link.ConfigureTopologyAsync(async cfg =>
+                    link.Topology
+                        .Handler(async cfg =>
                         {
                             try
                             {
@@ -60,6 +62,7 @@ namespace RabbitLink.Tests
                                 // No-op
                             }
                         })
+                        .WaitAsync()
                         .GetAwaiter()
                         .GetResult();
                 }
@@ -101,7 +104,8 @@ namespace RabbitLink.Tests
                 }
                 finally
                 {
-                    link.ConfigureTopologyAsync(async cfg =>
+                    link.Topology
+                        .Handler(async cfg =>
                         {
                             try
                             {
@@ -116,6 +120,7 @@ namespace RabbitLink.Tests
                                 // No-op
                             }
                         })
+                        .WaitAsync()
                         .GetAwaiter()
                         .GetResult();
                 }
@@ -148,7 +153,8 @@ namespace RabbitLink.Tests
                 }
                 finally
                 {
-                    link.ConfigureTopologyAsync(async cfg =>
+                    link.Topology
+                        .Handler(async cfg =>
                         {
                             try
                             {
@@ -160,6 +166,7 @@ namespace RabbitLink.Tests
                                 // No-op
                             }
                         })
+                        .WaitAsync()
                         .GetAwaiter()
                         .GetResult();
                 }
@@ -198,7 +205,8 @@ namespace RabbitLink.Tests
                 }
                 finally
                 {
-                    link.ConfigureTopologyAsync(async cfg =>
+                    link.Topology
+                        .Handler(async cfg =>
                         {
                             try
                             {
@@ -214,6 +222,7 @@ namespace RabbitLink.Tests
                                 // No-op
                             }
                         })
+                        .WaitAsync()
                         .GetAwaiter()
                         .GetResult();
                 }
@@ -251,7 +260,8 @@ namespace RabbitLink.Tests
                 }
                 finally
                 {
-                    link.ConfigureTopologyAsync(async cfg =>
+                    link.Topology
+                        .Handler(async cfg =>
                         {
                             try
                             {
@@ -263,6 +273,7 @@ namespace RabbitLink.Tests
                                 // No-op
                             }
                         })
+                        .WaitAsync()
                         .GetAwaiter()
                         .GetResult();
                 }
