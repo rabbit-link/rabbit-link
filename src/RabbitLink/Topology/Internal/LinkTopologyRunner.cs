@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using RabbitLink.Internals;
 using RabbitLink.Internals.Actions;
 using RabbitLink.Internals.Async;
+using RabbitLink.Internals.Lens;
 using RabbitLink.Internals.Queues;
 using RabbitLink.Logging;
 using RabbitMQ.Client;
@@ -35,7 +36,7 @@ namespace RabbitLink.Topology.Internal
 
         public async Task<T> RunAsync(IModel model, CancellationToken cancellation)
         {
-            var queue = new ActionStorage<IModel>();
+            var queue = new ActionStorage<IModel>(new LensChannel<ActionItem<IModel>>());
             var configTask = RunConfiguration(queue, cancellation);
 
             await StartQueueWorker(model, queue, cancellation)

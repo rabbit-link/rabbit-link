@@ -8,7 +8,8 @@ using RabbitLink.Builders;
 using RabbitLink.Internals;
 using RabbitLink.Internals.Actions;
 using RabbitLink.Internals.Async;
-using RabbitLink.Internals.Queues;
+using RabbitLink.Internals.Channels;
+using RabbitLink.Internals.Lens;
 using RabbitLink.Logging;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
@@ -27,7 +28,9 @@ namespace RabbitLink.Connection
         private readonly CancellationToken _disposeCancellation;
         private readonly CancellationTokenSource _disposeCts;
         private readonly ILinkLogger _logger;
-        private readonly CompositeActionStorage<IConnection> _storage = new CompositeActionStorage<IConnection>();
+        private readonly CompositeActionStorage<IConnection> _storage = new CompositeActionStorage<IConnection>(
+                new CompositeChannel<ActionItem<IConnection>>(new LensChannel<ActionItem<IConnection>>())
+        );
 
         private readonly object _sync = new object();
 
@@ -44,13 +47,11 @@ namespace RabbitLink.Connection
         {
             _configuration = configuration;
 
-            _logger = _configuration.LoggerFactory.CreateLogger($"{GetType().Name}({Id:D})");
-
-            if (_logger == null)
-                throw new ArgumentException("Cannot create logger", nameof(configuration.LoggerFactory));
+            _logger = _configuration.LoggerFactory.CreateLogger($"{GetType().Name}({Id:D})")
+                ?? throw new ArgumentException("Cannot create logger", nameof(configuration.LoggerFactory));
 
             _connectionFactory = new LinkConnectionFactory(
-                "default",
+                _configuration.ConnectionName,
                 _configuration.AppId,
                 _configuration.ConnectionString,
                 _configuration.Timeout
@@ -59,7 +60,7 @@ namespace RabbitLink.Connection
             _disposeCts = new CancellationTokenSource();
             _disposeCancellation = _disposeCts.Token;
 
-            _logger.Debug("Created");
+            _logger.Debug($"Created ( name: {_configuration.ConnectionName})");
             if (_configuration.AutoStart)
             {
                 Initialize();
@@ -94,8 +95,7 @@ namespace RabbitLink.Connection
                     // no op
                 }
 
-                var ex = new ObjectDisposedException(GetType().Name);
-                _storage.Complete(item => item.TrySetException(ex));
+               _storage.Dispose();
 
                 ChangeState(LinkConnectionState.Disposed);
 

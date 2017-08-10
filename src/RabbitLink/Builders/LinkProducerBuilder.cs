@@ -157,7 +157,7 @@ namespace RabbitLink.Builders
             if (handler == null)
                 throw new ArgumentNullException(nameof(handler));
 
-            return new LinkProducerBuilder(this, topologyHandler: _topologyHandler);
+            return new LinkProducerBuilder(this, topologyHandler: handler);
         }
 
         public ILinkProducerBuilder OnStateChange(LinkStateHandler<LinkProducerState> handler)

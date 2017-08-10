@@ -38,15 +38,16 @@ namespace RabbitLink.Connection
 
         #region Ctor
 
-        public LinkChannel(ILinkConnection connection, LinkStateHandler<LinkChannelState>stateHandler,  TimeSpan recoveryInterval)
+        public LinkChannel(ILinkConnection connection, LinkStateHandler<LinkChannelState>stateHandler,
+            TimeSpan recoveryInterval)
             : base(LinkChannelState.Init)
         {
             _connection = connection ?? throw new ArgumentNullException(nameof(connection));
-            _logger = 
+            _logger =
                 connection.Configuration.LoggerFactory.CreateLogger($"{GetType().Name}({Id:D})")
                 ?? throw new ArgumentException("Cannot create logger", nameof(connection.Configuration.LoggerFactory));
-            
-            if(recoveryInterval <= TimeSpan.Zero)
+
+            if (recoveryInterval <= TimeSpan.Zero)
                 throw new ArgumentOutOfRangeException(nameof(recoveryInterval), "Must be greater than zero");
 
             _stateHandler = stateHandler ?? throw new ArgumentNullException(nameof(stateHandler));
@@ -65,7 +66,7 @@ namespace RabbitLink.Connection
 
         #region ILinkChannel Members
 
-        public void Dispose()
+        private void Dispose(bool byConnection)
         {
             if (State == LinkChannelState.Disposed)
                 return;
@@ -75,7 +76,7 @@ namespace RabbitLink.Connection
                 if (State == LinkChannelState.Disposed)
                     return;
 
-                _logger.Debug("Disposing");
+                _logger.Debug($"Disposing ( by connection: {byConnection} )");
 
                 _disposeCts.Cancel();
                 _disposeCts.Dispose();
@@ -98,6 +99,9 @@ namespace RabbitLink.Connection
                 _logger.Dispose();
             }
         }
+
+        public void Dispose()
+            => Dispose(false);
 
         public Guid Id { get; } = Guid.NewGuid();
 
@@ -144,7 +148,7 @@ namespace RabbitLink.Connection
             {
                 _logger.Warning($"Exception in state handler: {ex}");
             }
-            
+
             base.OnStateChange(newState);
         }
 
@@ -181,7 +185,7 @@ namespace RabbitLink.Connection
                             break;
                         case LinkChannelState.Stopping:
                             await AsyncHelper.RunAsync(Stop)
-                               .ConfigureAwait(false);
+                                .ConfigureAwait(false);
                             if (_disposeCancellation.IsCancellationRequested)
                             {
                                 return;
@@ -306,10 +310,8 @@ namespace RabbitLink.Connection
         #region Event handlers
 
         private void ConnectionOnDisposed(object sender, EventArgs eventArgs)
-        {
-            _logger.Debug("Connection disposed, disposing...");
-            Dispose();
-        }
+            => Dispose(true);
+
 
         private void ModelOnBasicReturn(object sender, BasicReturnEventArgs e)
         {
@@ -332,9 +334,8 @@ namespace RabbitLink.Connection
         }
 
         private void ModelOnCallbackException(object sender, CallbackExceptionEventArgs e)
-        {
-            _logger.Error($"Callback exception: {e.Exception}");
-        }
+            => _logger.Error($"Callback exception: {e.Exception}");
+
 
         private void ModelOnModelShutdown(object sender, ShutdownEventArgs e)
         {

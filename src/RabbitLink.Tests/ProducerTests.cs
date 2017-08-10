@@ -228,56 +228,5 @@ namespace RabbitLink.Tests
                 }
             }
         }
-
-        [Fact]
-        public void PublishTimeoutTest()
-        {
-            var exchangeName = TestsOptions.TestExchangeName;
-
-            using (var link = TestsOptions.GetLinkBuilder().Build())
-            {
-                try
-                {
-                    using (var producer = link.Producer
-                        .Queue(async cfg =>
-                        {
-                            var ex = await cfg.ExchangeDeclare(exchangeName, LinkExchangeType.Fanout, autoDelete: true);
-
-                            return ex;
-                        })
-                        .ConfirmsMode(false)
-                        .Build()
-                    )
-                    {
-                        Assert.ThrowsAny<OperationCanceledException>(
-                            () =>
-                            {
-                                producer.PublishAsync(new byte[0], TimeSpan.Zero)
-                                    .GetAwaiter()
-                                    .GetResult();
-                            });
-                    }
-                }
-                finally
-                {
-                    link.Topology
-                        .Handler(async cfg =>
-                        {
-                            try
-                            {
-                                var ex = await cfg.ExchangeDeclarePassive(exchangeName);
-                                await cfg.ExchangeDelete(ex);
-                            }
-                            catch
-                            {
-                                // No-op
-                            }
-                        })
-                        .WaitAsync()
-                        .GetAwaiter()
-                        .GetResult();
-                }
-            }
-        }
     }
 }

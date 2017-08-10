@@ -21,13 +21,10 @@ namespace RabbitLink.Connection
 
         #region Ctor
 
-        public LinkConnectionFactory(string name, string appId, string connectionString, TimeSpan timeout)
+        public LinkConnectionFactory(string name, string appId, Uri connectionString, TimeSpan timeout)
         {
             if (string.IsNullOrWhiteSpace(name))
                 throw new ArgumentNullException(nameof(name));
-
-            if (string.IsNullOrWhiteSpace(connectionString))
-                throw new ArgumentNullException(nameof(connectionString));
 
             if (timeout.TotalMilliseconds <= 0)
                 throw new ArgumentOutOfRangeException(nameof(timeout), timeout.TotalMilliseconds,
@@ -37,9 +34,10 @@ namespace RabbitLink.Connection
 
             _factory = new ConnectionFactory
             {
-                Uri = connectionString,
+                Uri = connectionString ?? throw new ArgumentNullException(nameof(connectionString)),
                 TopologyRecoveryEnabled = false,
                 AutomaticRecoveryEnabled = false,
+                UseBackgroundThreadsForIO = true,
                 RequestedConnectionTimeout = (int) timeout.TotalMilliseconds,
                 ClientProperties =
                 {

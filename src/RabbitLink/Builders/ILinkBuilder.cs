@@ -16,6 +16,11 @@ namespace RabbitLink.Builders
     public interface ILinkBuilder
     {
         /// <summary>
+        /// Name of connection
+        /// </summary>
+        ILinkBuilder ConnectionName(string value);
+        
+        /// <summary>
         /// Amqp connection string
         /// </summary>
         ILinkBuilder Uri(string value);

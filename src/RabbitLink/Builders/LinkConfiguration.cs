@@ -7,7 +7,8 @@ namespace RabbitLink.Builders
     internal struct LinkConfiguration
     {
         public LinkConfiguration(
-            string connectionString,
+            string connectionName,
+            Uri connectionString,
             bool autoStart,
             TimeSpan timeout,
             TimeSpan recoveryInterval,
@@ -16,8 +17,8 @@ namespace RabbitLink.Builders
             LinkStateHandler<LinkConnectionState> stateHandler
         )
         {
-            if(string.IsNullOrWhiteSpace(connectionString))
-                throw new ArgumentNullException(nameof(connectionString));
+            if(string.IsNullOrWhiteSpace(connectionName))
+                throw new ArgumentNullException(nameof(connectionName));
             
             if(timeout <= TimeSpan.Zero)
                 throw new ArgumentOutOfRangeException(nameof(timeout), "Must be greater than TimeSpan.Zero");
@@ -27,8 +28,9 @@ namespace RabbitLink.Builders
             
             if(string.IsNullOrWhiteSpace(appId))
                 throw new ArgumentNullException(nameof(appId));
-            
-            ConnectionString = connectionString.Trim();
+
+            ConnectionName = connectionName.Trim();
+            ConnectionString = connectionString ?? throw new ArgumentNullException(nameof(connectionString));
             AutoStart = autoStart;
             Timeout = timeout;
             RecoveryInterval = recoveryInterval;
@@ -37,7 +39,8 @@ namespace RabbitLink.Builders
             StateHandler = stateHandler ?? throw new ArgumentNullException(nameof(stateHandler));
         }
         
-        public string ConnectionString { get; }
+        public string ConnectionName { get; }
+        public Uri ConnectionString { get; }
         public bool AutoStart { get; }
         public TimeSpan Timeout { get; }
         public TimeSpan RecoveryInterval { get; }

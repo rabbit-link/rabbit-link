@@ -22,18 +22,17 @@ namespace Playground
             Console.WriteLine("--- Ready to run press enter ---");
             Console.ReadLine();
 
-
-            using (var link = LinkBuilder.Configure
+            var link = LinkBuilder.Configure
                 .Uri("amqp://localhost/")
                 .AutoStart(false)
                 .LoggerFactory(new ConsoleLinkLoggerFactory())
-                .Build()
-            )
+                .Build();
+
+            using (link)
             {
                 // ReSharper disable once AccessToDisposedClosure
                 //Task.Factory.StartNew(() => TestPullConsumer(link));                
                 TestPublish(link);
-
 
                 Console.WriteLine("--- Running ---");
                 Console.ReadLine();

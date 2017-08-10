@@ -1,6 +1,7 @@
 ﻿#region Usings
 
 using System;
+using System.Net.Http.Headers;
 using RabbitLink.Connection;
 using RabbitLink.Logging;
 
@@ -10,7 +11,8 @@ namespace RabbitLink.Builders
 {
     internal class LinkBuilder : ILinkBuilder
     {
-        private readonly string _connectionString;
+        private readonly string _connectionName;
+        private readonly Uri _connectionString;
         private readonly bool _autoStart;
         private readonly TimeSpan _timeout;
         private readonly TimeSpan? _recoveryInterval;
@@ -19,7 +21,8 @@ namespace RabbitLink.Builders
         private readonly LinkStateHandler<LinkConnectionState> _stateHandler;
 
         public LinkBuilder(
-            string connectionString = null,
+            string connectionName = null,
+            Uri connectionString = null,
             bool? autoStart = null,
             TimeSpan? timeout = null,
             TimeSpan? recoveryInterval = null,
@@ -28,6 +31,7 @@ namespace RabbitLink.Builders
             LinkStateHandler<LinkConnectionState> stateHandler = null
         )
         {
+            _connectionName = connectionName ?? "default";
             _connectionString = connectionString;
             _autoStart = autoStart ?? true;
             _timeout = timeout ?? TimeSpan.FromSeconds(10);
@@ -39,7 +43,8 @@ namespace RabbitLink.Builders
 
         private LinkBuilder(
             LinkBuilder prev,
-            string connectionString = null,
+            string connectionName = null,
+            Uri connectionString = null,
             bool? autoStart = null,
             TimeSpan? timeout = null,
             TimeSpan? recoveryInterval = null,
@@ -47,6 +52,7 @@ namespace RabbitLink.Builders
             string appId = null,
             LinkStateHandler<LinkConnectionState> stateHandler = null
         ) : this(
+            connectionName ?? prev._connectionName,
             connectionString ?? prev._connectionString,
             autoStart ?? prev._autoStart,
             timeout ?? prev._timeout,
@@ -58,12 +64,20 @@ namespace RabbitLink.Builders
         {
         }
 
+        public ILinkBuilder ConnectionName(string value)
+        {
+            if(string.IsNullOrWhiteSpace(value))
+                throw new ArgumentNullException(nameof(value));
+            
+            return  new LinkBuilder(this, connectionName: value.Trim());
+        }
+
         public ILinkBuilder Uri(string value)
         {
             if (string.IsNullOrWhiteSpace(value))
                 throw new ArgumentNullException(nameof(value));
 
-            return new LinkBuilder(this, connectionString: value.Trim());
+            return Uri(new Uri(value));
         }
 
         public ILinkBuilder Uri(Uri value)
@@ -71,7 +85,7 @@ namespace RabbitLink.Builders
             if (value == null)
                 throw new ArgumentNullException(nameof(value));
 
-            return Uri(value.ToString());
+            return new LinkBuilder(this, connectionString: value);
         }
 
         public ILinkBuilder AutoStart(bool value)
@@ -121,10 +135,8 @@ namespace RabbitLink.Builders
 
         public ILink Build()
         {
-            if (string.IsNullOrWhiteSpace(_connectionString))
-                throw new InvalidOperationException($"{nameof(Uri)} must be set");
-
             var config = new LinkConfiguration(
+                _connectionName ?? throw new InvalidOperationException($"{nameof(Uri)} must be set"),
                 _connectionString,
                 _autoStart,
                 _timeout,

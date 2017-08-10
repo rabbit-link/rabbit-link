@@ -215,8 +215,7 @@ namespace RabbitLink.Internals.Queues
             }
         }
 
-        public void PutRetry(IEnumerable<TItem> items,
-            CancellationToken cancellation)
+        public void PutRetry(IEnumerable<TItem> items, CancellationToken cancellation)
         {
             if(_disposedCancellation.IsCancellationRequested)
                 throw new ObjectDisposedException(GetType().Name);
@@ -233,6 +232,69 @@ namespace RabbitLink.Internals.Queues
                     using (_sync.Lock(compositeCancellation.Token))
                     {
                         using (_queueSync.Lock(compositeCancellation.Token))
+                        {
+                            foreach (var item in items)
+                            {
+                                if (item.Cancellation.IsCancellationRequested)
+                                {
+                                    item.TrySetCanceled(item.Cancellation);
+                                    continue;
+                                }
+
+                                var qitem = new QueueItem(item);
+
+                                var node = prevNode == null
+                                    ? _queue.AddFirst(qitem)
+                                    : _queue.AddAfter(prevNode, qitem);
+
+                                enableCancellations.Push(() =>
+                                {
+                                    qitem.EnableCancellation(() =>
+                                    {
+                                        using (_queueSync.Lock(CancellationToken.None))
+                                        {
+                                            node.List?.Remove(node);
+                                        }
+                                    });
+                                });
+
+                                prevNode = node;
+                            }
+                        }
+
+                        while (enableCancellations.Count > 0)
+                        {
+                            var a = enableCancellations.Pop();
+                            a();
+                        }
+                    }
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                if(_disposedCancellation.IsCancellationRequested)
+                    throw new ObjectDisposedException(GetType().Name);
+
+                throw;
+            }
+        }
+        
+        public async Task PutRetryAsync(IEnumerable<TItem> items, CancellationToken cancellation)
+        {
+            if(_disposedCancellation.IsCancellationRequested)
+                throw new ObjectDisposedException(GetType().Name);
+            
+            var enableCancellations = new Stack<Action>();
+            LinkedListNode<QueueItem> prevNode = null;
+
+            try
+            {
+                using (var compositeCancellation =
+                    CancellationTokenSource.CreateLinkedTokenSource(_disposedCancellation, cancellation))
+                {
+                    using (await _sync.LockAsync(compositeCancellation.Token).ConfigureAwait(false))
+                    {
+                        using (await _queueSync.LockAsync(compositeCancellation.Token).ConfigureAwait(false))
                         {
                             foreach (var item in items)
                             {

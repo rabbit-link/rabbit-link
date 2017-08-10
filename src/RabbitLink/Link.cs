@@ -2,13 +2,10 @@
 
 using System;
 using System.Threading.Tasks;
-using System.Xml.Linq;
 using RabbitLink.Builders;
 using RabbitLink.Connection;
 using RabbitLink.Consumer;
-using RabbitLink.Producer;
 using RabbitLink.Topology;
-using RabbitLink.Topology.Internal;
 
 #endregion
 
@@ -19,7 +16,10 @@ namespace RabbitLink
     /// </summary>
     internal sealed class Link : ILink
     {
+        private readonly object _sync = new object();
+        
         #region Ctor
+
         /// <summary>
         /// Creates new <see cref="Link"/> instance
         /// </summary>
@@ -36,7 +36,7 @@ namespace RabbitLink
         /// <summary>
         ///     Is Link connected
         /// </summary>
-        public bool IsConnected => !_disposed && _connection.State == LinkConnectionState.Active;                              
+        public bool IsConnected => !_disposed && _connection.State == LinkConnectionState.Active;
 
         #endregion
 
@@ -46,19 +46,23 @@ namespace RabbitLink
         /// Cleaning up connection and all dependent resources
         /// </summary>
         public void Dispose()
-        {
-            Dispose(true);
-        }
+            => Dispose(true);
 
         private void Dispose(bool disposing)
         {
-            if (_disposed) return;
-            _connection.Dispose();
-            _disposed = true;
+            if (_disposed) 
+                return;
 
-            if (!disposing)
+            lock (_sync)
             {
-                GC.SuppressFinalize(this);
+                if (_disposed) 
+                    return;
+                
+                _connection.Dispose();
+                _disposed = true;
+
+                if (disposing)
+                    GC.SuppressFinalize(this);
             }
         }
 
@@ -66,13 +70,11 @@ namespace RabbitLink
         /// Finalizer
         /// </summary>
         ~Link()
-        {
-            Dispose(false);
-        }
+            => Dispose(false);
 
         #endregion
 
-        internal ILinkChannel CreateChannel( LinkStateHandler<LinkChannelState> stateHandler, TimeSpan recoveryInterval)
+        internal ILinkChannel CreateChannel(LinkStateHandler<LinkChannelState> stateHandler, TimeSpan recoveryInterval)
         {
             return new LinkChannel(_connection, stateHandler, recoveryInterval);
         }
@@ -81,9 +83,8 @@ namespace RabbitLink
         /// Initializes connection
         /// </summary>
         public void Initialize()
-        {
-            _connection.Initialize();
-        }
+            => _connection.Initialize();
+
 
         public ILinkProducerBuilder Producer => new LinkProducerBuilder(this, _configuration.RecoveryInterval);
         public ILinkTopologyBuilder Topology => new LinkTopologyBuilder(this, _configuration.RecoveryInterval);
@@ -102,7 +103,7 @@ namespace RabbitLink
             Func<ILinkTopologyConfig, Task<ILinkQueue>> topologyConfiguration,
             Func<Exception, Task> configurationError = null,
             Action<ILinkConsumerConfigurationBuilder> config = null
-            )
+        )
         {
             if (topologyConfiguration == null)
                 throw new ArgumentNullException(nameof(topologyConfiguration));
@@ -116,7 +117,7 @@ namespace RabbitLink
             config?.Invoke(configBuilder);
 
             throw new NotImplementedException();
-               
+
             //return new LinkConsumer(configBuilder.Configuration, _configuration, CreateChannel(),
             //    topologyConfiguration, configurationError);
         }

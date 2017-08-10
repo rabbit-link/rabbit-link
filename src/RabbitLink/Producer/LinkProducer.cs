@@ -2,12 +2,15 @@
 
 using System;
 using System.Collections.Generic;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using RabbitLink.Builders;
 using RabbitLink.Connection;
 using RabbitLink.Internals;
 using RabbitLink.Internals.Async;
+using RabbitLink.Internals.Channels;
+using RabbitLink.Internals.Lens;
 using RabbitLink.Logging;
 using RabbitLink.Messaging;
 using RabbitLink.Topology;
@@ -38,14 +41,14 @@ namespace RabbitLink.Producer
         private readonly ILinkLogger _logger;
 
         private readonly CompositeChannel<LinkProducerMessage> _messageQueue =
-            new CompositeChannel<LinkProducerMessage>();
+            new CompositeChannel<LinkProducerMessage>(new LensChannel<LinkProducerMessage>());
 
         private readonly object _sync = new object();
 
         private readonly LinkTopologyRunner<ILinkExchage> _topologyRunner;
 
         private ILinkExchage _exchage;
-        
+
         private volatile TaskCompletionSource<object> _readyCompletion =
             new TaskCompletionSource<object>();
 
@@ -61,11 +64,12 @@ namespace RabbitLink.Producer
             _configuration = configuration;
             _channel = channel ?? throw new ArgumentNullException(nameof(channel));
 
-            _logger = _channel.Connection.Configuration.LoggerFactory.CreateLogger($"{GetType().Name}({Id:D})") 
+            _logger = _channel.Connection.Configuration.LoggerFactory.CreateLogger($"{GetType().Name}({Id:D})")
                       ?? throw new InvalidOperationException("Cannot create logger");
 
             _topologyRunner =
                 new LinkTopologyRunner<ILinkExchage>(_logger, _configuration.TopologyHandler.Configure);
+            
             _channel.Disposed += ChannelOnDisposed;
 
             _logger.Debug($"Created(channelId: {_channel.Id})");
@@ -139,7 +143,7 @@ namespace RabbitLink.Producer
             {
                 _logger.Warning($"Exception in state handler: {ex}");
             }
-            
+
             base.OnStateChange(newState);
         }
 
@@ -170,10 +174,19 @@ namespace RabbitLink.Producer
         {
             if (info.BasicProperties.Headers.TryGetValue(CorrelationHeader, out var correlationValue))
             {
-                var correlationId = correlationValue as string;
-                if (correlationId != null)
+                try
                 {
-                    _ackQueue.Return(correlationId, info.ReplyText);
+                    var correlationId = correlationValue is string 
+                        ? (string) correlationValue 
+                        : Encoding.UTF8.GetString(correlationValue as byte[]);
+                    if (correlationId != null)
+                    {
+                        _ackQueue.Return(correlationId, info.ReplyText);
+                    }
+                }
+                catch
+                {
+                    // no-op
                 }
             }
         }
@@ -194,8 +207,8 @@ namespace RabbitLink.Producer
         {
             return _readyCompletion.Task
                 .ContinueWith(
-                    t => t.Result, 
-                    cancellation ?? CancellationToken.None, 
+                    t => t.Result,
+                    cancellation ?? CancellationToken.None,
                     TaskContinuationOptions.RunContinuationsAsynchronously,
                     TaskScheduler.Current
                 );
@@ -224,15 +237,12 @@ namespace RabbitLink.Producer
 
             var publishProperties = _configuration.PublishProperties.Extend(message.PublishProperties);
 
-            if (_configuration.SetUserId)
-                msgProperties.UserId = _channel.Connection.UserId;
-
             _configuration.MessageIdGenerator.SetMessageId(
                 message.Body,
-                msgProperties.Clone(), 
+                msgProperties.Clone(),
                 publishProperties.Clone()
             );
-            
+
             var msg = new LinkProducerMessage(message.Body, msgProperties, publishProperties, cancellation.Value);
 
             try
@@ -319,10 +329,13 @@ namespace RabbitLink.Producer
                 var properties = model.CreateBasicProperties();
                 properties.Extend(message.Properties);
 
+                if (_configuration.SetUserId)
+                    properties.UserId = _channel.Connection.UserId;
+
                 if (properties.Headers == null)
                     properties.Headers = new Dictionary<string, object>();
 
-                properties.Headers[CorrelationHeader] = corellationId;
+                properties.Headers[CorrelationHeader] = Encoding.UTF8.GetBytes(corellationId);
 
                 try
                 {
@@ -404,10 +417,7 @@ namespace RabbitLink.Producer
         }
 
         private void ChannelOnDisposed(object sender, EventArgs eventArgs)
-        {
-            _logger.Debug("Channel disposed, disposing...");
-            Dispose(true);
-        }
+            => Dispose(true);
 
         private void Dispose(bool byChannel)
         {
@@ -419,7 +429,7 @@ namespace RabbitLink.Producer
                 if (State == LinkProducerState.Disposed)
                     return;
 
-                _logger.Debug("Disposing");
+                _logger.Debug($"Disposing ( by channel: {byChannel} )");
 
                 _channel.Disposed -= ChannelOnDisposed;
                 if (!byChannel)
@@ -428,12 +438,12 @@ namespace RabbitLink.Producer
                 }
 
                 var ex = new ObjectDisposedException(GetType().Name);
-                _messageQueue.Complete(msg => msg.TrySetException(ex));
+                _messageQueue.Dispose();
 
                 ChangeState(LinkProducerState.Disposed);
 
                 _readyCompletion.TrySetException(ex);
-      
+
                 _logger.Debug("Disposed");
                 _logger.Dispose();
 
