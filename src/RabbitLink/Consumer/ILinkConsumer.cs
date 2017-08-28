@@ -1,7 +1,12 @@
 using System;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace RabbitLink.Consumer
 {
+    /// <summary>
+    /// Represents RabbitMQ message consumer
+    /// </summary>
     public interface ILinkConsumer : IDisposable
     {
         /// <summary>
@@ -32,8 +37,13 @@ namespace RabbitLink.Consumer
         bool CancelOnHaFailover { get; }
 
         /// <summary>
-        ///     Is consumer exclusive
+        /// Is consumer exclusive
         /// </summary>
         bool Exclusive { get; }
+
+        /// <summary>
+        /// Waits for consumer ready
+        /// </summary>
+        Task WaitReadyAsync(CancellationToken? cancellation = null);
     }
 }

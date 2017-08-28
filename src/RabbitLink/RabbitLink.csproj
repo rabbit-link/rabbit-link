@@ -18,17 +18,11 @@
     <TargetFramework>netstandard1.6</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Remove="Consumer\LinkConsumer.cs" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Consumer\LinkConsumer.cs" />
-  </ItemGroup>
-  <ItemGroup>
     <PackageReference Include="Microsoft.CSharp" Version="4.3.0" />
     <PackageReference Include="Newtonsoft.Json" Version="10.0.3" />
     <PackageReference Include="RabbitMQ.Client" Version="5.0.1" />
   </ItemGroup>
     <ItemGroup>
-        <Compile Remove="Consumer\LinkConsumerMessageHandler.cs"/>
+        <Compile Remove="Consumer\LinkConsumerMessageHandler.cs" />
     </ItemGroup>
 </Project>

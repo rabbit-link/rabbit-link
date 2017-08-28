@@ -6,7 +6,7 @@
     public interface ILinkMessageIdGenerator
     {
         /// <summary>
-        /// Generate MessageId
+        /// Set message id
         /// </summary>                
         void SetMessageId(byte[] body, LinkMessageProperties properties, LinkPublishProperties publishProperties);
     }

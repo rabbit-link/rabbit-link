@@ -3,11 +3,9 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using RabbitLink.Internals;
 using RabbitLink.Internals.Actions;
 using RabbitLink.Internals.Async;
 using RabbitLink.Internals.Lens;
-using RabbitLink.Internals.Queues;
 using RabbitLink.Logging;
 using RabbitMQ.Client;
 

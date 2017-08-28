@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using RabbitLink.Builders;
 using RabbitLink.Connection;
+using RabbitLink.Exceptions;
 using RabbitLink.Internals;
 using RabbitLink.Internals.Async;
 using RabbitLink.Internals.Channels;
@@ -52,6 +53,8 @@ namespace RabbitLink.Producer
         private volatile TaskCompletionSource<object> _readyCompletion =
             new TaskCompletionSource<object>();
 
+        private readonly string _appId;
+
         #endregion
 
         #region Ctor
@@ -69,7 +72,9 @@ namespace RabbitLink.Producer
 
             _topologyRunner =
                 new LinkTopologyRunner<ILinkExchage>(_logger, _configuration.TopologyHandler.Configure);
-            
+
+            _appId = _channel.Connection.Configuration.AppId;
+
             _channel.Disposed += ChannelOnDisposed;
 
             _logger.Debug($"Created(channelId: {_channel.Id})");
@@ -111,13 +116,22 @@ namespace RabbitLink.Producer
                             : LinkProducerState.Reconfiguring;
                         break;
                     case LinkProducerState.Active:
-                        await ActiveAsync(model, cancellation)
-                            .ConfigureAwait(false);
-                        newState = LinkProducerState.Reconfiguring;
+                        try
+                        {
+                            await ActiveAsync(model, cancellation)
+                                .ConfigureAwait(false);
+                            newState = LinkProducerState.Stopping;
+                        }
+                        finally
+                        {
+                            if(_readyCompletion.Task.IsCompleted)
+                                _readyCompletion = new TaskCompletionSource<object>();
+                        }
                         break;
                     case LinkProducerState.Stopping:
                         await AsyncHelper.RunAsync(Stop)
                             .ConfigureAwait(false);
+
                         if (cancellation.IsCancellationRequested)
                         {
                             ChangeState(LinkProducerState.Init);
@@ -176,8 +190,8 @@ namespace RabbitLink.Producer
             {
                 try
                 {
-                    var correlationId = correlationValue is string 
-                        ? (string) correlationValue 
+                    var correlationId = correlationValue is string
+                        ? (string)correlationValue
                         : Encoding.UTF8.GetString(correlationValue as byte[]);
                     if (correlationId != null)
                     {
@@ -225,6 +239,9 @@ namespace RabbitLink.Producer
             if (message == null)
                 throw new ArgumentNullException(nameof(message));
 
+            if(message.PublishProperties.Mandatory == true && !ConfirmsMode)
+                throw new LinkNotSupportedException("Mandatory without ConfirmsMode not supported");
+
             if (cancellation == null)
             {
                 cancellation = _configuration.PublishTimeout != TimeSpan.Zero
@@ -233,7 +250,7 @@ namespace RabbitLink.Producer
             }
 
             var msgProperties = _configuration.MessageProperties.Extend(message.Properties);
-            msgProperties.AppId = _channel.Connection.Configuration.AppId;
+            msgProperties.AppId = _appId;
 
             var publishProperties = _configuration.PublishProperties.Extend(message.PublishProperties);
 
@@ -258,9 +275,7 @@ namespace RabbitLink.Producer
         }
 
         public Guid Id { get; } = Guid.NewGuid();
-
         public bool ConfirmsMode => _configuration.ConfirmsMode;
-
         public LinkPublishProperties PublishProperties => _configuration.PublishProperties.Clone();
         public LinkMessageProperties MessageProperties => _configuration.MessageProperties.Clone();
         public TimeSpan? PublishTimeout => _configuration.PublishTimeout;
@@ -292,16 +307,9 @@ namespace RabbitLink.Producer
                 return;
             }
 
-            try
-            {
-                _readyCompletion.TrySetResult(null);
-                await AsyncHelper.RunAsync(() => ProcessQueue(model, cancellation))
-                    .ConfigureAwait(false);
-            }
-            finally
-            {
-                _readyCompletion = new TaskCompletionSource<object>();
-            }
+            _readyCompletion.TrySetResult(null);
+            await AsyncHelper.RunAsync(() => ProcessQueue(model, cancellation))
+                .ConfigureAwait(false);
         }
 
         private void ProcessQueue(IModel model, CancellationToken cancellation)

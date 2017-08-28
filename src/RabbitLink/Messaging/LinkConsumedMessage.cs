@@ -6,7 +6,6 @@ namespace RabbitLink.Messaging
     /// <summary>
     /// Message recieved from RabbitMQ
     /// </summary>
-    /// <typeparam name="T">Type of body</typeparam>
     public class LinkConsumedMessage : LinkMessage
     {
         /// <summary>

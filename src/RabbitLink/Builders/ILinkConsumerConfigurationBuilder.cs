@@ -1,50 +1,57 @@
 ﻿#region Usings
 
+using RabbitLink.Consumer;
 using System;
 
 #endregion
 
 namespace RabbitLink.Builders
 {
-    public interface ILinkConsumerConfigurationBuilder
+    /// <summary>
+    /// Builder for <see cref="ILinkConsumer"/>
+    /// </summary>
+    public interface ILinkConsumerBuilder
     {
         /// <summary>
         ///     Message prefetch count
         ///     By default use <see cref="ILinkBuilder.ConsumerPrefetchCount" /> value
         /// </summary>
-        ILinkConsumerConfigurationBuilder PrefetchCount(ushort value);
+        ILinkConsumerBuilder PrefetchCount(ushort value);
 
         /// <summary>
         ///     Auto ack on consume
         ///     By default use <see cref="ILinkBuilder.ConsumerAutoAck" /> value
         /// </summary>
-        ILinkConsumerConfigurationBuilder AutoAck(bool value);
+        ILinkConsumerBuilder AutoAck(bool value);
 
         /// <summary>
         ///     Consumer priority
         ///     See https://www.rabbitmq.com/consumer-priority.html for more details
         ///     By Default 0
         /// </summary>
-        ILinkConsumerConfigurationBuilder Priority(int value);
+        ILinkConsumerBuilder Priority(int value);
 
         /// <summary>
         ///     Is consumer must be cancelled (then it will be automatically recover) on HA failover
         ///     See https://www.rabbitmq.com/ha.html for more details
         ///     By default <see cref="ILinkBuilder.ConsumerCancelOnHaFailover" /> value
         /// </summary>
-        ILinkConsumerConfigurationBuilder CancelOnHaFailover(bool value);
+        ILinkConsumerBuilder CancelOnHaFailover(bool value);
 
         /// <summary>
         ///     Is consumer must be exclusive
         ///     By default false
         /// </summary>
-        ILinkConsumerConfigurationBuilder Exclusive(bool value);
+        ILinkConsumerBuilder Exclusive(bool value);
 
         /// <summary>
-        ///     GetMessageAsync operation timeout
-        ///     By default <see cref="ILinkBuilder.ConsumerGetMessageTimeout" /> value
-        ///     null = infinite
+        /// Error strategy
         /// </summary>
-        ILinkConsumerConfigurationBuilder GetMessageTimeout(TimeSpan? value);
+        ILinkConsumerBuilder ErrorStrategy(ILinkConsumerErrorStrategy value);
+
+        /// <summary>
+        /// Message handler
+        /// </summary>
+        ILinkConsumerBuilder Handler(LinkConsumerMessageHandlerDelegate value);
     }
 }

@@ -1,5 +1,8 @@
 ﻿namespace RabbitLink.Consumer
 {
+    /// <summary>
+    /// State of <see cref="ILinkConsumer"/>
+    /// </summary>
     public enum LinkConsumerState
     {
         /// <summary>

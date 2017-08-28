@@ -1,8 +1,15 @@
 ﻿namespace RabbitLink.Exceptions
 {
-    public class LinkMessageReturnedException : LinkException
+    /// <summary>
+    /// Fired when published message was Returned
+    /// </summary>
+    public class LinkMessageReturnedException : LinkMessagePublishException
     {
-        public LinkMessageReturnedException(string message) : base(message)
+        /// <summary>
+        /// Constructs instance with reason
+        /// </summary>
+        /// <param name="reason"></param>
+        public LinkMessageReturnedException(string reason) : base($"Message Returned: {reason}")
         {
         }
     }

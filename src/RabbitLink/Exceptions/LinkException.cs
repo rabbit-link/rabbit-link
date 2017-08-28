@@ -6,13 +6,25 @@ using System;
 
 namespace RabbitLink.Exceptions
 {
-    public class LinkException : Exception
+    /// <summary>
+    /// Base class for all exceptions in library
+    /// </summary>
+    public abstract class LinkException : Exception
     {
-        public LinkException(string message) : base(message)
+        /// <summary>
+        /// Construct instance with message
+        /// </summary>
+        /// <param name="message">message</param>
+        protected LinkException(string message) : base(message)
         {
         }
 
-        public LinkException(string message, Exception innerException) : base(message, innerException)
+        /// <summary>
+        /// Constructs instance with message and inner exception
+        /// </summary>
+        /// <param name="message">message</param>
+        /// <param name="innerException">inner exception</param>
+        protected LinkException(string message, Exception innerException) : base(message, innerException)
         {
         }
     }

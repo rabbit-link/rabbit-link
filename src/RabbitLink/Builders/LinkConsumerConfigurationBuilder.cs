@@ -1,57 +1,53 @@
 #region Usings
 
 using System;
+using RabbitLink.Consumer;
 
 #endregion
 
 namespace RabbitLink.Builders
 {
-    
-    
-    internal class LinkConsumerConfigurationBuilder :
-        ILinkConsumerConfigurationBuilder        
+    internal class LinkConsumerBuilder :
+        ILinkConsumerBuilder        
     {
-        public LinkConsumerConfigurationBuilder(LinkConfiguration linkConfiguration)
+        public ILinkConsumerBuilder PrefetchCount(ushort value)
         {
-                 
+            throw new NotImplementedException();
         }
 
-        internal LinkConsumerConfiguration Configuration { get; } = new LinkConsumerConfiguration();
-
-        public ILinkConsumerConfigurationBuilder GetMessageTimeout(TimeSpan? value)
+        public ILinkConsumerBuilder AutoAck(bool value)
         {
-            Configuration.GetMessageTimeout = value;
-            return this;
+            throw new NotImplementedException();
         }
 
-        public ILinkConsumerConfigurationBuilder PrefetchCount(ushort value)
+        public ILinkConsumerBuilder Priority(int value)
         {
-            Configuration.PrefetchCount = value;
-            return this;
+            throw new NotImplementedException();
         }
 
-        public ILinkConsumerConfigurationBuilder AutoAck(bool value)
+        public ILinkConsumerBuilder CancelOnHaFailover(bool value)
         {
-            Configuration.AutoAck = value;
-            return this;
+            throw new NotImplementedException();
         }
 
-        public ILinkConsumerConfigurationBuilder Priority(int value)
+        public ILinkConsumerBuilder Exclusive(bool value)
         {
-            Configuration.Priority = value;
-            return this;
+            throw new NotImplementedException();
         }
 
-        public ILinkConsumerConfigurationBuilder CancelOnHaFailover(bool value)
+        public ILinkConsumerBuilder ErrorStrategy(ILinkConsumerErrorStrategy value)
         {
-            Configuration.CancelOnHaFailover = value;
-            return this;
+            throw new NotImplementedException();
         }
 
-        public ILinkConsumerConfigurationBuilder Exclusive(bool value)
+        public ILinkConsumerBuilder Handler(LinkConsumerMessageHandlerDelegate value)
         {
-            Configuration.Exclusive = value;
-            return this;
-        }   
+            throw new NotImplementedException();
+        }
+
+        public ILinkConsumerBuilder GetMessageTimeout(TimeSpan? value)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

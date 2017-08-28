@@ -87,13 +87,18 @@ namespace RabbitLink.Topology.Internal
                     case LinkTopologyState.Ready:
                         _readyCompletion.TrySetResult(null);
 
-                        await cancellation.WaitCancellation()
-                            .ConfigureAwait(false);
+                        try
+                        {
+                            await cancellation.WaitCancellation()
+                                .ConfigureAwait(false);
+                        }
+                        finally
+                        {
+                            _readyCompletion =
+                                new TaskCompletionSource<object>();
+                        }
 
-                        _readyCompletion =
-                            new TaskCompletionSource<object>();
-
-                        newState = LinkTopologyState.Configuring;
+                        newState = LinkTopologyState.Stopping;
                         break;
                     case LinkTopologyState.Disposed:
 #pragma warning disable 4014
@@ -101,6 +106,12 @@ namespace RabbitLink.Topology.Internal
 #pragma warning restore 4014
                         return;
                     case LinkTopologyState.Stopping:
+                        if (cancellation.IsCancellationRequested)
+                        {
+                            ChangeState(LinkTopologyState.Init);
+                            return;
+                        }
+                        newState = LinkTopologyState.Reconfiguring;
                         return;
                     default:
                         throw new NotImplementedException($"Handler for state ${State} not implemeted");
