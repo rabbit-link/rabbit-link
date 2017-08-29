@@ -46,6 +46,7 @@ namespace Playground
         private static void TestConsumer(ILink link, CancellationToken cancellation)
         {
             var tcs = new TaskCompletionSource<object>();
+            tcs.TrySetResult(null);
 
             Console.WriteLine("--- Creating consumer ---");
             using (link.Consumer
@@ -90,6 +91,7 @@ namespace Playground
                 {
                     Mandatory = false
                 })
+                .PublishTimeout(TimeSpan.FromSeconds(10))
                 .Build()
             )
             {
@@ -104,6 +106,11 @@ namespace Playground
                     .Select(i => $"Item {i + 1}")
                     .Select(x => Encoding.UTF8.GetBytes(x))
                     .Select(x => new LinkPublishMessage(x));
+
+                for (var i = 0; i < 1000; i++)
+                {
+                    Task.Run(() => Thread.Sleep(1000));
+                }
 
                 foreach (var msg in tasks)
                 {

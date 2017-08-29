@@ -392,7 +392,12 @@ namespace RabbitLink.Consumer
                 task = Task.FromException(ex);
             }
 
-            task.ContinueWith(t => OnMessageHandledAsync(t, deliveryTag, cancellation), cancellation);
+            task.ContinueWith(
+                t => OnMessageHandledAsync(t, deliveryTag, cancellation), 
+                cancellation, 
+                TaskContinuationOptions.ExecuteSynchronously, 
+                TaskScheduler.Current
+            );
         }
 
         private async Task OnMessageHandledAsync(Task task, ulong deliveryTag, CancellationToken cancellation)
