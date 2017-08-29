@@ -24,6 +24,11 @@ namespace RabbitLink
         ILinkTopologyBuilder Topology { get; }
 
         /// <summary>
+        /// Gets new consumer builder
+        /// </summary>
+        ILinkConsumerBuilder Consumer { get; }
+
+        /// <summary>
         ///     Invokes when connected, must not perform blocking operations.
         /// </summary>
         event EventHandler Connected;

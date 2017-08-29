@@ -1,9 +1,11 @@
 #region Usings
 
 using System;
+using System.Threading.Tasks;
 using RabbitLink.Connection;
 using RabbitLink.Consumer;
 using RabbitLink.Topology;
+using RabbitLink.Topology.Internal;
 
 #endregion
 
@@ -174,6 +176,30 @@ namespace RabbitLink.Builders
                 throw new ArgumentNullException(nameof(value));
 
             return new LinkConsumerBuilder(this, channelStateHandler: value);
+        }
+
+        public ILinkConsumerBuilder Queue(LinkConsumerTopologyConfigDelegate config)
+        {
+            return Queue(config, ex => Task.CompletedTask);
+        }
+
+        public ILinkConsumerBuilder Queue(LinkConsumerTopologyConfigDelegate config, LinkTopologyErrorDelegate error)
+        {
+            if (config == null)
+                throw new ArgumentNullException(nameof(config));
+
+            if (error == null)
+                throw new ArgumentNullException(nameof(error));
+
+            return Queue(new LinkConsumerTopologyHandler(config, error));
+        }
+
+        public ILinkConsumerBuilder Queue(ILinkConsumerTopologyHandler handler)
+        {
+            if(handler == null)
+                throw new ArgumentNullException(nameof(handler));
+
+            return new LinkConsumerBuilder(this, topologyHandler: handler);
         }
     }
 }

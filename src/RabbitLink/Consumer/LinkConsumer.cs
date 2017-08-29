@@ -35,8 +35,8 @@ namespace RabbitLink.Consumer
         private readonly CompositeChannel<LinkConsumerMessageAction> _actionQueue =
             new CompositeChannel<LinkConsumerMessageAction>(new LensChannel<LinkConsumerMessageAction>());
 
-        private EventingBasicConsumer _consumer;
-        private CancellationTokenSource _consumerCancellationTokenSource;
+        private volatile EventingBasicConsumer _consumer;
+        private volatile CancellationTokenSource _consumerCancellationTokenSource;
 
         private readonly string _appId;
 
@@ -177,7 +177,7 @@ namespace RabbitLink.Consumer
                         }
                         break;
                     case LinkConsumerState.Stopping:
-                        await AsyncHelper.RunAsync(Stop)
+                        await AsyncHelper.RunAsync(() => Stop(model))
                             .ConfigureAwait(false);
 
                         if (cancellation.IsCancellationRequested)
@@ -326,11 +326,14 @@ namespace RabbitLink.Consumer
 
             cancellation.ThrowIfCancellationRequested();
 
-            var options = new Dictionary<string, object>
-                {
-                    {"x-priority", Priority},
-                    {"x-cancel-on-ha-failover", CancelOnHaFailover}
-                };
+            var options = new Dictionary<string, object>();
+
+
+            if (Priority != 0)
+                options["x-priority"] = Priority;
+
+            if (CancelOnHaFailover)
+                options["x-cancel-on-ha-failover"] = CancelOnHaFailover;
 
             model.BasicConsume(_queue.Name, AutoAck, Id.ToString("D"), false, Exclusive, options, _consumer);
         }
@@ -379,7 +382,7 @@ namespace RabbitLink.Consumer
             var cancellation = msg.Cancellation;
 
             Task task;
-            
+
             try
             {
                 task = _configuration.MessageHandler(msg);
@@ -449,12 +452,29 @@ namespace RabbitLink.Consumer
         {
             _logger.Info($"Cancelled: {e.ConsumerTag}");
             _consumerCancellationTokenSource?.Cancel();
+            _consumerCancellationTokenSource?.Dispose();
         }
 
-        private void Stop()
+        private void Stop(IModel model)
         {
-            _consumerCancellationTokenSource?.Cancel();
-            _consumerCancellationTokenSource?.Dispose();
+            if (_consumer != null)
+            {
+                try
+                {
+                    if (_consumer.IsRunning)
+                    {
+                        model.BasicCancel(_consumer.ConsumerTag);
+                    }
+                }
+                catch
+                {
+                    //No-op
+                }
+                finally
+                {
+                    _consumer = null;
+                }
+            }
         }
 
         public async Task OnConnecting(CancellationToken cancellation)

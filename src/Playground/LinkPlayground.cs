@@ -26,87 +26,54 @@ namespace Playground
                 .Uri("amqp://localhost/")
                 .AutoStart(false)
                 .LoggerFactory(new ConsoleLinkLoggerFactory())
+                .ConnectionName($"LinkPlayground: {Process.GetCurrentProcess().Id}")
                 .Build();
 
+            using(var cts = new CancellationTokenSource())
             using (link)
             {
-                // ReSharper disable once AccessToDisposedClosure
-                //Task.Factory.StartNew(() => TestPullConsumer(link));                
+                var cancellation = cts.Token;
+                var ct = Task.Factory.StartNew(() => TestConsumer(link, cancellation), TaskCreationOptions.LongRunning);                
                 TestPublish(link);
 
                 Console.WriteLine("--- Running ---");
                 Console.ReadLine();
+                cts.Cancel();
+                ct.Wait();
             }
         }
 
-//        private static async Task TestPullConsumer(ILink link)
-//        {
-//            await Task.Delay(0)
-//                .ConfigureAwait(false);
-//
-//            Console.WriteLine("--- Creating consumer ---");
-//            using (var consumer = link.CreateConsumer(
-//                async cfg =>
-//                {
-//                    var exchange = await cfg.ExchangeDeclarePassive("link.consume");
-//                    var queue = await cfg.QueueDeclare("link.consume");
-//
-//                    await cfg.Bind(queue, exchange);
-//
-//                    return queue;
-//                },
-//                config:
-//                cfg =>
-//                    cfg.AutoAck(false)
-//                        .PrefetchCount(1000)
-//                        .TypeNameMap(map => map.Set<string>("string").Set<MyClass>("woot"))
-//            ))
-//            {
-//                //Console.ReadLine();
-//
-//                ILinkMessage<object> msg;
-//                ILinkMessage<object> oldMsg = null;
-//
-//                while (true)
-//                {
-//                    try
-//                    {
-//                        msg = await consumer.GetMessageAsync();
-//
-//                        if (msg == oldMsg)
-//                        {
-//                            Console.WriteLine("--- DUPE MESSAGE ---");
-//                        }
-//
-//                        oldMsg = msg;
-//
-//                        Console.WriteLine(
-//                            "Message recieved ( {0} ):\n{1}",
-//                            msg.GetType().GenericTypeArguments[0].Name,
-//                            JsonConvert.SerializeObject(msg, Formatting.Indented)
-//                        );
-//
-//                        try
-//                        {
-//                            await msg.AckAsync()
-//                                .ConfigureAwait(false);
-//                        }
-//                        catch (Exception ex)
-//                        {
-//                            Console.WriteLine("--> Consume ACK exception: {0}", ex.ToString());
-//                        }
-//                    }
-//                    catch (ObjectDisposedException)
-//                    {
-//                        break;
-//                    }
-//                    catch (Exception ex)
-//                    {
-//                        Console.WriteLine("--> Consume exception: {0}", ex.ToString());
-//                    }
-//                }
-//            }
-//        }
+        private static void TestConsumer(ILink link, CancellationToken cancellation)
+        {
+            var tcs = new TaskCompletionSource<object>();
+
+            Console.WriteLine("--- Creating consumer ---");
+            using (var consumer = link.Consumer
+                .Queue(async cfg =>
+                {
+                    var exchange = await cfg.ExchangeDeclarePassive("link.consume");
+                    var queue = await cfg.QueueDeclare("link.consume");
+
+                    await cfg.Bind(queue, exchange);
+
+                    return queue;
+                })
+                .AutoAck(false)
+                .PrefetchCount(1000)
+                .Handler(msg =>
+                {
+                    var data = Encoding.UTF8.GetString(msg.Body);
+
+                    Console.WriteLine("---[ Message ]---\n{0}\n\n{1}\n---------", JsonConvert.SerializeObject(msg), data);
+
+                    return tcs.Task;
+                })
+                .Build()
+            )
+            {
+                cancellation.WaitHandle.WaitOne();
+            }
+        }
 
         private static void TestPublish(ILink link)
         {

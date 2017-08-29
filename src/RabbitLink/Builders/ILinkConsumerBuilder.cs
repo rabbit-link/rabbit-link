@@ -3,6 +3,7 @@
 using RabbitLink.Consumer;
 using System;
 using RabbitLink.Connection;
+using RabbitLink.Topology;
 
 #endregion
 
@@ -74,5 +75,20 @@ namespace RabbitLink.Builders
         /// Sets handler for channel state changes
         /// </summary>
         ILinkConsumerBuilder OnChannelStateChange(LinkStateHandler<LinkChannelState> value);
+
+        /// <summary>
+        /// Sets topology handler for queue
+        /// </summary>
+        ILinkConsumerBuilder Queue(LinkConsumerTopologyConfigDelegate config);
+
+        /// <summary>
+        /// Sets topology handler for queue and topology exception handler
+        /// </summary>
+        ILinkConsumerBuilder Queue(LinkConsumerTopologyConfigDelegate config, LinkTopologyErrorDelegate error);
+
+        /// <summary>
+        ///  Sets topology handler
+        /// </summary>
+        ILinkConsumerBuilder Queue(ILinkConsumerTopologyHandler handler);
     }
 }
