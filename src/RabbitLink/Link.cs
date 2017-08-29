@@ -37,7 +37,7 @@ namespace RabbitLink
 
         #region Properties
 
-        public ILinkConsumerBuilder Consumer => new LinkConsumerBuilder();
+        public ILinkConsumerBuilder Consumer => new LinkConsumerBuilder(this, _configuration.RecoveryInterval);
 
         #endregion
 

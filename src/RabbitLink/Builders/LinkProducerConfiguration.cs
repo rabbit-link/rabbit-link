@@ -1,7 +1,6 @@
 ﻿#region Usings
 
 using System;
-using RabbitLink.Connection;
 using RabbitLink.Messaging;
 using RabbitLink.Producer;
 using RabbitLink.Topology;

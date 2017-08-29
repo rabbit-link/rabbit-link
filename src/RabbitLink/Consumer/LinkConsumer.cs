@@ -353,8 +353,7 @@ namespace RabbitLink.Consumer
 
                 var msg = new LinkConsumedMessage(e.Body, props, recieveProps, token);
 
-                _configuration.MessageHandler(msg)
-                    .ContinueWith(t => OnMessageHandledAsync(t, e.DeliveryTag, token), token);
+                HandleMessageAsync(msg, e.DeliveryTag);
             }
             catch (Exception ex)
             {
@@ -375,6 +374,24 @@ namespace RabbitLink.Consumer
             }
         }
 
+        private void HandleMessageAsync(LinkConsumedMessage msg, ulong deliveryTag)
+        {
+            var cancellation = msg.Cancellation;
+
+            Task task;
+            
+            try
+            {
+                task = _configuration.MessageHandler(msg);
+            }
+            catch (Exception ex)
+            {
+                task = Task.FromException(ex);
+            }
+
+            task.ContinueWith(t => OnMessageHandledAsync(t, deliveryTag, cancellation), cancellation);
+        }
+
         private async Task OnMessageHandledAsync(Task task, ulong deliveryTag, CancellationToken cancellation)
         {
             if (AutoAck) return;
@@ -391,8 +408,11 @@ namespace RabbitLink.Consumer
                     case TaskStatus.Faulted:
                         try
                         {
-                            var strategy = _configuration.ErrorStrategy.HandleError(task.Exception.GetBaseException());
+                            var taskEx = task.Exception.GetBaseException();
+                            var strategy = _configuration.ErrorStrategy.HandleError(taskEx);
                             action = new LinkConsumerMessageAction(deliveryTag, strategy, cancellation);
+
+                            _logger.Warning($"Error in MessageHandler (ack strategy: {action.Strategy}): {taskEx}");
                         }
                         catch (Exception ex)
                         {

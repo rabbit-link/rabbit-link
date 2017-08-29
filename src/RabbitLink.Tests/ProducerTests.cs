@@ -25,7 +25,7 @@ namespace RabbitLink.Tests
                 try
                 {
                     using (var producer = link.Producer
-                        .Queue(async cfg =>
+                        .Exchange(async cfg =>
                         {
                             var ex = await cfg.ExchangeDeclare(exchangeName, LinkExchangeType.Fanout, autoDelete: true);
                             var q = await cfg.QueueDeclare(queueName, true, false, true,
@@ -80,7 +80,7 @@ namespace RabbitLink.Tests
                 try
                 {
                     using (var producer = link.Producer
-                        .Queue(async cfg =>
+                        .Exchange(async cfg =>
                         {
                             var ex = await cfg.ExchangeDeclare(exchangeName, LinkExchangeType.Fanout, autoDelete: true);
                             var q = await cfg.QueueDeclare(queueName, true, false, true,
@@ -128,7 +128,7 @@ namespace RabbitLink.Tests
                 try
                 {
                     using (var producer = link.Producer
-                        .Queue(async cfg =>
+                        .Exchange(async cfg =>
                         {
                             var ex = await cfg.ExchangeDeclare(exchangeName, LinkExchangeType.Fanout, autoDelete: true);
 
@@ -184,7 +184,7 @@ namespace RabbitLink.Tests
                 try
                 {
                     using (var producer = link.Producer
-                        .Queue(async cfg =>
+                        .Exchange(async cfg =>
                         {
                             var ex = await cfg.ExchangeDeclare(exchangeName, LinkExchangeType.Fanout, autoDelete: true);
                             var q = await cfg.QueueDeclare(queueName, false, false, true,

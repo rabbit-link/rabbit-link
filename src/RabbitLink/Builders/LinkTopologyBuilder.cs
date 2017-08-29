@@ -57,20 +57,20 @@ namespace RabbitLink.Builders
             return new LinkTopologyBuilder(this, recoveryInterval: value);
         }
 
-        public ILinkTopologyBuilder OnStateChange(LinkStateHandler<LinkTopologyState> handler)
+        public ILinkTopologyBuilder OnStateChange(LinkStateHandler<LinkTopologyState> value)
         {
-            if (handler == null)
-                throw new ArgumentNullException(nameof(handler));
+            if (value == null)
+                throw new ArgumentNullException(nameof(value));
 
-            return new LinkTopologyBuilder(this, stateHandler: handler);
+            return new LinkTopologyBuilder(this, stateHandler: value);
         }
 
-        public ILinkTopologyBuilder OnChannelStateChange(LinkStateHandler<LinkChannelState> handler)
+        public ILinkTopologyBuilder OnChannelStateChange(LinkStateHandler<LinkChannelState> value)
         {
-            if (handler == null)
-                throw new ArgumentNullException(nameof(handler));
+            if (value == null)
+                throw new ArgumentNullException(nameof(value));
 
-            return new LinkTopologyBuilder(this, channelStateHandler: handler);
+            return new LinkTopologyBuilder(this, channelStateHandler: value);
         }
 
         public ILinkTopologyBuilder Handler(ILinkTopologyHandler handler)

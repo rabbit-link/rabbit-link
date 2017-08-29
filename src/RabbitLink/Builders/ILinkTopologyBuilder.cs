@@ -21,12 +21,12 @@ namespace RabbitLink.Builders
         /// <summary>
         /// Sets handler for state changes
         /// </summary>
-        ILinkTopologyBuilder OnStateChange(LinkStateHandler<LinkTopologyState> handler);
+        ILinkTopologyBuilder OnStateChange(LinkStateHandler<LinkTopologyState> value);
         
         /// <summary>
         /// Sets handler for channel state changes
         /// </summary>
-        ILinkTopologyBuilder OnChannelStateChange(LinkStateHandler<LinkChannelState> handler);
+        ILinkTopologyBuilder OnChannelStateChange(LinkStateHandler<LinkChannelState> value);
 
         /// <summary>
         /// Sets topology handler

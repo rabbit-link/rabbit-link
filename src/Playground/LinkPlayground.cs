@@ -115,7 +115,7 @@ namespace Playground
             Console.WriteLine("--- Started ---");
 
             using (var producer = link.Producer
-                .Queue(cfg => cfg.ExchangeDeclare("link.consume", LinkExchangeType.Fanout))
+                .Exchange(cfg => cfg.ExchangeDeclare("link.consume", LinkExchangeType.Fanout))
                 .MessageProperties(new LinkMessageProperties
                 {
                     DeliveryMode = LinkDeliveryMode.Persistent

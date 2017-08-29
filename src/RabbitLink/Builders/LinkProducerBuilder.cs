@@ -136,12 +136,12 @@ namespace RabbitLink.Builders
             return new LinkProducerBuilder(this, messageIdGenerator: value);
         }
 
-        public ILinkProducerBuilder Queue(LinkProducerTopologyConfigDelegate config)
+        public ILinkProducerBuilder Exchange(LinkProducerTopologyConfigDelegate config)
         {
-            return Queue(config, ex => Task.CompletedTask);
+            return Exchange(config, ex => Task.CompletedTask);
         }
 
-        public ILinkProducerBuilder Queue(LinkProducerTopologyConfigDelegate config, LinkTopologyErrorDelegate error)
+        public ILinkProducerBuilder Exchange(LinkProducerTopologyConfigDelegate config, LinkTopologyErrorDelegate error)
         {
             if (config == null)
                 throw new ArgumentNullException(nameof(config));
@@ -149,10 +149,10 @@ namespace RabbitLink.Builders
             if (error == null)
                 throw new ArgumentNullException(nameof(error));
 
-            return Queue(new LinkProducerTopologyHandler(config, error));
+            return Exchange(new LinkProducerTopologyHandler(config, error));
         }
 
-        public ILinkProducerBuilder Queue(ILinkProducerTopologyHandler handler)
+        public ILinkProducerBuilder Exchange(ILinkProducerTopologyHandler handler)
         {
             if (handler == null)
                 throw new ArgumentNullException(nameof(handler));
@@ -160,27 +160,27 @@ namespace RabbitLink.Builders
             return new LinkProducerBuilder(this, topologyHandler: handler);
         }
 
-        public ILinkProducerBuilder OnStateChange(LinkStateHandler<LinkProducerState> handler)
+        public ILinkProducerBuilder OnStateChange(LinkStateHandler<LinkProducerState> value)
         {
-            if (handler == null)
-                throw new ArgumentNullException(nameof(handler));
+            if (value == null)
+                throw new ArgumentNullException(nameof(value));
 
-            return new LinkProducerBuilder(this, stateHandler: handler);
+            return new LinkProducerBuilder(this, stateHandler: value);
         }
 
-        public ILinkProducerBuilder OnChannelStateChange(LinkStateHandler<LinkChannelState> handler)
+        public ILinkProducerBuilder OnChannelStateChange(LinkStateHandler<LinkChannelState> value)
         {
-            if(handler == null)
-                throw new ArgumentNullException(nameof(handler));
+            if(value == null)
+                throw new ArgumentNullException(nameof(value));
             
-            return new LinkProducerBuilder(this, channelStateHandler: handler);
+            return new LinkProducerBuilder(this, channelStateHandler: value);
         }
 
 
         public ILinkProducer Build()
         {
             if (_topologyHandler == null)
-                throw new InvalidOperationException("Queue must be set");
+                throw new InvalidOperationException("Exchange must be set");
 
             var config = new LinkProducerConfiguration(
                 _publishTimeout,

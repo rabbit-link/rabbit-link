@@ -65,27 +65,27 @@ namespace RabbitLink.Builders
         /// <summary>
         /// Sets topology handler for queue
         /// </summary>
-        ILinkProducerBuilder Queue(LinkProducerTopologyConfigDelegate config);
+        ILinkProducerBuilder Exchange(LinkProducerTopologyConfigDelegate config);
 
         /// <summary>
         /// Sets topology handler for queue and topology exception handler
         /// </summary>
-        ILinkProducerBuilder Queue(LinkProducerTopologyConfigDelegate config, LinkTopologyErrorDelegate error);
+        ILinkProducerBuilder Exchange(LinkProducerTopologyConfigDelegate config, LinkTopologyErrorDelegate error);
 
         /// <summary>
         ///  Sets topology handler
         /// </summary>
-        ILinkProducerBuilder Queue(ILinkProducerTopologyHandler handler);
+        ILinkProducerBuilder Exchange(ILinkProducerTopologyHandler handler);
         
         /// <summary>
         /// Sets handler for state changes
         /// </summary>
-        ILinkProducerBuilder OnStateChange(LinkStateHandler<LinkProducerState> handler);
+        ILinkProducerBuilder OnStateChange(LinkStateHandler<LinkProducerState> value);
         
         /// <summary>
         /// Sets handler for channel state changes
         /// </summary>
-        ILinkProducerBuilder OnChannelStateChange(LinkStateHandler<LinkChannelState> handler);
+        ILinkProducerBuilder OnChannelStateChange(LinkStateHandler<LinkChannelState> value);
 
     }
 }

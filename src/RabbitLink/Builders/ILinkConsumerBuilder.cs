@@ -2,6 +2,7 @@
 
 using RabbitLink.Consumer;
 using System;
+using RabbitLink.Connection;
 
 #endregion
 
@@ -13,14 +14,25 @@ namespace RabbitLink.Builders
     public interface ILinkConsumerBuilder
     {
         /// <summary>
+        /// Builds instance of <see cref="ILinkConsumer"/>
+        /// </summary>
+        ILinkConsumer Build();
+
+        /// <summary>
+        /// Channel / Topology recovery interval
+        /// By default <see cref="ILinkBuilder.RecoveryInterval"/>
+        /// </summary>
+        ILinkConsumerBuilder RecoveryInterval(TimeSpan value);
+
+        /// <summary>
         ///     Message prefetch count
-        ///     By default use <see cref="ILinkBuilder.ConsumerPrefetchCount" /> value
+        ///     By default 0 = no limit
         /// </summary>
         ILinkConsumerBuilder PrefetchCount(ushort value);
 
         /// <summary>
         ///     Auto ack on consume
-        ///     By default use <see cref="ILinkBuilder.ConsumerAutoAck" /> value
+        ///     By default false
         /// </summary>
         ILinkConsumerBuilder AutoAck(bool value);
 
@@ -34,7 +46,6 @@ namespace RabbitLink.Builders
         /// <summary>
         ///     Is consumer must be cancelled (then it will be automatically recover) on HA failover
         ///     See https://www.rabbitmq.com/ha.html for more details
-        ///     By default <see cref="ILinkBuilder.ConsumerCancelOnHaFailover" /> value
         /// </summary>
         ILinkConsumerBuilder CancelOnHaFailover(bool value);
 
@@ -53,5 +64,15 @@ namespace RabbitLink.Builders
         /// Message handler
         /// </summary>
         ILinkConsumerBuilder Handler(LinkConsumerMessageHandlerDelegate value);
+
+        /// <summary>
+        /// Sets handler for state changes
+        /// </summary>
+        ILinkConsumerBuilder OnStateChange(LinkStateHandler<LinkConsumerState> value);
+
+        /// <summary>
+        /// Sets handler for channel state changes
+        /// </summary>
+        ILinkConsumerBuilder OnChannelStateChange(LinkStateHandler<LinkChannelState> value);
     }
 }
