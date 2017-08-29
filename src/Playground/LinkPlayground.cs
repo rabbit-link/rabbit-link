@@ -48,7 +48,7 @@ namespace Playground
             var tcs = new TaskCompletionSource<object>();
 
             Console.WriteLine("--- Creating consumer ---");
-            using (var consumer = link.Consumer
+            using (link.Consumer
                 .Queue(async cfg =>
                 {
                     var exchange = await cfg.ExchangeDeclarePassive("link.consume");
@@ -68,8 +68,7 @@ namespace Playground
 
                     return tcs.Task;
                 })
-                .Build()
-            )
+                .Build())
             {
                 cancellation.WaitHandle.WaitOne();
             }
