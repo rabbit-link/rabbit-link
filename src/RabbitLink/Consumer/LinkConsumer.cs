@@ -10,6 +10,7 @@ using RabbitLink.Internals.Channels;
 using RabbitLink.Internals.Lens;
 using RabbitLink.Logging;
 using RabbitLink.Messaging;
+using RabbitLink.Messaging.Internals;
 using RabbitLink.Topology;
 using RabbitLink.Topology.Internal;
 using RabbitMQ.Client;

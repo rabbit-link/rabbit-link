@@ -1,12 +1,12 @@
 ﻿using System;
 using System.Threading;
 
-namespace RabbitLink.Messaging
+namespace RabbitLink.Messaging.Internals
 {
     /// <summary>
-    /// Message recieved from RabbitMQ
+    /// Represents RabbitMQ message recieved from broker
     /// </summary>
-    public class LinkConsumedMessage : LinkMessage
+    internal class LinkConsumedMessage : LinkMessage, ILinkConsumedMessage
     {
         /// <summary>
         /// Creates intance
@@ -33,7 +33,7 @@ namespace RabbitLink.Messaging
         /// Recieve properties
         /// </summary>
         public LinkRecieveProperties RecieveProperties { get; }
-        
+
         /// <summary>
         /// Message cancellation
         /// </summary>

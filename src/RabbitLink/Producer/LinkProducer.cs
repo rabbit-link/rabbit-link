@@ -229,7 +229,7 @@ namespace RabbitLink.Producer
         }
 
         public Task PublishAsync(
-            LinkPublishMessage message,
+            ILinkPublishMessage message,
             CancellationToken? cancellation = null
         )
         {
@@ -254,13 +254,15 @@ namespace RabbitLink.Producer
 
             var publishProperties = _configuration.PublishProperties.Extend(message.PublishProperties);
 
+            var body = message.Body;
+
             _configuration.MessageIdGenerator.SetMessageId(
-                message.Body,
-                msgProperties.Clone(),
+                body,
+                msgProperties,
                 publishProperties.Clone()
             );
 
-            var msg = new LinkProducerMessage(message.Body, msgProperties, publishProperties, cancellation.Value);
+            var msg = new LinkProducerMessage(body, msgProperties, publishProperties, cancellation.Value);
 
             try
             {

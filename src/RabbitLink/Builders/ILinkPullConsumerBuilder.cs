@@ -1,100 +1,86 @@
-﻿#region Usings
-
-using RabbitLink.Consumer;
 using System;
 using RabbitLink.Connection;
+using RabbitLink.Consumer;
 using RabbitLink.Topology;
-
-#endregion
 
 namespace RabbitLink.Builders
 {
     /// <summary>
-    /// Builder for <see cref="ILinkConsumer"/>
+    /// Builder for <see cref="ILinkPullConsumer"/>
     /// </summary>
-    public interface ILinkConsumerBuilder
+    public interface ILinkPullConsumerBuilder
     {
-        /// <summary>
-        /// Returns builder for <see cref="ILinkPullConsumer"/>
-        /// </summary>
-        /// <returns></returns>
-        ILinkPullConsumerBuilder Pull();
-
         /// <summary>
         /// Builds instance of <see cref="ILinkConsumer"/>
         /// </summary>
-        ILinkConsumer Build();
+        ILinkPullConsumer Build();
 
         /// <summary>
         /// Channel / Topology recovery interval
         /// By default <see cref="ILinkBuilder.RecoveryInterval"/>
         /// </summary>
-        ILinkConsumerBuilder RecoveryInterval(TimeSpan value);
+        ILinkPullConsumerBuilder RecoveryInterval(TimeSpan value);
 
         /// <summary>
         ///     Message prefetch count
         ///     By default 0 = no limit
         /// </summary>
-        ILinkConsumerBuilder PrefetchCount(ushort value);
+        ILinkPullConsumerBuilder PrefetchCount(ushort value);
 
         /// <summary>
         ///     Auto ack on consume
         ///     By default false
         /// </summary>
-        ILinkConsumerBuilder AutoAck(bool value);
+        ILinkPullConsumerBuilder AutoAck(bool value);
 
         /// <summary>
         ///     Consumer priority
         ///     See https://www.rabbitmq.com/consumer-priority.html for more details
         ///     By Default 0
         /// </summary>
-        ILinkConsumerBuilder Priority(int value);
+        ILinkPullConsumerBuilder Priority(int value);
 
         /// <summary>
         ///     Is consumer must be cancelled (then it will be automatically recover) on HA failover
         ///     See https://www.rabbitmq.com/ha.html for more details
         /// </summary>
-        ILinkConsumerBuilder CancelOnHaFailover(bool value);
+        ILinkPullConsumerBuilder CancelOnHaFailover(bool value);
 
         /// <summary>
         ///     Is consumer must be exclusive
         ///     By default false
         /// </summary>
-        ILinkConsumerBuilder Exclusive(bool value);
-
-        /// <summary>
-        /// Error strategy
-        /// </summary>
-        ILinkConsumerBuilder ErrorStrategy(ILinkConsumerErrorStrategy value);
-
-        /// <summary>
-        /// Message handler
-        /// </summary>
-        ILinkConsumerBuilder Handler(LinkConsumerMessageHandlerDelegate value);
+        ILinkPullConsumerBuilder Exclusive(bool value);
 
         /// <summary>
         /// Sets handler for state changes
         /// </summary>
-        ILinkConsumerBuilder OnStateChange(LinkStateHandler<LinkConsumerState> value);
+        ILinkPullConsumerBuilder OnStateChange(LinkStateHandler<LinkConsumerState> value);
 
         /// <summary>
         /// Sets handler for channel state changes
         /// </summary>
-        ILinkConsumerBuilder OnChannelStateChange(LinkStateHandler<LinkChannelState> value);
+        ILinkPullConsumerBuilder OnChannelStateChange(LinkStateHandler<LinkChannelState> value);
 
         /// <summary>
         /// Sets topology handler for queue
         /// </summary>
-        ILinkConsumerBuilder Queue(LinkConsumerTopologyConfigDelegate config);
+        ILinkPullConsumerBuilder Queue(LinkConsumerTopologyConfigDelegate config);
 
         /// <summary>
         /// Sets topology handler for queue and topology exception handler
         /// </summary>
-        ILinkConsumerBuilder Queue(LinkConsumerTopologyConfigDelegate config, LinkTopologyErrorDelegate error);
+        ILinkPullConsumerBuilder Queue(LinkConsumerTopologyConfigDelegate config, LinkTopologyErrorDelegate error);
 
         /// <summary>
         ///  Sets topology handler
         /// </summary>
-        ILinkConsumerBuilder Queue(ILinkConsumerTopologyHandler handler);
+        ILinkPullConsumerBuilder Queue(ILinkConsumerTopologyHandler handler);
+
+        /// <summary>
+        /// Timeout <see cref="ILinkPullConsumer.GetMessage"/>
+        /// TimeSpan.Zero = infinite
+        /// </summary>
+        ILinkPullConsumerBuilder GetMessageTimeout(TimeSpan value);
     }
 }

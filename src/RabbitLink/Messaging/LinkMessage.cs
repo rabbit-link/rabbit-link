@@ -1,22 +1,18 @@
-#region Usings
-
-using System;
-
-#endregion
-
 namespace RabbitLink.Messaging
 {
     /// <summary>
-    /// Message
+    ///     Represents RabbitMQ message base
     /// </summary>
-    public class LinkMessage
+    public abstract class LinkMessage : ILinkMessage
     {
+        #region Ctor
+
         /// <summary>
-        /// Makes instance
+        ///     Makes instance
         /// </summary>
         /// <param name="body">Body value</param>
         /// <param name="properties">Message properties</param>
-        public LinkMessage(
+        protected LinkMessage(
             byte[] body,
             LinkMessageProperties properties = null
         )
@@ -25,14 +21,20 @@ namespace RabbitLink.Messaging
             Properties = properties ?? new LinkMessageProperties();
         }
 
+        #endregion
+
+        #region Properties
+
         /// <summary>
-        /// Message properties
+        ///     Message properties
         /// </summary>
         public LinkMessageProperties Properties { get; }
-        
+
         /// <summary>
-        /// Message body
+        ///     Message body
         /// </summary>
         public byte[] Body { get; }
+
+        #endregion
     }
 }

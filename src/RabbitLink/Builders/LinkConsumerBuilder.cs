@@ -89,6 +89,11 @@ namespace RabbitLink.Builders
         }
 
 
+        public ILinkPullConsumerBuilder Pull()
+        {
+            return new LinkPullConsumerBuilder(this);
+        }
+
         public ILinkConsumer Build()
         {
             if (_topologyHandler == null)
