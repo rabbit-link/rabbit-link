@@ -11,16 +11,10 @@ namespace RabbitLink.Consumer
     /// </summary>
     public interface ILinkPullConsumer : ILinkConsumer
     {
-        /// <summary>
-        /// Timeout for <see cref="GetMessage(System.Nullable{System.Threading.CancellationToken})"/> method, 
-        /// TimeSpan.Zero = infinite
-        /// </summary>
+        /// <inheritdoc/>
         TimeSpan GetMessageTimeout { get; }
 
-        /// <summary>
-        /// Gets message from internal queue, waits if none
-        /// </summary>
-        /// <param name="cancellation">If null then <see cref="GetMessageTimeout"/> will be used</param>
+        /// <inheritdoc/>
         Task<ILinkPulledMessage> GetMessageAsync(CancellationToken? cancellation = null);
     }
 }
