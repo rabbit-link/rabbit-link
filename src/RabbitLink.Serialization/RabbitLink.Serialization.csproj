@@ -6,7 +6,8 @@
     <PackageProjectUrl>https://github.com/rabbit-link/rabbit-link</PackageProjectUrl>
     <PackageLicenseUrl>https://raw.githubusercontent.com/rabbit-link/rabbit-link/master/LICENSE</PackageLicenseUrl>
     <PackageTags>RabbitMQ Messaging AMQP</PackageTags>
-    <Version>0.5-alpha</Version>
+    <VersionPrefix>0.5</VersionPrefix>
+    <VersionSuffix>alpha</VersionSuffix>
     <PackageReleaseNotes>
       * Global rewrite
     </PackageReleaseNotes>
