@@ -1,23 +1,34 @@
-﻿using System;
+﻿#region Usings
+
+using System;
 using System.Threading;
 using System.Threading.Tasks;
 using RabbitLink.Builders;
 using RabbitLink.Messaging;
 
+#endregion
+
 namespace RabbitLink.Consumer
 {
-    internal class LinkPullConsumer:ILinkPullConsumer
+    internal class LinkPullConsumer : ILinkPullConsumer
     {
+        #region Fields
+
         private readonly ILinkConsumer _consumer;
+        private readonly LinkPullConsumerQueue _queue = new LinkPullConsumerQueue();
         private readonly object _sync = new object();
         private bool _disposed;
 
+        #endregion
+
+        #region Ctor
+
         public LinkPullConsumer(ILinkConsumerBuilder consumerBuilder, TimeSpan getMessageTimeout)
         {
-            if(consumerBuilder == null)
+            if (consumerBuilder == null)
                 throw new ArgumentNullException(nameof(consumerBuilder));
 
-            if(getMessageTimeout < TimeSpan.Zero)
+            if (getMessageTimeout < TimeSpan.Zero)
                 throw new ArgumentOutOfRangeException(nameof(getMessageTimeout), "Must be greater or equal zero");
 
             GetMessageTimeout = getMessageTimeout;
@@ -29,34 +40,9 @@ namespace RabbitLink.Consumer
                 .Build();
         }
 
-        private void OnStateChanged(LinkConsumerState oldState, LinkConsumerState newsState)
-        {
-            if (newsState == LinkConsumerState.Disposed)
-            {
-                OnDispose();
-            }
-        }
+        #endregion
 
-        private Task OnMessageRecieved(ILinkConsumedMessage message)
-        {
-            throw new NotImplementedException();
-        }
-
-        private void OnDispose()
-        {
-            if(_disposed)
-                return;
-
-            lock (_sync)
-            {
-                if(_disposed)
-                    return;
-
-
-
-                _disposed = true;
-            }
-        }
+        #region ILinkPullConsumer Members
 
         public void Dispose()
             => _consumer.Dispose();
@@ -70,12 +56,58 @@ namespace RabbitLink.Consumer
 
         public Task WaitReadyAsync(CancellationToken? cancellation = null)
             => _consumer.WaitReadyAsync(cancellation);
+
         public TimeSpan GetMessageTimeout { get; }
 
-        public ILinkPulledMessage GetMessage(CancellationToken? cancellation = null)
+        public async Task<ILinkPulledMessage> GetMessageAsync(CancellationToken? cancellation = null)
         {
-            throw new NotImplementedException();
+            if (cancellation == null)
+            {
+                if (GetMessageTimeout == TimeSpan.Zero)
+                {
+                    return await _queue.TakeAsync(CancellationToken.None)
+                        .ConfigureAwait(false);
+                }
+
+                using (var cs = new CancellationTokenSource(GetMessageTimeout))
+                {
+                    return await _queue.TakeAsync(cs.Token)
+                        .ConfigureAwait(false);
+                }
+            }
+
+            return await _queue.TakeAsync(cancellation.Value)
+                .ConfigureAwait(false);
+        }
+
+        #endregion
+
+        private void OnStateChanged(LinkConsumerState oldState, LinkConsumerState newsState)
+        {
+            if (newsState == LinkConsumerState.Disposed)
+            {
+                OnDispose();
+            }
+        }
+
+        private Task OnMessageRecieved(ILinkConsumedMessage message)
+        {
+            return _queue.PutAsync(message);
+        }
+
+        private void OnDispose()
+        {
+            if (_disposed)
+                return;
+
+            lock (_sync)
+            {
+                if (_disposed)
+                    return;
+
+                _queue.Dispose();
+                _disposed = true;
+            }
         }
     }
 }
-

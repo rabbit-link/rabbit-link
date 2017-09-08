@@ -1,16 +1,24 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+﻿#region Usings
+
+using System;
 using RabbitLink.Connection;
 using RabbitLink.Consumer;
 using RabbitLink.Topology;
+
+#endregion
 
 namespace RabbitLink.Builders
 {
     internal class LinkPullConsumerBuilder : ILinkPullConsumerBuilder
     {
+        #region Fields
+
         private readonly ILinkConsumerBuilder _consumerBuilder;
         private readonly TimeSpan _getMessageTimeout;
+
+        #endregion
+
+        #region Ctor
 
         public LinkPullConsumerBuilder(
             ILinkConsumerBuilder consumerBuilder,
@@ -32,10 +40,13 @@ namespace RabbitLink.Builders
         {
         }
 
+        #endregion
+
+        #region ILinkPullConsumerBuilder Members
+
         public ILinkPullConsumer Build()
         {
-           
-            throw new NotImplementedException();
+            return new LinkPullConsumer(_consumerBuilder, _getMessageTimeout);
         }
 
         public ILinkPullConsumerBuilder RecoveryInterval(TimeSpan value)
@@ -83,7 +94,8 @@ namespace RabbitLink.Builders
             return new LinkPullConsumerBuilder(this, consumerBuilder: _consumerBuilder.Queue(config));
         }
 
-        public ILinkPullConsumerBuilder Queue(LinkConsumerTopologyConfigDelegate config, LinkTopologyErrorDelegate error)
+        public ILinkPullConsumerBuilder Queue(LinkConsumerTopologyConfigDelegate config,
+            LinkTopologyErrorDelegate error)
         {
             return new LinkPullConsumerBuilder(this, consumerBuilder: _consumerBuilder.Queue(config, error));
         }
@@ -95,10 +107,12 @@ namespace RabbitLink.Builders
 
         public ILinkPullConsumerBuilder GetMessageTimeout(TimeSpan value)
         {
-            if(value < TimeSpan.Zero)
+            if (value < TimeSpan.Zero)
                 throw new ArgumentOutOfRangeException(nameof(value), "Must be greater or equal Zero");
 
             return new LinkPullConsumerBuilder(this, getMessageTimeout: value);
         }
+
+        #endregion
     }
 }

@@ -59,15 +59,7 @@ namespace RabbitLink.Internals.Queues
                             }
 
                             item.DisableCancellation();
-                            var ret = item.Value;
-
-                            if (ret.Cancellation.IsCancellationRequested)
-                            {
-                                ret.TrySetCanceled(ret.Cancellation);
-                                continue;
-                            }
-
-                            return ret;
+                            return item.Value;
                         }
                     }
                 }
@@ -90,6 +82,8 @@ namespace RabbitLink.Internals.Queues
         {
             while (true)
             {
+                cancellation.ThrowIfCancellationRequested();
+
                 if(_disposedCancellation.IsCancellationRequested)
                     throw new ObjectDisposedException(GetType().Name);
 
@@ -98,7 +92,7 @@ namespace RabbitLink.Internals.Queues
                     using (var compositeCancellation =
                         CancellationTokenSource.CreateLinkedTokenSource(_disposedCancellation, cancellation))
                     {
-                        using (await  _sync.LockAsync(compositeCancellation.Token).ConfigureAwait(false))
+                        using (await _sync.LockAsync(compositeCancellation.Token).ConfigureAwait(false))
                         {
                             QueueItem item;
 
@@ -115,15 +109,7 @@ namespace RabbitLink.Internals.Queues
                             }
 
                             item.DisableCancellation();
-                            var ret = item.Value;
-
-                            if (ret.Cancellation.IsCancellationRequested)
-                            {
-                                ret.TrySetCanceled(ret.Cancellation);
-                                continue;
-                            }
-
-                            return ret;
+                            return item.Value;
                         }
                     }
                 }
@@ -407,7 +393,6 @@ namespace RabbitLink.Internals.Queues
 
             private readonly object _cancellationSync = new object();
             private CancellationTokenRegistration? _cancellationRegistration;
-            private CancellationTokenSource _cancellationSource;
 
             #endregion
 
@@ -436,8 +421,6 @@ namespace RabbitLink.Internals.Queues
                     if (_cancellationRegistration != null)
                         throw new InvalidOperationException("Cancellation already enabled");
 
-                    _cancellationSource = new CancellationTokenSource();
-
                     _cancellationRegistration = Value
                         .Cancellation
                         .Register(() =>
@@ -457,10 +440,6 @@ namespace RabbitLink.Internals.Queues
                 {
                     if (_cancellationRegistration == null)
                         return;
-
-                    _cancellationSource?.Cancel();
-                    _cancellationSource?.Dispose();
-                    _cancellationSource = null;
 
                     _cancellationRegistration?.Dispose();
                     _cancellationRegistration = null;

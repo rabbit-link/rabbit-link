@@ -37,6 +37,11 @@ namespace RabbitLink.Messaging.Internals
 
         #endregion
 
+        internal void Cancel()
+        {
+            _resultTcs.TrySetCanceled(Cancellation);
+        }
+
         #region ILinkPulledMessage Members
 
         public void Ack()

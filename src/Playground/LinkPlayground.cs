@@ -33,7 +33,8 @@ namespace Playground
             using (link)
             {
                 var cancellation = cts.Token;
-                var ct = Task.Factory.StartNew(() => TestConsumer(link, cancellation), TaskCreationOptions.LongRunning);                
+                //var ct = Task.Factory.StartNew(() => TestConsumer(link, cancellation), TaskCreationOptions.LongRunning);
+                var ct = Task.Factory.StartNew(() => TestPullConsumer(link, cancellation), TaskCreationOptions.LongRunning).Unwrap();
                 TestPublish(link);
 
                 Console.WriteLine("--- Running ---");
@@ -60,7 +61,7 @@ namespace Playground
                     return queue;
                 })
                 .AutoAck(false)
-                .PrefetchCount(1000)
+                .PrefetchCount(5)
                 .Handler(msg =>
                 {
                     var data = Encoding.UTF8.GetString(msg.Body);
@@ -72,6 +73,50 @@ namespace Playground
                 .Build())
             {
                 cancellation.WaitHandle.WaitOne();
+            }
+        }
+
+        private static async Task TestPullConsumer(ILink link, CancellationToken cancellation)
+        {
+            var tcs = new TaskCompletionSource<object>();
+            tcs.TrySetResult(null);
+
+            Console.WriteLine("--- Creating consumer ---");
+            using (var consumer = link.Consumer
+                .Queue(async cfg =>
+                {
+                    var exchange = await cfg.ExchangeDeclarePassive("link.consume");
+                    var queue = await cfg.QueueDeclare("link.consume");
+
+                    await cfg.Bind(queue, exchange);
+
+                    return queue;
+                })
+                .AutoAck(false)
+                .PrefetchCount(5)
+                .Pull()
+                .Build())
+            {
+                try
+                {
+                    while (true)
+                    {
+                        var msg = await consumer.GetMessageAsync(cancellation)
+                            .ConfigureAwait(false);
+
+                        var data = Encoding.UTF8.GetString(msg.Body);
+                        var props = JsonConvert.SerializeObject(msg.Properties);
+                        var rprops = JsonConvert.SerializeObject(msg.RecieveProperties);
+
+                        Console.WriteLine("---[ Message ]---\n{0}\n{1}\n\n{2}\n---------", props, rprops, data);
+
+                        msg.Ack();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine("--- Consumer Exception: {0}", ex);
+                }
             }
         }
 
@@ -109,7 +154,7 @@ namespace Playground
 
                 for (var i = 0; i < 1000; i++)
                 {
-                    Task.Run(() => Thread.Sleep(1000));
+                    //Task.Run(() => Thread.Sleep(1000));
                 }
 
                 foreach (var msg in tasks)

@@ -1,5 +1,6 @@
 using System;
 using System.Threading;
+using System.Threading.Tasks;
 using RabbitLink.Messaging;
 
 namespace RabbitLink.Consumer
@@ -20,6 +21,6 @@ namespace RabbitLink.Consumer
         /// Gets message from internal queue, waits if none
         /// </summary>
         /// <param name="cancellation">If null then <see cref="GetMessageTimeout"/> will be used</param>
-        ILinkPulledMessage GetMessage(CancellationToken? cancellation = null);
+        Task<ILinkPulledMessage> GetMessageAsync(CancellationToken? cancellation = null);
     }
 }
