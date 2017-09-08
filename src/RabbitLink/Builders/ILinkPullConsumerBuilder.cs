@@ -78,7 +78,7 @@ namespace RabbitLink.Builders
         ILinkPullConsumerBuilder Queue(ILinkConsumerTopologyHandler handler);
 
         /// <summary>
-        /// Timeout <see cref="ILinkPullConsumer.GetMessage"/>
+        /// Timeout <see cref="ILinkPullConsumer.GetMessageAsync"/>
         /// TimeSpan.Zero = infinite
         /// </summary>
         ILinkPullConsumerBuilder GetMessageTimeout(TimeSpan value);
