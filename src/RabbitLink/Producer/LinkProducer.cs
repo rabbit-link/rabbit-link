@@ -244,9 +244,15 @@ namespace RabbitLink.Producer
 
             if (cancellation == null)
             {
-                cancellation = _configuration.PublishTimeout != TimeSpan.Zero
-                    ? new CancellationTokenSource(_configuration.PublishTimeout).Token
-                    : CancellationToken.None;
+                if (_configuration.PublishTimeout != TimeSpan.Zero &&
+                    _configuration.PublishTimeout != Timeout.InfiniteTimeSpan)
+                {
+                    cancellation = new CancellationTokenSource(_configuration.PublishTimeout).Token;
+                }
+                else
+                {
+                    cancellation = CancellationToken.None;
+                }
             }
 
             var msgProperties = _configuration.MessageProperties.Extend(message.Properties);

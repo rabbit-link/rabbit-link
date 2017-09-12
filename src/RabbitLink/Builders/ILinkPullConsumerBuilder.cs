@@ -1,4 +1,5 @@
 using System;
+using System.Threading;
 using RabbitLink.Connection;
 using RabbitLink.Consumer;
 using RabbitLink.Topology;
@@ -79,8 +80,9 @@ namespace RabbitLink.Builders
 
         /// <summary>
         /// Timeout <see cref="ILinkPullConsumer.GetMessageAsync"/>
-        /// TimeSpan.Zero = infinite
+        /// By default <see cref="Timeout.InfiniteTimeSpan"/>
         /// </summary>
+        ///<param name="value">Use <see cref="Timeout.InfiniteTimeSpan"/> or <see cref="TimeSpan.Zero"/> for infinite</param>
         ILinkPullConsumerBuilder GetMessageTimeout(TimeSpan value);
     }
 }

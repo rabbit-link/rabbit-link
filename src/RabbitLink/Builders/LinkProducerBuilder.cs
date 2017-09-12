@@ -1,6 +1,7 @@
 ﻿#region Usings
 
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 using RabbitLink.Connection;
 using RabbitLink.Messaging;
@@ -46,7 +47,7 @@ namespace RabbitLink.Builders
 
             _confirmsMode = confirmsMode ?? false;
             _setUserId = setUserId ?? true;
-            _publishTimeout = publishTimeout ?? TimeSpan.Zero;
+            _publishTimeout = publishTimeout ?? Timeout.InfiniteTimeSpan;
             _recoveryInterval = recoveryInterval;
             _messageIdGenerator = messageIdGenerator ?? new LinkGuidMessageIdGenerator();
             _publishProperties = publishProperties ?? new LinkPublishProperties();
@@ -109,8 +110,8 @@ namespace RabbitLink.Builders
 
         public ILinkProducerBuilder PublishTimeout(TimeSpan value)
         {
-            if (value < TimeSpan.Zero)
-                throw new ArgumentOutOfRangeException(nameof(value), "Must be greater or equal TimeSpan.Zero");
+            if (value < TimeSpan.Zero && value != Timeout.InfiniteTimeSpan)
+                throw new ArgumentOutOfRangeException(nameof(value), "Must be greater or equal TimeSpan.Zero or equal Timeout.InfiniteTimeSpan");
 
             return new LinkProducerBuilder(this, publishTimeout: value);
         }

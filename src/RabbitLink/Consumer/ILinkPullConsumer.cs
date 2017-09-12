@@ -11,10 +11,15 @@ namespace RabbitLink.Consumer
     /// </summary>
     public interface ILinkPullConsumer : ILinkConsumer
     {
-        /// <inheritdoc/>
+        /// <summary>
+        /// Timeout for <see cref="GetMessageAsync"/>
+        /// </summary>
         TimeSpan GetMessageTimeout { get; }
 
-        /// <inheritdoc/>
+        /// <summary>
+        /// Get message from internal queue, waits if none.
+        /// </summary>
+        /// <param name="cancellation">operation cancellation</param>
         Task<ILinkPulledMessage> GetMessageAsync(CancellationToken? cancellation = null);
     }
 }

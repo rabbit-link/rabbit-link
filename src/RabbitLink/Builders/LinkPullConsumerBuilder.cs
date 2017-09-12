@@ -1,6 +1,7 @@
 ﻿#region Usings
 
 using System;
+using System.Threading;
 using RabbitLink.Connection;
 using RabbitLink.Consumer;
 using RabbitLink.Topology;
@@ -26,7 +27,7 @@ namespace RabbitLink.Builders
         )
         {
             _consumerBuilder = consumerBuilder ?? throw new ArgumentNullException(nameof(consumerBuilder));
-            _getMessageTimeout = getMessageTimeout ?? TimeSpan.Zero;
+            _getMessageTimeout = getMessageTimeout ?? Timeout.InfiniteTimeSpan;
         }
 
         private LinkPullConsumerBuilder(
@@ -107,8 +108,8 @@ namespace RabbitLink.Builders
 
         public ILinkPullConsumerBuilder GetMessageTimeout(TimeSpan value)
         {
-            if (value < TimeSpan.Zero)
-                throw new ArgumentOutOfRangeException(nameof(value), "Must be greater or equal Zero");
+            if (value < TimeSpan.Zero && value!= Timeout.InfiniteTimeSpan)
+                throw new ArgumentOutOfRangeException(nameof(value), "Must be greater or equal Zero or equal Timeout.InfiniteTimeSpan");
 
             return new LinkPullConsumerBuilder(this, getMessageTimeout: value);
         }

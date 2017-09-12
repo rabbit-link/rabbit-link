@@ -1,8 +1,7 @@
 ﻿#region Usings
 
 using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
+using System.Threading;
 using RabbitLink.Connection;
 using RabbitLink.Messaging;
 using RabbitLink.Producer;
@@ -40,8 +39,9 @@ namespace RabbitLink.Builders
 
         /// <summary>
         ///     Publish operation timeout
-        ///     By default <see cref="TimeSpan.Zero"/> = Infinite
+        ///     By default <see cref="Timeout.InfiniteTimeSpan"/>
         /// </summary>
+        /// <param name="value">Use <see cref="Timeout.InfiniteTimeSpan"/> or <see cref="TimeSpan.Zero"/> for infinite</param>
         ILinkProducerBuilder PublishTimeout(TimeSpan value);
 
         /// <summary>

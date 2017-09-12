@@ -28,8 +28,8 @@ namespace RabbitLink.Consumer
             if (consumerBuilder == null)
                 throw new ArgumentNullException(nameof(consumerBuilder));
 
-            if (getMessageTimeout < TimeSpan.Zero)
-                throw new ArgumentOutOfRangeException(nameof(getMessageTimeout), "Must be greater or equal zero");
+            if (getMessageTimeout < TimeSpan.Zero && getMessageTimeout != Timeout.InfiniteTimeSpan)
+                throw new ArgumentOutOfRangeException(nameof(getMessageTimeout), "Must be greater or equal zero or equal Timeout.InfiniteTimeSpan");
 
             GetMessageTimeout = getMessageTimeout;
 
@@ -63,7 +63,7 @@ namespace RabbitLink.Consumer
         {
             if (cancellation == null)
             {
-                if (GetMessageTimeout == TimeSpan.Zero)
+                if (GetMessageTimeout == TimeSpan.Zero || GetMessageTimeout == Timeout.InfiniteTimeSpan)
                 {
                     return await _queue.TakeAsync(CancellationToken.None)
                         .ConfigureAwait(false);

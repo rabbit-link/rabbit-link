@@ -1,7 +1,6 @@
 ﻿#region Usings
 
 using System;
-using System.Runtime.CompilerServices;
 using RabbitLink.Connection;
 using RabbitLink.Logging;
 using RabbitLink.Messaging;

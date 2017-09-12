@@ -1,6 +1,7 @@
 ﻿#region Usings
 
 using System;
+using System.Threading;
 using RabbitLink.Messaging;
 using RabbitLink.Producer;
 using RabbitLink.Topology;
@@ -26,8 +27,8 @@ namespace RabbitLink.Builders
             LinkStateHandler<LinkProducerState> stateHandler
         )
         {
-            if(publishTimeout < TimeSpan.Zero)
-                throw new ArgumentOutOfRangeException(nameof(publishTimeout), "Must be greater or equal TimeSpan.Zero");
+            if(publishTimeout < TimeSpan.Zero && publishTimeout != Timeout.InfiniteTimeSpan)
+                throw new ArgumentOutOfRangeException(nameof(publishTimeout), "Must be greater or equal TimeSpan.Zero or equal Timeout.InfiniteTimeSpan");
             
             if(recoveryInterval < TimeSpan.Zero)
                 throw new ArgumentOutOfRangeException(nameof(recoveryInterval), "Must be greater than TimeSpan.Zero");
