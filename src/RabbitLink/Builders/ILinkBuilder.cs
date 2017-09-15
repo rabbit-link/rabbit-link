@@ -64,7 +64,12 @@ namespace RabbitLink.Builders
         /// Sets handler for state changes
         /// </summary>
         ILinkBuilder OnStateChange(LinkStateHandler<LinkConnectionState> handler);
-
+        
+        /// <summary>
+        /// Use background threads for connection handling.
+        /// By default false
+        /// </summary>
+        ILinkBuilder UseBackgroundThreadsForConnection(bool value);
 
         /// <summary>
         /// Builds <see cref="ILink"/> instance

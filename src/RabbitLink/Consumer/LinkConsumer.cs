@@ -355,7 +355,7 @@ namespace RabbitLink.Consumer
 
                 var token = _consumerCancellationTokenSource.Token;
 
-                var msg = new LinkConsumedMessage(e.Body, props, recieveProps, token);
+                var msg = new LinkConsumedMessage<byte[]>(e.Body, props, recieveProps, token);
 
                 HandleMessageAsync(msg, e.DeliveryTag);
             }
@@ -378,7 +378,7 @@ namespace RabbitLink.Consumer
             }
         }
 
-        private void HandleMessageAsync(LinkConsumedMessage msg, ulong deliveryTag)
+        private void HandleMessageAsync(LinkConsumedMessage<byte[]> msg, ulong deliveryTag)
         {
             var cancellation = msg.Cancellation;
 

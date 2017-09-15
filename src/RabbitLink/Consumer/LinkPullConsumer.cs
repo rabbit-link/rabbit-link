@@ -59,7 +59,7 @@ namespace RabbitLink.Consumer
 
         public TimeSpan GetMessageTimeout { get; }
 
-        public async Task<ILinkPulledMessage> GetMessageAsync(CancellationToken? cancellation = null)
+        public async Task<ILinkPulledMessage<byte[]>> GetMessageAsync(CancellationToken? cancellation = null)
         {
             if (cancellation == null)
             {
@@ -90,7 +90,7 @@ namespace RabbitLink.Consumer
             }
         }
 
-        private Task OnMessageRecieved(ILinkConsumedMessage message)
+        private Task OnMessageRecieved(ILinkConsumedMessage<byte[]> message)
         {
             return _queue.PutAsync(message);
         }

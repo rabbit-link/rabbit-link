@@ -9,17 +9,16 @@ namespace RabbitLink.Messaging
     /// <summary>
     ///     Represents RabbitMQ message recieved from broker by <see cref="ILinkPullConsumer" />
     /// </summary>
-    public interface ILinkPulledMessage : ILinkConsumedMessage
+    public interface ILinkPulledMessage<out TBody> : ILinkConsumedMessage<TBody> where TBody: class
     {
         /// <summary>
-        ///     ACK message
+        ///     ACK message delegate
         /// </summary>
-        void Ack();
+        LinkPulledMessageAckDelegate Ack { get; }
 
         /// <summary>
-        ///     NACK message
+        ///     NACK message delegate
         /// </summary>
-        /// <param name="requeue">If true returns message to queue</param>
-        void Nack(bool requeue = false);
+        LinkPulledMessageNackDelegate Nack { get; }
     }
 }

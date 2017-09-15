@@ -228,8 +228,13 @@ namespace RabbitLink.Producer
                 );
         }
 
+        public Task PublishAsync<TBody>(ILinkPublishMessage<TBody> message, CancellationToken? cancellation = null) where TBody : class
+        {
+            throw new NotImplementedException();
+        }
+
         public Task PublishAsync(
-            ILinkPublishMessage message,
+            ILinkPublishMessage<byte[]> message,
             CancellationToken? cancellation = null
         )
         {

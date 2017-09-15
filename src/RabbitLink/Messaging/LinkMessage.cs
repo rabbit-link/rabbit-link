@@ -1,9 +1,7 @@
 namespace RabbitLink.Messaging
 {
-    /// <summary>
-    ///     Represents RabbitMQ message base
-    /// </summary>
-    public abstract class LinkMessage : ILinkMessage
+    /// <inheritdoc />
+    public abstract class LinkMessage<TBody> : ILinkMessage<TBody> where TBody:class
     {
         #region Ctor
 
@@ -13,7 +11,7 @@ namespace RabbitLink.Messaging
         /// <param name="body">Body value</param>
         /// <param name="properties">Message properties</param>
         protected LinkMessage(
-            byte[] body,
+            TBody body,
             LinkMessageProperties properties = null
         )
         {
@@ -25,15 +23,11 @@ namespace RabbitLink.Messaging
 
         #region Properties
 
-        /// <summary>
-        ///     Message properties
-        /// </summary>
+        /// <inheritdoc />
         public LinkMessageProperties Properties { get; }
 
-        /// <summary>
-        ///     Message body
-        /// </summary>
-        public byte[] Body { get; }
+        /// <inheritdoc />
+        public TBody Body { get; }
 
         #endregion
     }

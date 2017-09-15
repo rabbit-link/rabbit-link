@@ -39,7 +39,7 @@ namespace RabbitLink.Tests
                         .Build()
                     )
                     {
-                        producer.PublishAsync(new LinkPublishMessage(new byte[0]))
+                        producer.PublishAsync(new LinkPublishMessage<byte[]>(new byte[0]))
                             .GetAwaiter()
                             .GetResult();
                     }
@@ -94,7 +94,7 @@ namespace RabbitLink.Tests
                         .Build()
                     )
                     {
-                        producer.PublishAsync(new LinkPublishMessage(
+                        producer.PublishAsync(new LinkPublishMessage<byte[]>(
                                 new byte[0],
                                 publishProperties: new LinkPublishProperties {Mandatory = true}
                             ))
@@ -139,7 +139,7 @@ namespace RabbitLink.Tests
                     {
                         Assert.Throws<LinkMessageReturnedException>(() =>
                         {
-                            producer.PublishAsync(new LinkPublishMessage(
+                            producer.PublishAsync(new LinkPublishMessage<byte[]>(
                                     new byte[0],
                                     publishProperties: new LinkPublishProperties
                                     {
@@ -198,7 +198,7 @@ namespace RabbitLink.Tests
                         .Build()
                     )
                     {
-                        producer.PublishAsync(new LinkPublishMessage(new byte[0]))
+                        producer.PublishAsync(new LinkPublishMessage<byte[]>(new byte[0]))
                             .GetAwaiter()
                             .GetResult();
                     }

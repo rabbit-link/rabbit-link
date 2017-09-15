@@ -14,7 +14,8 @@ namespace RabbitLink.Builders
             TimeSpan recoveryInterval,
             ILinkLoggerFactory loggerFactory,
             string appId,
-            LinkStateHandler<LinkConnectionState> stateHandler
+            LinkStateHandler<LinkConnectionState> stateHandler,
+            bool useBackgroundThreadsForConnection
         )
         {
             if(string.IsNullOrWhiteSpace(connectionName))
@@ -37,6 +38,7 @@ namespace RabbitLink.Builders
             LoggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
             AppId = appId.Trim();
             StateHandler = stateHandler ?? throw new ArgumentNullException(nameof(stateHandler));
+            UseBackgroundThreadsForConnection = useBackgroundThreadsForConnection;
         }
         
         public string ConnectionName { get; }
@@ -47,5 +49,6 @@ namespace RabbitLink.Builders
         public ILinkLoggerFactory LoggerFactory { get; }
         public string AppId { get; }
         public LinkStateHandler<LinkConnectionState> StateHandler { get; }
+        public bool UseBackgroundThreadsForConnection { get; }
     }
 }

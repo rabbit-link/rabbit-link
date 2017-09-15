@@ -150,7 +150,7 @@ namespace Playground
                     .Range(0, 10)
                     .Select(i => $"Item {i + 1}")
                     .Select(x => Encoding.UTF8.GetBytes(x))
-                    .Select(x => new LinkPublishMessage(x));
+                    .Select(x => new LinkPublishMessage<byte[]>(x));
 
                 for (var i = 0; i < 1000; i++)
                 {

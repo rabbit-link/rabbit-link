@@ -1,9 +1,7 @@
 ﻿#region Usings
 
 using System.Threading;
-using RabbitLink.Internals;
 using RabbitLink.Internals.Channels;
-using RabbitLink.Internals.Queues;
 using RabbitLink.Messaging;
 
 #endregion

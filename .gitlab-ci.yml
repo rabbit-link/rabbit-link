@@ -14,10 +14,8 @@ build:
   script:
   - echo Restoring packages
   - dotnet restore "%cd%\src\RabbitLink"
-  - dotnet restore "%cd%\src\RabbitLink.Serialization"
   - echo Building
   - dotnet build "%cd%\src\RabbitLink" -c Release
-  - dotnet build "%cd%\src\RabbitLink.Serialization" -c Release
 
 pack:
   tags: 
@@ -34,10 +32,8 @@ pack:
   script:
   - echo Restoring packages
   - dotnet restore "%cd%\src\RabbitLink"
-  - dotnet restore "%cd%\src\RabbitLink.Serialization"
   - echo Building
   - dotnet pack "%cd%\src\RabbitLink" -c Release -o "%cd%\artifacts\"
-  #- dotnet pack "%cd%\src\RabbitLink.Serialization" -c Release -o "%cd%\artifacts\"
   artifacts:
     expire_in: 31d
     paths:

@@ -41,10 +41,12 @@ namespace RabbitLink.Consumer
             => Dispose(true);
 
         #endregion
+        
 
-        public Task PutAsync(ILinkConsumedMessage message)
+        public Task PutAsync(ILinkConsumedMessage<byte[]> message)
         {
-            var msg = new LinkPulledMessage(message);
+            var completion = new TaskCompletionSource<object>();
+            var msg = new LinkPulledMessage<byte[]>(message, completion);
 
             if (msg.Cancellation.IsCancellationRequested || _disposedCancellation.IsCancellationRequested)
                 return Task.FromCanceled(msg.Cancellation);
@@ -55,7 +57,7 @@ namespace RabbitLink.Consumer
                     .CreateLinkedTokenSource(_disposedCancellation, msg.Cancellation))
                 {
                     LinkedListNode<QueueItem> node;
-                    var qitem = new QueueItem(msg);
+                    var qitem = new QueueItem(msg, completion);
 
                     using (_sync.Lock(compositeCancellation.Token))
                     {
@@ -77,10 +79,10 @@ namespace RabbitLink.Consumer
             }
 
             _readSem.Release();
-            return msg.ResultTask;
+            return completion.Task;
         }
 
-        public async Task<LinkPulledMessage> TakeAsync(CancellationToken cancellation)
+        public async Task<LinkPulledMessage<byte[]>> TakeAsync(CancellationToken cancellation)
         {
             while (true)
             {
@@ -155,8 +157,7 @@ namespace RabbitLink.Consumer
 
                 foreach (var item in items)
                 {
-                    item.DisableCancellation();
-                    item.Message.Cancel();
+                    item.Cancel();
                 }
             }
 
@@ -181,13 +182,15 @@ namespace RabbitLink.Consumer
 
             private readonly object _cancellationSync = new object();
             private CancellationTokenRegistration? _cancellationRegistration;
+            private readonly TaskCompletionSource<object> _completion;
 
             #endregion
 
             #region Ctor
 
-            public QueueItem(LinkPulledMessage message)
+            public QueueItem(LinkPulledMessage<byte[]> message, TaskCompletionSource<object> completion)
             {
+                _completion = completion;
                 Message = message;
             }
 
@@ -195,9 +198,15 @@ namespace RabbitLink.Consumer
 
             #region Properties
 
-            public LinkPulledMessage Message { get; }
+            public LinkPulledMessage<byte[]> Message { get; }
 
             #endregion
+
+            public void Cancel()
+            {
+                DisableCancellation();
+                _completion.TrySetCanceled();
+            }
 
             public void EnableCancellation(Action cancelAction)
             {
@@ -213,7 +222,7 @@ namespace RabbitLink.Consumer
                         .Cancellation
                         .Register(() =>
                         {
-                            Message.Cancel();
+                            _completion.TrySetCanceled();
                             cancelAction?.Invoke();
                         });
                 }

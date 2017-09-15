@@ -1,9 +1,7 @@
 ﻿namespace RabbitLink.Messaging
 {
-    /// <summary>
-    ///     Represents RabbitMQ message for publish
-    /// </summary>
-    public class LinkPublishMessage : LinkMessage, ILinkPublishMessage
+    /// <inheritdoc />
+    public class LinkPublishMessage<TBody> : LinkMessage<TBody>, ILinkPublishMessage<TBody> where TBody : class
     {
         #region Ctor
 
@@ -14,7 +12,7 @@
         /// <param name="properties">Message properties</param>
         /// <param name="publishProperties">Publish properties</param>
         public LinkPublishMessage(
-            byte[] body,
+            TBody body,
             LinkMessageProperties properties = null,
             LinkPublishProperties publishProperties = null
         ) : base(
@@ -31,7 +29,7 @@
         /// <param name="message">Message instance</param>
         /// <param name="publishProperties">Publish properties</param>
         public LinkPublishMessage(
-            ILinkMessage message,
+            ILinkMessage<TBody> message,
             LinkPublishProperties publishProperties = null
         ) : this(
             message.Body,
@@ -45,9 +43,7 @@
 
         #region ILinkPublishMessage Members
 
-        /// <summary>
-        ///     Publish properties
-        /// </summary>
+        /// <inheritdoc />
         public LinkPublishProperties PublishProperties { get; }
 
         #endregion

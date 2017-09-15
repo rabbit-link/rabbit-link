@@ -18,6 +18,7 @@ namespace RabbitLink.Builders
         private readonly ILinkLoggerFactory _loggerFactory;
         private readonly string _appId;
         private readonly LinkStateHandler<LinkConnectionState> _stateHandler;
+        private readonly bool _useBackgoundsThreadsForConnection;
 
         public LinkBuilder(
             string connectionName = null,
@@ -27,7 +28,8 @@ namespace RabbitLink.Builders
             TimeSpan? recoveryInterval = null,
             ILinkLoggerFactory loggerFactory = null,
             string appId = null,
-            LinkStateHandler<LinkConnectionState> stateHandler = null
+            LinkStateHandler<LinkConnectionState> stateHandler = null,
+            bool? useBackgroundThreadsForConnection = null
         )
         {
             _connectionName = connectionName ?? "default";
@@ -38,6 +40,7 @@ namespace RabbitLink.Builders
             _loggerFactory = loggerFactory ?? new LinkNullLoggingFactory();
             _appId = appId ?? Guid.NewGuid().ToString("D");
             _stateHandler = stateHandler ?? ((old, @new) => { });
+            _useBackgoundsThreadsForConnection = useBackgroundThreadsForConnection ?? false;
         }
 
         private LinkBuilder(
@@ -49,7 +52,8 @@ namespace RabbitLink.Builders
             TimeSpan? recoveryInterval = null,
             ILinkLoggerFactory loggerFactory = null,
             string appId = null,
-            LinkStateHandler<LinkConnectionState> stateHandler = null
+            LinkStateHandler<LinkConnectionState> stateHandler = null,
+            bool? useBackgroundThreadsForConnection = null
         ) : this(
             connectionName ?? prev._connectionName,
             connectionString ?? prev._connectionString,
@@ -58,7 +62,8 @@ namespace RabbitLink.Builders
             recoveryInterval ?? prev._recoveryInterval,
             loggerFactory ?? prev._loggerFactory,
             appId ?? prev._appId,
-            stateHandler ?? prev._stateHandler
+            stateHandler ?? prev._stateHandler,
+            useBackgroundThreadsForConnection ?? prev._useBackgoundsThreadsForConnection
         )
         {
         }
@@ -132,6 +137,11 @@ namespace RabbitLink.Builders
             return new LinkBuilder(this, stateHandler: handler);
         }
 
+        public ILinkBuilder UseBackgroundThreadsForConnection(bool value)
+        {
+            return new LinkBuilder(this, useBackgroundThreadsForConnection: value);
+        }
+
         public ILink Build()
         {
             var config = new LinkConfiguration(
@@ -142,7 +152,8 @@ namespace RabbitLink.Builders
                 _recoveryInterval ?? _timeout,
                 _loggerFactory,
                 _appId,
-                _stateHandler
+                _stateHandler,
+                _useBackgoundsThreadsForConnection
             );
 
             return new Link(config);

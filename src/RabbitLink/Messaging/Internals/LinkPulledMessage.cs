@@ -1,5 +1,6 @@
 ﻿#region Usings
 
+using System;
 using System.Threading.Tasks;
 using RabbitLink.Exceptions;
 
@@ -7,19 +8,25 @@ using RabbitLink.Exceptions;
 
 namespace RabbitLink.Messaging.Internals
 {
-    internal class LinkPulledMessage : LinkConsumedMessage, ILinkPulledMessage
+    internal class LinkPulledMessage<TBody> : LinkConsumedMessage<TBody>, ILinkPulledMessage<TBody> where TBody : class
     {
-        #region Fields
+        private static LinkPulledMessageAckDelegate CreateAckDelegate(TaskCompletionSource<object> completion)
+        {
+            return () => completion.TrySetResult(null);
+        }
 
-        private readonly TaskCompletionSource<object> _resultTcs
-            = new TaskCompletionSource<object>();
-
-        #endregion
+        private static LinkPulledMessageNackDelegate CreateNackDelegate(TaskCompletionSource<object> completion)
+        {
+            return requeue => completion.TrySetException(new LinkConsumerNackException(
+                requeue, "NACKed by pulled message"
+            ));
+        }
 
         #region Ctor
 
         public LinkPulledMessage(
-            ILinkConsumedMessage message
+            ILinkConsumedMessage<TBody> message,
+            TaskCompletionSource<object> completion
         ) : base(
             message.Body,
             message.Properties,
@@ -27,35 +34,16 @@ namespace RabbitLink.Messaging.Internals
             message.Cancellation
         )
         {
+            if (completion == null)
+                throw new ArgumentNullException(nameof(completion));
+
+            Ack = CreateAckDelegate(completion);
+            Nack = CreateNackDelegate(completion);
         }
 
         #endregion
 
-        #region Properties
-
-        public Task ResultTask => _resultTcs.Task;
-
-        #endregion
-
-        internal void Cancel()
-        {
-            _resultTcs.TrySetCanceled(Cancellation);
-        }
-
-        #region ILinkPulledMessage Members
-
-        public void Ack()
-        {
-            _resultTcs.TrySetResult(null);
-        }
-
-        public void Nack(bool requeue = false)
-        {
-            _resultTcs.TrySetException(new LinkConsumerNackException(
-                requeue, $"NACKed by {nameof(ILinkPulledMessage)}"
-            ));
-        }
-
-        #endregion
+        public LinkPulledMessageAckDelegate Ack { get; }
+        public LinkPulledMessageNackDelegate Nack { get; }
     }
 }

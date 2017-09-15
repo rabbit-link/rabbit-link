@@ -20,6 +20,6 @@ namespace RabbitLink.Consumer
         /// Get message from internal queue, waits if none.
         /// </summary>
         /// <param name="cancellation">operation cancellation</param>
-        Task<ILinkPulledMessage> GetMessageAsync(CancellationToken? cancellation = null);
+        Task<ILinkPulledMessage<byte[]>> GetMessageAsync(CancellationToken? cancellation = null);
     }
 }

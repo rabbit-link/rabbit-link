@@ -6,7 +6,7 @@ namespace RabbitLink.Messaging.Internals
     /// <summary>
     /// Represents RabbitMQ message recieved from broker
     /// </summary>
-    internal class LinkConsumedMessage : LinkMessage, ILinkConsumedMessage
+    internal class LinkConsumedMessage<TBody> : LinkMessage<TBody>, ILinkConsumedMessage<TBody> where TBody : class
     {
         /// <summary>
         /// Creates intance
@@ -16,7 +16,7 @@ namespace RabbitLink.Messaging.Internals
         /// <param name="recieveProperties">Recieve properties</param>
         /// <param name="cancellation">Message cancellation</param>
         public LinkConsumedMessage(
-            byte[] body,
+            TBody body,
             LinkMessageProperties properties,
             LinkRecieveProperties recieveProperties,
             CancellationToken cancellation

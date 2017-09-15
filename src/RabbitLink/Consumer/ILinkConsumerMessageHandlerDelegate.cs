@@ -12,6 +12,6 @@ namespace RabbitLink.Consumer
     /// </summary>
     /// <returns>Task when handle</returns>
     public delegate Task LinkConsumerMessageHandlerDelegate(
-        ILinkConsumedMessage message
+        ILinkConsumedMessage<byte[]> message
     );
 }
