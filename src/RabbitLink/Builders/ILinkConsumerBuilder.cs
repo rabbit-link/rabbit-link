@@ -2,7 +2,9 @@
 
 using RabbitLink.Consumer;
 using System;
+using System.Collections.Generic;
 using RabbitLink.Connection;
+using RabbitLink.Serialization;
 using RabbitLink.Topology;
 
 #endregion
@@ -70,7 +72,13 @@ namespace RabbitLink.Builders
         /// <summary>
         /// Message handler
         /// </summary>
-        ILinkConsumerBuilder Handler(LinkConsumerMessageHandlerDelegate value);
+        /// <typeparam name="TBody">
+        /// Specify byte[] to get RAW messages.
+        /// Object to use TypeNameMapping.
+        /// Concrete type to deserialize all messages to this type.
+        /// </typeparam>
+        ILinkConsumerBuilder Handler<TBody>(LinkConsumerMessageHandlerDelegate<TBody> value)
+            where TBody : class;
 
         /// <summary>
         /// Sets handler for state changes
@@ -96,5 +104,21 @@ namespace RabbitLink.Builders
         ///  Sets topology handler
         /// </summary>
         ILinkConsumerBuilder Queue(ILinkConsumerTopologyHandler handler);
+
+        /// <summary>
+        /// Serializer for (de)serialize messages.
+        /// By default value of <see cref="ILinkBuilder.Serializer"/>
+        /// </summary>
+        ILinkConsumerBuilder Serializer(ILinkSerializer value);
+
+        /// <summary>
+        /// Assing type-name mappings for (de)serialization
+        /// </summary>
+        ILinkConsumerBuilder TypeNameMap(IDictionary<Type, string> values);
+
+        /// <summary>
+        /// Assigns type-name mappings for (de)serialization with builder
+        /// </summary>
+        ILinkConsumerBuilder TypeNameMap(Action<ILinkTypeNameMapBuilder> map);
     }
 }

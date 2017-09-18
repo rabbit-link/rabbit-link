@@ -39,6 +39,8 @@ namespace RabbitLink.Serialization
             _typeMap = typeMap;
         }
 
+        public bool IsEmpty => !_typeMap.Any() || !_nameMap.Any();
+
         public LinkTypeNameMapping Set(Type type, string name)
         {
             if (type == null)

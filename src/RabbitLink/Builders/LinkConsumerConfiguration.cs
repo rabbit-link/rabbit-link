@@ -2,6 +2,7 @@
 
 using System;
 using RabbitLink.Consumer;
+using RabbitLink.Serialization;
 using RabbitLink.Topology;
 
 #endregion
@@ -20,7 +21,7 @@ namespace RabbitLink.Builders
             ILinkConsumerTopologyHandler topologyHandler,
             LinkStateHandler<LinkConsumerState> stateHandler,
             ILinkConsumerErrorStrategy errorStrategy,
-            LinkConsumerMessageHandlerDelegate messageHandler
+            LinkConsumerMessageHandlerDelegate<byte[]> messageHandler
         )
         {
             if (recoveryInterval < TimeSpan.Zero)
@@ -43,7 +44,7 @@ namespace RabbitLink.Builders
         public bool AutoAck { get; }
         public bool CancelOnHaFailover { get; }
         public bool Exclusive { get; }
-        public LinkConsumerMessageHandlerDelegate MessageHandler { get; }
+        public LinkConsumerMessageHandlerDelegate<byte[]> MessageHandler { get; }
         public ILinkConsumerErrorStrategy ErrorStrategy { get; }
         public int Priority { get; }
         public ILinkConsumerTopologyHandler TopologyHandler { get; }

@@ -36,6 +36,7 @@ namespace RabbitLink.Builders
         (
             Link link,
             TimeSpan recoveryInterval,
+            ILinkSerializer serializer,
             TimeSpan? publishTimeout = null,
             bool? confirmsMode = null,
             bool? setUserId = null,
@@ -45,7 +46,6 @@ namespace RabbitLink.Builders
             ILinkProducerTopologyHandler topologyHandler = null,
             LinkStateHandler<LinkProducerState> stateHandler = null,
             LinkStateHandler<LinkChannelState> channelStateHandler = null,
-            ILinkSerializer serializer = null,
             LinkTypeNameMapping typeNameMapping = null
         )
         {
@@ -84,6 +84,7 @@ namespace RabbitLink.Builders
             (
                 prev._link,
                 recoveryInterval ?? prev._recoveryInterval,
+                serializer ?? prev._serializer,
                 publishTimeout ?? prev._publishTimeout,
                 confirmsMode ?? prev._confirmsMode,
                 setUserId ?? prev._setUserId,
@@ -93,7 +94,6 @@ namespace RabbitLink.Builders
                 topologyHandler ?? prev._topologyHandler,
                 stateHandler ?? prev._stateHandler,
                 channelStateHandler ?? prev._channelStateHandler,
-                serializer ?? prev._serializer,
                 typeNameMapping ?? prev._typeNameMapping
             )
         {

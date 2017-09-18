@@ -35,7 +35,7 @@ namespace RabbitLink.Consumer
 
             _consumer = consumerBuilder
                 .ErrorStrategy(new LinkConsumerDefaultErrorStrategy())
-                .Handler(OnMessageRecieved)
+                .Handler<byte[]>(OnMessageRecieved)
                 .OnStateChange(OnStateChanged)
                 .Build();
         }

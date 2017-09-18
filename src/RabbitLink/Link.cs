@@ -8,9 +8,7 @@ using RabbitLink.Connection;
 
 namespace RabbitLink
 {
-    /// <summary>
-    ///     Represents connection to RabbitMQ
-    /// </summary>
+    /// <inheritdoc />
     internal sealed class Link : ILink
     {
         #region Fields
@@ -35,48 +33,33 @@ namespace RabbitLink
 
         #endregion
 
-        #region Properties
-
-        public ILinkConsumerBuilder Consumer => new LinkConsumerBuilder(this, _configuration.RecoveryInterval);
-
-        #endregion
-
         #region ILink Members
 
-        /// <summary>
-        ///     Is Link connected
-        /// </summary>
         public bool IsConnected 
             => !_disposed && _connection.State == LinkConnectionState.Active;
 
-        /// <summary>
-        ///     Cleaning up connection and all dependent resources
-        /// </summary>
         public void Dispose() 
             => Dispose(true);
 
-        /// <summary>
-        ///     Initializes connection
-        /// </summary>
         public void Initialize() 
             => _connection.Initialize();
 
 
-        public ILinkProducerBuilder Producer => new LinkProducerBuilder(this, _configuration.RecoveryInterval);
-        public ILinkTopologyBuilder Topology => new LinkTopologyBuilder(this, _configuration.RecoveryInterval);
+        public ILinkProducerBuilder Producer => 
+            new LinkProducerBuilder(this, _configuration.RecoveryInterval, _configuration.Serializer);
+        
+        public ILinkConsumerBuilder Consumer => 
+            new LinkConsumerBuilder(this, _configuration.RecoveryInterval, _configuration.Serializer);
+        
+        public ILinkTopologyBuilder Topology => 
+            new LinkTopologyBuilder(this, _configuration.RecoveryInterval);
 
-        /// <summary>
-        ///     Invokes when connected, must not perform blocking operations.
-        /// </summary>
         public event EventHandler Connected
         {
             add => _connection.Connected += value;
             remove => _connection.Connected -= value;
         }
 
-        /// <summary>
-        ///     Invokes when disconnected, must not perform blocking operations.
-        /// </summary>
         public event EventHandler Disconnected
         {
             add => _connection.Disconnected += value;
@@ -103,9 +86,6 @@ namespace RabbitLink
             }
         }
 
-        /// <summary>
-        ///     Finalizer
-        /// </summary>
         ~Link() 
             => Dispose(false);
 

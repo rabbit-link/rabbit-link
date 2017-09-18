@@ -1,9 +1,11 @@
 #region Usings
 
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using RabbitLink.Connection;
 using RabbitLink.Consumer;
+using RabbitLink.Serialization;
 using RabbitLink.Topology;
 using RabbitLink.Topology.Internal;
 
@@ -22,24 +24,28 @@ namespace RabbitLink.Builders
         private readonly bool _exclusive;
         private readonly int _priority;
         private readonly ILinkConsumerErrorStrategy _errorStrategy;
-        private readonly LinkConsumerMessageHandlerDelegate _messageHandler;
+        private readonly LinkConsumerMessageHandlerDelegate<byte[]> _messageHandler;
         private readonly ILinkConsumerTopologyHandler _topologyHandler;
         private readonly LinkStateHandler<LinkConsumerState> _stateHandler;
         private readonly LinkStateHandler<LinkChannelState> _channelStateHandler;
+        private readonly ILinkSerializer _serializer;
+        private readonly LinkTypeNameMapping _typeNameMapping;
 
         public LinkConsumerBuilder(
             Link link,
             TimeSpan recoveryInterval,
+            ILinkSerializer serializer,
             ushort? prefetchCount = null,
             bool? autoAck = null,
             int? priority = null,
             bool? cancelOnHaFailover = null,
             bool? exclusive = null,
             ILinkConsumerErrorStrategy errorStrategy = null,
-            LinkConsumerMessageHandlerDelegate messageHandler = null,
+            LinkConsumerMessageHandlerDelegate<byte[]> messageHandler = null,
             ILinkConsumerTopologyHandler topologyHandler = null,
             LinkStateHandler<LinkConsumerState> stateHandler = null,
-            LinkStateHandler<LinkChannelState> channelStateHandler = null
+            LinkStateHandler<LinkChannelState> channelStateHandler = null,
+            LinkTypeNameMapping typeNameMapping = null
         )
         {
             _link = link ?? throw new ArgumentNullException(nameof(link));
@@ -55,6 +61,8 @@ namespace RabbitLink.Builders
             _topologyHandler = topologyHandler;
             _stateHandler = stateHandler ?? ((old, @new) => { });
             _channelStateHandler = channelStateHandler ?? ((old, @new) => { });
+            _serializer = serializer;
+            _typeNameMapping = typeNameMapping ?? new LinkTypeNameMapping();
         }
 
         private LinkConsumerBuilder(
@@ -66,14 +74,17 @@ namespace RabbitLink.Builders
             bool? cancelOnHaFailover = null,
             bool? exclusive = null,
             ILinkConsumerErrorStrategy errorStrategy = null,
-            LinkConsumerMessageHandlerDelegate messageHandler = null,
+            LinkConsumerMessageHandlerDelegate<byte[]> messageHandler = null,
             ILinkConsumerTopologyHandler topologyHandler = null,
             LinkStateHandler<LinkConsumerState> stateHandler = null,
-            LinkStateHandler<LinkChannelState> channelStateHandler = null
+            LinkStateHandler<LinkChannelState> channelStateHandler = null,
+            ILinkSerializer serializer = null,
+            LinkTypeNameMapping typeNameMapping = null
         ) : this
             (
                 prev._link,
                 recoveryInterval ?? prev._reconveryInterval,
+                serializer ?? prev._serializer,
                 prefetchCount ?? prev._prefetchCount,
                 autoAck ?? prev._autoAck,
                 priority ?? prev._priority,
@@ -83,7 +94,8 @@ namespace RabbitLink.Builders
                 messageHandler ?? prev._messageHandler,
                 topologyHandler ?? prev._topologyHandler,
                 stateHandler ?? prev._stateHandler,
-                channelStateHandler ?? prev._channelStateHandler
+                channelStateHandler ?? prev._channelStateHandler,
+                typeNameMapping ?? prev._typeNameMapping
             )
         {
         }
@@ -99,7 +111,7 @@ namespace RabbitLink.Builders
             if (_topologyHandler == null)
                 throw new InvalidOperationException("Queue must be set");
 
-            if(_messageHandler == null)
+            if (_messageHandler == null)
                 throw new InvalidOperationException("Message handler must be set");
 
             var config = new LinkConsumerConfiguration(
@@ -112,8 +124,10 @@ namespace RabbitLink.Builders
                 _topologyHandler,
                 _stateHandler, // state handler
                 _errorStrategy,
-                _messageHandler
-           );
+                _messageHandler,
+                _serializer,
+                _typeNameMapping
+            );
 
             return new LinkConsumer(config, _link.CreateChannel(_channelStateHandler, config.RecoveryInterval));
         }
@@ -148,23 +162,32 @@ namespace RabbitLink.Builders
 
         public ILinkConsumerBuilder Exclusive(bool value)
         {
-            return new LinkConsumerBuilder(this, exclusive:value);
+            return new LinkConsumerBuilder(this, exclusive: value);
         }
 
         public ILinkConsumerBuilder ErrorStrategy(ILinkConsumerErrorStrategy value)
         {
-            if(value == null)
+            if (value == null)
                 throw new ArgumentNullException(nameof(value));
 
             return new LinkConsumerBuilder(this, errorStrategy: value);
         }
 
-        public ILinkConsumerBuilder Handler(LinkConsumerMessageHandlerDelegate value)
+        public ILinkConsumerBuilder Handler<TBody>(LinkConsumerMessageHandlerDelegate<TBody> value)
+            where TBody : class
         {
             if (value == null)
                 throw new ArgumentNullException(nameof(value));
 
-            return new LinkConsumerBuilder(this, messageHandler: value);
+            if (typeof(TBody) == typeof(byte[]))
+            {
+                return new LinkConsumerBuilder(
+                    this, 
+                    messageHandler: value as LinkConsumerMessageHandlerDelegate<byte[]>
+                );
+            }
+            
+            
         }
 
         public ILinkConsumerBuilder OnStateChange(LinkStateHandler<LinkConsumerState> value)
@@ -201,10 +224,30 @@ namespace RabbitLink.Builders
 
         public ILinkConsumerBuilder Queue(ILinkConsumerTopologyHandler handler)
         {
-            if(handler == null)
+            if (handler == null)
                 throw new ArgumentNullException(nameof(handler));
 
             return new LinkConsumerBuilder(this, topologyHandler: handler);
+        }
+
+        public ILinkConsumerBuilder Serializer(ILinkSerializer value)
+        {
+            if (value == null)
+                throw new ArgumentNullException(nameof(value));
+
+            return new LinkConsumerBuilder(this, serializer: value);
+        }
+
+        public ILinkConsumerBuilder TypeNameMap(IDictionary<Type, string> values)
+            => TypeNameMap(map => map.Set(values));
+
+        public ILinkConsumerBuilder TypeNameMap(Action<ILinkTypeNameMapBuilder> map)
+        {
+            var builder = new LinkTypeNameMapBuilder(_typeNameMapping);
+
+            map?.Invoke(builder);
+
+            return new LinkConsumerBuilder(this, typeNameMapping: builder.Build());
         }
     }
 }
