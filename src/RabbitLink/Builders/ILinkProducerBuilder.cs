@@ -1,10 +1,12 @@
 ﻿#region Usings
 
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using RabbitLink.Connection;
 using RabbitLink.Messaging;
 using RabbitLink.Producer;
+using RabbitLink.Serialization;
 using RabbitLink.Topology;
 
 #endregion
@@ -87,5 +89,20 @@ namespace RabbitLink.Builders
         /// </summary>
         ILinkProducerBuilder OnChannelStateChange(LinkStateHandler<LinkChannelState> value);
 
+        /// <summary>
+        /// Serializer for (de)serialize messages.
+        /// By default value of <see cref="ILinkBuilder.Serializer"/>
+        /// </summary>
+        ILinkProducerBuilder Serializer(ILinkSerializer value);
+
+        /// <summary>
+        /// Assing type-name mappings for (de)serialization
+        /// </summary>
+        ILinkProducerBuilder TypeNameMap(IDictionary<Type, string> values);
+        
+        /// <summary>
+        /// Assigns type-name mappings for (de)serialization with builder
+        /// </summary>
+        ILinkProducerBuilder TypeNameMap(Action<ILinkTypeNameMapBuilder> map);
     }
 }

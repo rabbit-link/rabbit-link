@@ -1,6 +1,7 @@
 ﻿using System;
 using RabbitLink.Connection;
 using RabbitLink.Logging;
+using RabbitLink.Serialization;
 
 namespace RabbitLink.Builders
 {
@@ -15,7 +16,8 @@ namespace RabbitLink.Builders
             ILinkLoggerFactory loggerFactory,
             string appId,
             LinkStateHandler<LinkConnectionState> stateHandler,
-            bool useBackgroundThreadsForConnection
+            bool useBackgroundThreadsForConnection,
+            ILinkSerializer serializer
         )
         {
             if(string.IsNullOrWhiteSpace(connectionName))
@@ -39,6 +41,7 @@ namespace RabbitLink.Builders
             AppId = appId.Trim();
             StateHandler = stateHandler ?? throw new ArgumentNullException(nameof(stateHandler));
             UseBackgroundThreadsForConnection = useBackgroundThreadsForConnection;
+            Serializer = serializer;
         }
         
         public string ConnectionName { get; }
@@ -50,5 +53,6 @@ namespace RabbitLink.Builders
         public string AppId { get; }
         public LinkStateHandler<LinkConnectionState> StateHandler { get; }
         public bool UseBackgroundThreadsForConnection { get; }
+        public ILinkSerializer Serializer { get; }
     }
 }

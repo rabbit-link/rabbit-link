@@ -228,9 +228,35 @@ namespace RabbitLink.Producer
                 );
         }
 
-        public Task PublishAsync<TBody>(ILinkPublishMessage<TBody> message, CancellationToken? cancellation = null) where TBody : class
+        public Task PublishAsync<TBody>(ILinkPublishMessage<TBody> message, CancellationToken? cancellation = null) 
+            where TBody : class
         {
-            throw new NotImplementedException();
+            if (message == null)
+                throw new ArgumentNullException(nameof(message));
+
+            var props = message.Properties.Clone();
+
+            byte[] body;
+            
+            try
+            {
+                if(_configuration.Serializer == null)
+                    throw new InvalidOperationException("Serializer not set for producer");
+
+                body = _configuration.Serializer.Serialize(message.Body, props);
+            }
+            catch (Exception ex)
+            {
+                throw new LinkSerializationException(ex);
+            }
+            
+            var typeName = _configuration.TypeNameMapping.Map(typeof(TBody));
+            if (typeName != null)
+            {
+                props.Type = typeName;
+            }
+
+            return PublishAsync(new LinkPublishMessage<byte[]>(body, props, message.PublishProperties), cancellation);
         }
 
         public Task PublishAsync(
@@ -289,8 +315,6 @@ namespace RabbitLink.Producer
 
         public Guid Id { get; } = Guid.NewGuid();
         public bool ConfirmsMode => _configuration.ConfirmsMode;
-        public LinkPublishProperties PublishProperties => _configuration.PublishProperties.Clone();
-        public LinkMessageProperties MessageProperties => _configuration.MessageProperties.Clone();
         public TimeSpan? PublishTimeout => _configuration.PublishTimeout;
 
         #endregion

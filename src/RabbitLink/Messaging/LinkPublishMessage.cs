@@ -24,7 +24,7 @@
         }
 
         /// <summary>
-        ///     Creates new instance from <see cref="ILinkMessage" />
+        ///     Creates new instance from another message
         /// </summary>
         /// <param name="message">Message instance</param>
         /// <param name="publishProperties">Publish properties</param>

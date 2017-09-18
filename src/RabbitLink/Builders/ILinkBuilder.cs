@@ -4,6 +4,7 @@ using System;
 using RabbitLink.Connection;
 using RabbitLink.Logging;
 using RabbitLink.Messaging;
+using RabbitLink.Serialization;
 
 #endregion
 
@@ -70,6 +71,12 @@ namespace RabbitLink.Builders
         /// By default false
         /// </summary>
         ILinkBuilder UseBackgroundThreadsForConnection(bool value);
+
+        /// <summary>
+        /// Serializer for (de)serialize messages.
+        /// By default none
+        /// </summary>
+        ILinkBuilder Serializer(ILinkSerializer value);
 
         /// <summary>
         /// Builds <see cref="ILink"/> instance

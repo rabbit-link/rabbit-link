@@ -21,7 +21,13 @@ namespace RabbitLink.Connection
 
         #region Ctor
 
-        public LinkConnectionFactory(string name, string appId, Uri connectionString, TimeSpan timeout)
+        public LinkConnectionFactory(
+            string name, 
+            string appId, 
+            Uri connectionString, 
+            TimeSpan timeout, 
+            bool useBackgroundThreads
+        )
         {
             if (string.IsNullOrWhiteSpace(name))
                 throw new ArgumentNullException(nameof(name));
@@ -37,7 +43,7 @@ namespace RabbitLink.Connection
                 Uri = connectionString ?? throw new ArgumentNullException(nameof(connectionString)),
                 TopologyRecoveryEnabled = false,
                 AutomaticRecoveryEnabled = false,
-                UseBackgroundThreadsForIO = true,
+                UseBackgroundThreadsForIO = useBackgroundThreads,
                 RequestedConnectionTimeout = (int) timeout.TotalMilliseconds,
                 ClientProperties =
                 {

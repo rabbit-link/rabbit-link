@@ -4,6 +4,7 @@ using System;
 using System.Threading;
 using RabbitLink.Messaging;
 using RabbitLink.Producer;
+using RabbitLink.Serialization;
 using RabbitLink.Topology;
 
 #endregion
@@ -24,7 +25,9 @@ namespace RabbitLink.Builders
             LinkPublishProperties publishProperties,
             LinkMessageProperties messageProperties,
             ILinkProducerTopologyHandler topologyHandler,
-            LinkStateHandler<LinkProducerState> stateHandler
+            LinkStateHandler<LinkProducerState> stateHandler,
+            ILinkSerializer serializer,
+            LinkTypeNameMapping typeNameMapping
         )
         {
             if(publishTimeout < TimeSpan.Zero && publishTimeout != Timeout.InfiniteTimeSpan)
@@ -42,6 +45,8 @@ namespace RabbitLink.Builders
             _messageProperties = messageProperties ?? throw new ArgumentNullException(nameof(messageProperties));
             TopologyHandler = topologyHandler ?? throw new ArgumentNullException(nameof(topologyHandler));
             StateHandler = stateHandler ?? throw new ArgumentNullException(nameof(stateHandler));
+            Serializer = serializer;
+            TypeNameMapping = typeNameMapping ?? throw new ArgumentNullException(nameof(typeNameMapping));
         }
         
         public TimeSpan PublishTimeout { get; }
@@ -53,5 +58,7 @@ namespace RabbitLink.Builders
         public LinkMessageProperties MessageProperties => _messageProperties.Clone();
         public ILinkProducerTopologyHandler TopologyHandler { get; }
         public LinkStateHandler<LinkProducerState> StateHandler { get; }
+        public ILinkSerializer Serializer { get; }
+        public LinkTypeNameMapping TypeNameMapping { get; }
     }
 }

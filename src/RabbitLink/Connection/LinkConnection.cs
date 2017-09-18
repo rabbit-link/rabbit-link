@@ -54,7 +54,8 @@ namespace RabbitLink.Connection
                 _configuration.ConnectionName,
                 _configuration.AppId,
                 _configuration.ConnectionString,
-                _configuration.Timeout
+                _configuration.Timeout,
+                _configuration.UseBackgroundThreadsForConnection
             );
 
             _disposeCts = new CancellationTokenSource();

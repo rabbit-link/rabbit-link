@@ -1,11 +1,13 @@
 ﻿#region Usings
 
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using RabbitLink.Connection;
 using RabbitLink.Messaging;
 using RabbitLink.Producer;
+using RabbitLink.Serialization;
 using RabbitLink.Topology;
 using RabbitLink.Topology.Internal;
 
@@ -27,6 +29,8 @@ namespace RabbitLink.Builders
         private readonly ILinkProducerTopologyHandler _topologyHandler;
         private readonly LinkStateHandler<LinkProducerState> _stateHandler;
         private readonly LinkStateHandler<LinkChannelState> _channelStateHandler;
+        private readonly ILinkSerializer _serializer;
+        private readonly LinkTypeNameMapping _typeNameMapping;
 
         public LinkProducerBuilder
         (
@@ -40,7 +44,9 @@ namespace RabbitLink.Builders
             LinkMessageProperties messageProperties = null,
             ILinkProducerTopologyHandler topologyHandler = null,
             LinkStateHandler<LinkProducerState> stateHandler = null,
-            LinkStateHandler<LinkChannelState> channelStateHandler = null
+            LinkStateHandler<LinkChannelState> channelStateHandler = null,
+            ILinkSerializer serializer = null,
+            LinkTypeNameMapping typeNameMapping = null
         )
         {
             _link = link ?? throw new ArgumentNullException(nameof(link));
@@ -55,6 +61,8 @@ namespace RabbitLink.Builders
             _topologyHandler = topologyHandler;
             _stateHandler = stateHandler ?? ((old, @new) => { });
             _channelStateHandler = channelStateHandler ?? ((old, @new) => { });
+            _serializer = serializer;
+            _typeNameMapping = typeNameMapping ?? new LinkTypeNameMapping();
         }
 
         private LinkProducerBuilder
@@ -69,7 +77,9 @@ namespace RabbitLink.Builders
             LinkMessageProperties messageProperties = null,
             ILinkProducerTopologyHandler topologyHandler = null,
             LinkStateHandler<LinkProducerState> stateHandler = null,
-            LinkStateHandler<LinkChannelState> channelStateHandler = null
+            LinkStateHandler<LinkChannelState> channelStateHandler = null,
+            ILinkSerializer serializer = null,
+            LinkTypeNameMapping typeNameMapping = null
         ) : this
             (
                 prev._link,
@@ -82,7 +92,9 @@ namespace RabbitLink.Builders
                 messageProperties ?? prev._messageProperties.Clone(),
                 topologyHandler ?? prev._topologyHandler,
                 stateHandler ?? prev._stateHandler,
-                channelStateHandler ?? prev._channelStateHandler
+                channelStateHandler ?? prev._channelStateHandler,
+                serializer ?? prev._serializer,
+                typeNameMapping ?? prev._typeNameMapping
             )
         {
         }
@@ -177,12 +189,32 @@ namespace RabbitLink.Builders
             return new LinkProducerBuilder(this, channelStateHandler: value);
         }
 
+        public ILinkProducerBuilder Serializer(ILinkSerializer value)
+        {
+            if(value == null)
+                throw new ArgumentNullException(nameof(value));
+            
+            return new LinkProducerBuilder(this, serializer: value);
+        }
+
+        public ILinkProducerBuilder TypeNameMap(IDictionary<Type, string> values)
+            => TypeNameMap(map => map.Set(values));
+
+        public ILinkProducerBuilder TypeNameMap(Action<ILinkTypeNameMapBuilder> map)
+        {
+            var builder = new LinkTypeNameMapBuilder(_typeNameMapping);
+            
+            map?.Invoke(builder);
+            
+            return new LinkProducerBuilder(this, typeNameMapping: builder.Build());
+        }
+
 
         public ILinkProducer Build()
         {
             if (_topologyHandler == null)
                 throw new InvalidOperationException("Exchange must be set");
-
+            
             var config = new LinkProducerConfiguration(
                 _publishTimeout,
                 _recoveryInterval,
@@ -192,7 +224,9 @@ namespace RabbitLink.Builders
                 _publishProperties.Clone(),
                 _messageProperties.Clone(),
                 _topologyHandler,
-                _stateHandler
+                _stateHandler,
+                _serializer,
+                _typeNameMapping
             );
 
             return new LinkProducer(config, _link.CreateChannel(_channelStateHandler, config.RecoveryInterval));

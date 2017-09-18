@@ -3,6 +3,7 @@
 using System;
 using RabbitLink.Connection;
 using RabbitLink.Logging;
+using RabbitLink.Serialization;
 
 #endregion
 
@@ -19,6 +20,7 @@ namespace RabbitLink.Builders
         private readonly string _appId;
         private readonly LinkStateHandler<LinkConnectionState> _stateHandler;
         private readonly bool _useBackgoundsThreadsForConnection;
+        private readonly ILinkSerializer _serializer;
 
         public LinkBuilder(
             string connectionName = null,
@@ -29,7 +31,8 @@ namespace RabbitLink.Builders
             ILinkLoggerFactory loggerFactory = null,
             string appId = null,
             LinkStateHandler<LinkConnectionState> stateHandler = null,
-            bool? useBackgroundThreadsForConnection = null
+            bool? useBackgroundThreadsForConnection = null,
+            ILinkSerializer serializer = null
         )
         {
             _connectionName = connectionName ?? "default";
@@ -41,6 +44,7 @@ namespace RabbitLink.Builders
             _appId = appId ?? Guid.NewGuid().ToString("D");
             _stateHandler = stateHandler ?? ((old, @new) => { });
             _useBackgoundsThreadsForConnection = useBackgroundThreadsForConnection ?? false;
+            _serializer = serializer;
         }
 
         private LinkBuilder(
@@ -53,7 +57,8 @@ namespace RabbitLink.Builders
             ILinkLoggerFactory loggerFactory = null,
             string appId = null,
             LinkStateHandler<LinkConnectionState> stateHandler = null,
-            bool? useBackgroundThreadsForConnection = null
+            bool? useBackgroundThreadsForConnection = null,
+            ILinkSerializer serializer = null
         ) : this(
             connectionName ?? prev._connectionName,
             connectionString ?? prev._connectionString,
@@ -63,7 +68,8 @@ namespace RabbitLink.Builders
             loggerFactory ?? prev._loggerFactory,
             appId ?? prev._appId,
             stateHandler ?? prev._stateHandler,
-            useBackgroundThreadsForConnection ?? prev._useBackgoundsThreadsForConnection
+            useBackgroundThreadsForConnection ?? prev._useBackgoundsThreadsForConnection,
+            serializer ?? prev._serializer
         )
         {
         }
@@ -142,6 +148,14 @@ namespace RabbitLink.Builders
             return new LinkBuilder(this, useBackgroundThreadsForConnection: value);
         }
 
+        public ILinkBuilder Serializer(ILinkSerializer value)
+        {
+            if(value == null)
+                throw new ArgumentNullException(nameof(value));
+            
+            return new LinkBuilder(this, serializer: value);
+        }
+
         public ILink Build()
         {
             var config = new LinkConfiguration(
@@ -153,7 +167,8 @@ namespace RabbitLink.Builders
                 _loggerFactory,
                 _appId,
                 _stateHandler,
-                _useBackgoundsThreadsForConnection
+                _useBackgoundsThreadsForConnection,
+                _serializer
             );
 
             return new Link(config);

@@ -2,7 +2,7 @@
 
 namespace RabbitLink.Connection
 {
-    interface ILinkConnectionFactory
+    internal interface ILinkConnectionFactory
     {
         #region Properties
 
