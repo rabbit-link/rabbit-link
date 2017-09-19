@@ -19,7 +19,13 @@ namespace RabbitLink.Consumer
         /// <summary>
         /// Get message from internal queue, waits if none.
         /// </summary>
+        /// <typeparam name="TBody">
+        /// Byte[] for get raw message.
+        /// Object to use type name mapping.
+        /// Concrete type to deserialize all messages to it.
+        /// </typeparam>
         /// <param name="cancellation">operation cancellation</param>
-        Task<ILinkPulledMessage<byte[]>> GetMessageAsync(CancellationToken? cancellation = null);
+        Task<ILinkPulledMessage<TBody>> GetMessageAsync<TBody>(CancellationToken? cancellation = null)
+            where TBody: class;
     }
 }

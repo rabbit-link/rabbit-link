@@ -70,15 +70,29 @@ namespace RabbitLink.Builders
         ILinkConsumerBuilder ErrorStrategy(ILinkConsumerErrorStrategy value);
 
         /// <summary>
-        /// Message handler
+        /// Message handler for concrete type
         /// </summary>
-        /// <typeparam name="TBody">
-        /// Specify byte[] to get RAW messages.
-        /// Object to use TypeNameMapping.
-        /// Concrete type to deserialize all messages to this type.
-        /// </typeparam>
         ILinkConsumerBuilder Handler<TBody>(LinkConsumerMessageHandlerDelegate<TBody> value)
             where TBody : class;
+
+        /// <summary>
+        /// Raw message handler
+        /// </summary>
+        ILinkConsumerBuilder Handler(LinkConsumerMessageHandlerDelegate<byte[]> value);
+        
+        /// <summary>
+        /// Type name mapping message handler
+        /// </summary>
+        /// <param name="value">Handler delegate</param>
+        /// <param name="mapping">Type name mapping</param>
+        ILinkConsumerBuilder Handler(LinkConsumerMessageHandlerDelegate<object> value, IDictionary<Type, string> mapping);
+        
+        /// <summary>
+        /// Type name mapping message handler
+        /// </summary>
+        /// <param name="value">Handler delegate</param>
+        /// <param name="map">Type name mapping builder</param>
+        ILinkConsumerBuilder Handler(LinkConsumerMessageHandlerDelegate<object> value, Action<ILinkTypeNameMapBuilder> map);
 
         /// <summary>
         /// Sets handler for state changes
@@ -110,15 +124,5 @@ namespace RabbitLink.Builders
         /// By default value of <see cref="ILinkBuilder.Serializer"/>
         /// </summary>
         ILinkConsumerBuilder Serializer(ILinkSerializer value);
-
-        /// <summary>
-        /// Assing type-name mappings for (de)serialization
-        /// </summary>
-        ILinkConsumerBuilder TypeNameMap(IDictionary<Type, string> values);
-
-        /// <summary>
-        /// Assigns type-name mappings for (de)serialization with builder
-        /// </summary>
-        ILinkConsumerBuilder TypeNameMap(Action<ILinkTypeNameMapBuilder> map);
     }
 }

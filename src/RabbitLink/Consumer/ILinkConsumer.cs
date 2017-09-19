@@ -3,6 +3,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using RabbitLink.Serialization;
 
 #endregion
 
@@ -46,6 +47,11 @@ namespace RabbitLink.Consumer
         ///     Is consumer exclusive
         /// </summary>
         bool Exclusive { get; }
+        
+        /// <summary>
+        /// Serializer
+        /// </summary>
+        ILinkSerializer Serializer { get; }
 
         #endregion
 

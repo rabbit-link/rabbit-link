@@ -21,7 +21,8 @@ namespace RabbitLink.Builders
             ILinkConsumerTopologyHandler topologyHandler,
             LinkStateHandler<LinkConsumerState> stateHandler,
             ILinkConsumerErrorStrategy errorStrategy,
-            LinkConsumerMessageHandlerDelegate<byte[]> messageHandler
+            LinkConsumerMessageHandlerDelegate<byte[]> messageHandler,
+            ILinkSerializer serializer
         )
         {
             if (recoveryInterval < TimeSpan.Zero)
@@ -37,6 +38,7 @@ namespace RabbitLink.Builders
             ErrorStrategy = errorStrategy ?? throw new ArgumentNullException(nameof(errorStrategy));
             TopologyHandler = topologyHandler ?? throw new ArgumentNullException(nameof(topologyHandler));
             StateHandler = stateHandler ?? throw new ArgumentNullException(nameof(stateHandler));
+            Serializer = serializer;
         }
 
         public TimeSpan RecoveryInterval { get; }
@@ -49,5 +51,6 @@ namespace RabbitLink.Builders
         public int Priority { get; }
         public ILinkConsumerTopologyHandler TopologyHandler { get; }
         public LinkStateHandler<LinkConsumerState> StateHandler { get; }
+        public ILinkSerializer Serializer { get; }
     }
 }

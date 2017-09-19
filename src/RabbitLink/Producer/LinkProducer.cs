@@ -235,7 +235,6 @@ namespace RabbitLink.Producer
                 throw new ArgumentNullException(nameof(message));
 
             var props = message.Properties.Clone();
-
             byte[] body;
             
             try
@@ -254,6 +253,9 @@ namespace RabbitLink.Producer
             if (typeName != null)
             {
                 props.Type = typeName;
+            } else if (!_configuration.TypeNameMapping.IsEmpty)
+            {
+                throw new LinkTypeNameMappingException(typeof(TBody));
             }
 
             return PublishAsync(new LinkPublishMessage<byte[]>(body, props, message.PublishProperties), cancellation);

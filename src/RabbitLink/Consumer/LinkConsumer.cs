@@ -11,6 +11,7 @@ using RabbitLink.Internals.Lens;
 using RabbitLink.Logging;
 using RabbitLink.Messaging;
 using RabbitLink.Messaging.Internals;
+using RabbitLink.Serialization;
 using RabbitLink.Topology;
 using RabbitLink.Topology.Internal;
 using RabbitMQ.Client;
@@ -67,6 +68,8 @@ namespace RabbitLink.Consumer
         public int Priority => _configuration.Priority;
         public bool CancelOnHaFailover => _configuration.CancelOnHaFailover;
         public bool Exclusive => _configuration.Exclusive;
+        public ILinkSerializer Serializer => _configuration.Serializer;
+        
         public Task WaitReadyAsync(CancellationToken? cancellation = null)
         {
             return _readyCompletion.Task

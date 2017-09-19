@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using RabbitLink.Builders;
 using RabbitLink.Messaging;
+using RabbitLink.Serialization;
 
 #endregion
 
@@ -18,24 +19,31 @@ namespace RabbitLink.Consumer
         private readonly LinkPullConsumerQueue _queue = new LinkPullConsumerQueue();
         private readonly object _sync = new object();
         private bool _disposed;
+        private readonly LinkTypeNameMapping _typeNameMapping;
 
         #endregion
 
         #region Ctor
 
-        public LinkPullConsumer(ILinkConsumerBuilder consumerBuilder, TimeSpan getMessageTimeout)
+        public LinkPullConsumer(
+            ILinkConsumerBuilder consumerBuilder,
+            TimeSpan getMessageTimeout,
+            LinkTypeNameMapping typeNameMapping
+        )
         {
             if (consumerBuilder == null)
                 throw new ArgumentNullException(nameof(consumerBuilder));
 
             if (getMessageTimeout < TimeSpan.Zero && getMessageTimeout != Timeout.InfiniteTimeSpan)
-                throw new ArgumentOutOfRangeException(nameof(getMessageTimeout), "Must be greater or equal zero or equal Timeout.InfiniteTimeSpan");
+                throw new ArgumentOutOfRangeException(nameof(getMessageTimeout),
+                    "Must be greater or equal zero or equal Timeout.InfiniteTimeSpan");
 
             GetMessageTimeout = getMessageTimeout;
+            _typeNameMapping = typeNameMapping ?? throw new ArgumentNullException(nameof(typeNameMapping));
 
             _consumer = consumerBuilder
                 .ErrorStrategy(new LinkConsumerDefaultErrorStrategy())
-                .Handler<byte[]>(OnMessageRecieved)
+                .Handler(OnMessageRecieved)
                 .OnStateChange(OnStateChanged)
                 .Build();
         }
@@ -53,13 +61,41 @@ namespace RabbitLink.Consumer
         public int Priority => _consumer.Priority;
         public bool CancelOnHaFailover => _consumer.CancelOnHaFailover;
         public bool Exclusive => _consumer.Exclusive;
+        public ILinkSerializer Serializer => _consumer.Serializer;
 
         public Task WaitReadyAsync(CancellationToken? cancellation = null)
             => _consumer.WaitReadyAsync(cancellation);
 
         public TimeSpan GetMessageTimeout { get; }
 
-        public async Task<ILinkPulledMessage<byte[]>> GetMessageAsync(CancellationToken? cancellation = null)
+
+        public async Task<ILinkPulledMessage<TBody>> GetMessageAsync<TBody>(CancellationToken? cancellation = null)
+            where TBody : class
+        {
+            while (cancellation == null || !cancellation.Value.IsCancellationRequested)
+            {
+                var msg = await GetRawMessageAsync(cancellation)
+                    .ConfigureAwait(false);
+
+                if (typeof(TBody) == typeof(byte[]))
+                    return (ILinkPulledMessage<TBody>) msg;
+
+                Type bodyType = null;
+
+                if (typeof(TBody) == typeof(object))
+                {
+                    
+                }
+                else
+                {
+                    bodyType = typeof(TBody);
+                }
+            }
+            
+            throw new NotImplementedException();
+        }
+
+        private async Task<ILinkPulledMessage<byte[]>> GetRawMessageAsync(CancellationToken? cancellation = null)
         {
             if (cancellation == null)
             {

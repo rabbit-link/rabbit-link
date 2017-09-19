@@ -101,7 +101,7 @@ namespace Playground
                 {
                     while (true)
                     {
-                        var msg = await consumer.GetMessageAsync(cancellation)
+                        var msg = await consumer.GetMessageAsync<byte[]>(cancellation)
                             .ConfigureAwait(false);
 
                         var data = Encoding.UTF8.GetString(msg.Body);

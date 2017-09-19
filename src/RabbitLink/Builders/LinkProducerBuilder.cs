@@ -197,13 +197,12 @@ namespace RabbitLink.Builders
             return new LinkProducerBuilder(this, serializer: value);
         }
 
-        public ILinkProducerBuilder TypeNameMap(IDictionary<Type, string> values)
-            => TypeNameMap(map => map.Set(values));
+        public ILinkProducerBuilder TypeNameMap(IDictionary<Type, string> mapping)
+            => TypeNameMap(map => map.Set(mapping));
 
         public ILinkProducerBuilder TypeNameMap(Action<ILinkTypeNameMapBuilder> map)
         {
             var builder = new LinkTypeNameMapBuilder(_typeNameMapping);
-            
             map?.Invoke(builder);
             
             return new LinkProducerBuilder(this, typeNameMapping: builder.Build());

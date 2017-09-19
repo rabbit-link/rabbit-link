@@ -98,7 +98,7 @@ namespace RabbitLink.Builders
         /// <summary>
         /// Assing type-name mappings for (de)serialization
         /// </summary>
-        ILinkProducerBuilder TypeNameMap(IDictionary<Type, string> values);
+        ILinkProducerBuilder TypeNameMap(IDictionary<Type, string> mapping);
         
         /// <summary>
         /// Assigns type-name mappings for (de)serialization with builder

@@ -1,7 +1,9 @@
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using RabbitLink.Connection;
 using RabbitLink.Consumer;
+using RabbitLink.Serialization;
 using RabbitLink.Topology;
 
 namespace RabbitLink.Builders
@@ -84,5 +86,21 @@ namespace RabbitLink.Builders
         /// </summary>
         ///<param name="value">Use <see cref="Timeout.InfiniteTimeSpan"/> or <see cref="TimeSpan.Zero"/> for infinite</param>
         ILinkPullConsumerBuilder GetMessageTimeout(TimeSpan value);
+        
+        // <summary>
+        /// Serializer for (de)serialize messages.
+        /// By default value of <see cref="ILinkBuilder.Serializer"/>
+        /// </summary>
+        ILinkPullConsumerBuilder Serializer(ILinkSerializer value);
+
+        /// <summary>
+        /// Assing type-name mappings for (de)serialization
+        /// </summary>
+        ILinkPullConsumerBuilder TypeNameMap(IDictionary<Type, string> mapping);
+
+        /// <summary>
+        /// Assigns type-name mappings for (de)serialization with builder
+        /// </summary>
+        ILinkPullConsumerBuilder TypeNameMap(Action<ILinkTypeNameMapBuilder> map);
     }
 }

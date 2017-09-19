@@ -1,9 +1,11 @@
 ﻿#region Usings
 
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using RabbitLink.Connection;
 using RabbitLink.Consumer;
+using RabbitLink.Serialization;
 using RabbitLink.Topology;
 
 #endregion
@@ -16,6 +18,7 @@ namespace RabbitLink.Builders
 
         private readonly ILinkConsumerBuilder _consumerBuilder;
         private readonly TimeSpan _getMessageTimeout;
+        private readonly LinkTypeNameMapping _typeNameMapping;
 
         #endregion
 
@@ -23,20 +26,24 @@ namespace RabbitLink.Builders
 
         public LinkPullConsumerBuilder(
             ILinkConsumerBuilder consumerBuilder,
-            TimeSpan? getMessageTimeout = null
+            TimeSpan? getMessageTimeout = null,
+            LinkTypeNameMapping typeNameMapping = null
         )
         {
             _consumerBuilder = consumerBuilder ?? throw new ArgumentNullException(nameof(consumerBuilder));
             _getMessageTimeout = getMessageTimeout ?? Timeout.InfiniteTimeSpan;
+            _typeNameMapping = typeNameMapping ?? new LinkTypeNameMapping();
         }
 
         private LinkPullConsumerBuilder(
             LinkPullConsumerBuilder prev,
             ILinkConsumerBuilder consumerBuilder = null,
-            TimeSpan? getMessageTimeout = null
+            TimeSpan? getMessageTimeout = null,
+            LinkTypeNameMapping typeNameMapping = null
         ) : this(
             consumerBuilder ?? prev._consumerBuilder,
-            getMessageTimeout ?? prev._getMessageTimeout
+            getMessageTimeout ?? prev._getMessageTimeout,
+            typeNameMapping ?? prev._typeNameMapping
         )
         {
         }
@@ -47,7 +54,7 @@ namespace RabbitLink.Builders
 
         public ILinkPullConsumer Build()
         {
-            return new LinkPullConsumer(_consumerBuilder, _getMessageTimeout);
+            return new LinkPullConsumer(_consumerBuilder, _getMessageTimeout, _typeNameMapping);
         }
 
         public ILinkPullConsumerBuilder RecoveryInterval(TimeSpan value)
@@ -112,6 +119,20 @@ namespace RabbitLink.Builders
                 throw new ArgumentOutOfRangeException(nameof(value), "Must be greater or equal Zero or equal Timeout.InfiniteTimeSpan");
 
             return new LinkPullConsumerBuilder(this, getMessageTimeout: value);
+        }
+
+        public ILinkPullConsumerBuilder Serializer(ILinkSerializer value)
+            => new LinkPullConsumerBuilder(this, consumerBuilder: _consumerBuilder.Serializer(value));
+
+        public ILinkPullConsumerBuilder TypeNameMap(IDictionary<Type, string> mapping)
+            => TypeNameMap(map => map.Set(mapping));
+
+        public ILinkPullConsumerBuilder TypeNameMap(Action<ILinkTypeNameMapBuilder> map)
+        {
+            var builder = new LinkTypeNameMapBuilder(_typeNameMapping);
+            map?.Invoke(builder);
+            
+            return new LinkPullConsumerBuilder(this, typeNameMapping: builder.Build());
         }
 
         #endregion

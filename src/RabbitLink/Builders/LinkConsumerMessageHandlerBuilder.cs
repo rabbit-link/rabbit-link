@@ -10,51 +10,103 @@ namespace RabbitLink.Builders
 {
     internal class LinkConsumerMessageHandlerBuilder
     {
-        private static LinkConsumerMessageHandlerDelegate<byte[]> GetDeserializingHandler(
-            Type type,
-            Func<ILinkConsumedMessage<object>, Task> onMessage
+        public delegate LinkConsumerMessageHandlerDelegate<byte[]> HandlerFactory(
+            ILinkSerializer serializer
+        );
+
+        private static LinkConsumerMessageHandlerBuilder Create(
+            LinkConsumerMessageHandlerDelegate<byte[]> onMessage
         )
+            => new LinkConsumerMessageHandlerBuilder(
+                serializer => onMessage,
+                false
+            );
+
+        public static LinkConsumerMessageHandlerBuilder Create<TBody>(
+            LinkConsumerMessageHandlerDelegate<TBody> onMessage
+        ) where TBody : class
         {
-            return (message, serializer) =>
-            {
-                object body;
-                var props = message.Properties.Clone();
+            if (typeof(TBody) == typeof(byte[]) || typeof(TBody) == typeof(object))
+                throw new ArgumentException("Type of TBody must be concrete and not equal byte[]");
 
-                try
+            return new LinkConsumerMessageHandlerBuilder(
+                serializer => msg =>
                 {
-                    body = serializer.Deserialize(type, message.Body, props);
-                }
-                catch (Exception ex)
-                {
-                    throw new LinkDeserializationException(message, type, ex);
-                }
+                    TBody body;
+                    var props = msg.Properties.Clone();
 
-                var concreteMessage = LinkMessageFactory.ConstructConsumedMessage(
-                    type,
-                    body,
-                    props,
-                    message.RecieveProperties,
-                    message.Cancellation
-                );
+                    try
+                    {
+                        body = serializer.Deserialize<TBody>(msg.Body, props);
+                    }
+                    catch (Exception ex)
+                    {
+                        var sException = new LinkDeserializationException(msg, typeof(TBody), ex);
+                        return Task.FromException(sException);
+                    }
 
-                return onMessage(concreteMessage);
-            };
+                    var concreteMsg = new LinkConsumedMessage<TBody>(
+                        body,
+                        props,
+                        msg.RecieveProperties,
+                        msg.Cancellation
+                    );
+
+                    return onMessage(concreteMsg);
+                },
+                true
+            );
         }
 
-        
-        public LinkConsumerMessageHandlerBuilder()
-        {
-            
-        }
-
-        public LinkConsumerMessageHandlerDelegate<byte[]> Build(
-            ILinkSerializer serializer, 
+        public static LinkConsumerMessageHandlerBuilder Create(
+            LinkConsumerMessageHandlerDelegate<object> onMessage,
             LinkTypeNameMapping mapping
         )
+            => new LinkConsumerMessageHandlerBuilder(
+                serializer => msg =>
+                {
+                    object body;
+                    var props = msg.Properties.Clone();
+
+                    var typeName = props.Type;
+
+                    if (string.IsNullOrWhiteSpace(typeName))
+                        return Task.FromException(new LinkTypeNameMappingException());
+
+                    typeName = typeName.Trim();
+                    var bodyType = mapping.Map(typeName);
+
+                    if (bodyType == null)
+                        return Task.FromException(new LinkTypeNameMappingException(typeName));
+
+                    try
+                    {
+                        body = serializer.Deserialize(bodyType, msg.Body, props);
+                    }
+                    catch (Exception ex)
+                    {
+                        var sException = new LinkDeserializationException(msg, bodyType, ex);
+                        return Task.FromException(sException);
+                    }
+
+                    var concreteMsg = LinkMessageFactory
+                        .ConstructConsumedMessage(bodyType, body, props, msg.RecieveProperties, msg.Cancellation);
+
+                    return onMessage(concreteMsg);
+                },
+                true
+            );
+
+        private LinkConsumerMessageHandlerBuilder(
+            HandlerFactory factory,
+            bool serializer
+        )
         {
-            
+            Factory = factory ?? throw new ArgumentNullException(nameof(factory));
+            Serializer = serializer;
         }
-        
-        
+
+        public bool Serializer { get; }
+        public HandlerFactory Factory { get; }
     }
 }
