@@ -17,12 +17,6 @@ namespace RabbitLink.Builders
     public interface ILinkConsumerBuilder
     {
         /// <summary>
-        /// Returns builder for <see cref="ILinkPullConsumer"/>
-        /// </summary>
-        /// <returns></returns>
-        ILinkPullConsumerBuilder Pull();
-
-        /// <summary>
         /// Builds instance of <see cref="ILinkConsumer"/>
         /// </summary>
         ILinkConsumer Build();

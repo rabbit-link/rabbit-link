@@ -14,7 +14,7 @@ namespace RabbitLink.Builders
             ILinkSerializer serializer
         );
 
-        private static LinkConsumerMessageHandlerBuilder Create(
+        public static LinkConsumerMessageHandlerBuilder Create(
             LinkConsumerMessageHandlerDelegate<byte[]> onMessage
         )
             => new LinkConsumerMessageHandlerBuilder(
@@ -71,13 +71,13 @@ namespace RabbitLink.Builders
                     var typeName = props.Type;
 
                     if (string.IsNullOrWhiteSpace(typeName))
-                        return Task.FromException(new LinkTypeNameMappingException());
+                        return Task.FromException(new LinkCosumerTypeNameMappingException());
 
                     typeName = typeName.Trim();
                     var bodyType = mapping.Map(typeName);
 
                     if (bodyType == null)
-                        return Task.FromException(new LinkTypeNameMappingException(typeName));
+                        return Task.FromException(new LinkCosumerTypeNameMappingException(typeName));
 
                     try
                     {

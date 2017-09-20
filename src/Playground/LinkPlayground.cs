@@ -82,7 +82,7 @@ namespace Playground
             tcs.TrySetResult(null);
 
             Console.WriteLine("--- Creating consumer ---");
-            using (var consumer = link.Consumer
+            using (var consumer = link.PullConsumer
                 .Queue(async cfg =>
                 {
                     var exchange = await cfg.ExchangeDeclarePassive("link.consume");
@@ -94,7 +94,6 @@ namespace Playground
                 })
                 .AutoAck(false)
                 .PrefetchCount(5)
-                .Pull()
                 .Build())
             {
                 try

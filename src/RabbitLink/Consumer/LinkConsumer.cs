@@ -423,8 +423,6 @@ namespace RabbitLink.Consumer
                             var taskEx = task.Exception.GetBaseException();
                             var strategy = _configuration.ErrorStrategy.HandleError(taskEx);
                             action = new LinkConsumerMessageAction(deliveryTag, strategy, cancellation);
-
-                            _logger.Warning($"Error in MessageHandler (ack strategy: {action.Strategy}): {taskEx}");
                         }
                         catch (Exception ex)
                         {

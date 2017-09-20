@@ -21,7 +21,7 @@ namespace RabbitLink.Consumer
         /// </summary>
         /// <typeparam name="TBody">
         /// Byte[] for get raw message.
-        /// Object to use type name mapping.
+        /// Object to use type name mapping, if mapping not found then Byte[] will be returned.
         /// Concrete type to deserialize all messages to it.
         /// </typeparam>
         /// <param name="cancellation">operation cancellation</param>

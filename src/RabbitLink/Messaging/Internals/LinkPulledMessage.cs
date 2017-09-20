@@ -41,6 +41,21 @@ namespace RabbitLink.Messaging.Internals
             Nack = CreateNackDelegate(completion);
         }
 
+        public LinkPulledMessage(
+            LinkPulledMessage<byte[]> message,
+            TBody body,
+            LinkMessageProperties properties
+        ) : base(
+            body,
+            properties,
+            message.RecieveProperties,
+            message.Cancellation
+        )
+        {
+            Ack = message.Ack;
+            Nack = message.Nack;
+        }
+
         #endregion
 
         public LinkPulledMessageAckDelegate Ack { get; }

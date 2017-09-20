@@ -4,7 +4,9 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using RabbitLink.Builders;
+using RabbitLink.Exceptions;
 using RabbitLink.Messaging;
+using RabbitLink.Messaging.Internals;
 using RabbitLink.Serialization;
 
 #endregion
@@ -72,30 +74,50 @@ namespace RabbitLink.Consumer
         public async Task<ILinkPulledMessage<TBody>> GetMessageAsync<TBody>(CancellationToken? cancellation = null)
             where TBody : class
         {
-            while (cancellation == null || !cancellation.Value.IsCancellationRequested)
+            if (typeof(TBody) == typeof(object) && _typeNameMapping.IsEmpty)
+                throw new InvalidOperationException("Type name mapping is empty");
+
+            var msg = await GetRawMessageAsync(cancellation)
+                .ConfigureAwait(false);
+
+            if (typeof(TBody) == typeof(byte[]))
+                return (ILinkPulledMessage<TBody>) msg;
+
+            Type bodyType = null;
+            if (typeof(TBody) == typeof(object))
             {
-                var msg = await GetRawMessageAsync(cancellation)
-                    .ConfigureAwait(false);
+                var typeName = msg.Properties.Type;
+                if (string.IsNullOrWhiteSpace(typeName))
+                    throw new LinkPullCosumerTypeNameMappingException(msg);
 
-                if (typeof(TBody) == typeof(byte[]))
-                    return (ILinkPulledMessage<TBody>) msg;
+                bodyType = _typeNameMapping.Map(typeName.Trim());
+                if (bodyType == null)
+                    throw new LinkPullCosumerTypeNameMappingException(msg, typeName);
+            }
+            else
+            {
+                bodyType = typeof(TBody);
+            }
 
-                Type bodyType = null;
+            TBody body;
+            var props = msg.Properties.Clone();
 
-                if (typeof(TBody) == typeof(object))
-                {
-                    
-                }
-                else
-                {
-                    bodyType = typeof(TBody);
-                }
+            try
+            {
+                body = (TBody) _consumer.Serializer.Deserialize(bodyType, msg.Body, props);
+            }
+            catch (Exception ex)
+            {
+                throw new LinkPullConsumerDeserializationException(msg, bodyType, ex);
             }
             
-            throw new NotImplementedException();
+            var concreteMsg = LinkMessageFactory
+                .ConstructPulledMessage(bodyType, msg, body, props);
+
+            return (ILinkPulledMessage<TBody>) concreteMsg;
         }
 
-        private async Task<ILinkPulledMessage<byte[]>> GetRawMessageAsync(CancellationToken? cancellation = null)
+        private async Task<LinkPulledMessage<byte[]>> GetRawMessageAsync(CancellationToken? cancellation = null)
         {
             if (cancellation == null)
             {

@@ -4,14 +4,15 @@ using RabbitLink.Messaging;
 namespace RabbitLink.Exceptions
 {
     /// <summary>
-    /// Fires when message cannot be deserialized
+    /// Fires when message cannot be deserialized by pull consumer
     /// </summary>
-    public class LinkDeserializationException:LinkException
+    public class LinkPullConsumerDeserializationException : LinkException
     {
         /// <summary>
         /// Constructs instance
         /// </summary>
-        public LinkDeserializationException(ILinkConsumedMessage<byte[]> rawMessage, Type targetBodyType, Exception innerException)
+        public LinkPullConsumerDeserializationException(
+            ILinkPulledMessage<byte[]> rawMessage, Type targetBodyType, Exception innerException)
             : base("Cannot deserialize message, see InnerException for details", innerException)
         {
             RawMessage = rawMessage ?? throw new ArgumentNullException(nameof(rawMessage));
@@ -21,7 +22,7 @@ namespace RabbitLink.Exceptions
         /// <summary>
         /// Raw message
         /// </summary>
-        public ILinkConsumedMessage<byte[]> RawMessage { get; }
+        public ILinkPulledMessage<byte[]> RawMessage { get; }
         
         /// <summary>
         /// Target body type

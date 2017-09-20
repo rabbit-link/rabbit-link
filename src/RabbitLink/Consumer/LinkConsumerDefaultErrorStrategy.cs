@@ -23,9 +23,7 @@ namespace RabbitLink.Consumer
         /// </summary>
         public LinkConsumerAckStrategy HandleError(Exception ex)
         {
-            var nackEx = ex as LinkConsumerNackException;
-
-            if (nackEx != null)
+            if (ex is LinkConsumerNackException nackEx)
             {
                 return nackEx.Requeue
                     ? LinkConsumerAckStrategy.Requeue

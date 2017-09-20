@@ -255,7 +255,7 @@ namespace RabbitLink.Producer
                 props.Type = typeName;
             } else if (!_configuration.TypeNameMapping.IsEmpty)
             {
-                throw new LinkTypeNameMappingException(typeof(TBody));
+                throw new LinkProducerTypeNameMappingException(typeof(TBody));
             }
 
             return PublishAsync(new LinkPublishMessage<byte[]>(body, props, message.PublishProperties), cancellation);
