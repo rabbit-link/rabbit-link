@@ -1,0 +1,59 @@
+# top-most EditorConfig file
+root = true
+
+[*]
+insert_final_newline = true
+trim_trailing_whitespace = true
+charset = utf-8
+indent_style = space
+indent_size = 4
+
+
+# C#, razor
+[*.{cshtml, cs}]
+charset = utf-8-bom
+end_of_line = crlf
+
+# Cake build
+[*.cake]
+end_of_line = crlf
+
+# SQL
+[*.sql]
+end_of_line = crlf
+
+# Batch scripts
+[*.{cmd,bat}]
+end_of_line = crlf
+
+# JS
+[*.{js,coffee,ts,json,jsx}]
+end_of_line = lf
+
+# CSS, Less
+[*.{css,less}]
+end_of_line = lf
+
+# Solution files
+[*.sln]
+end_of_line = crlf
+
+# Projects
+[*.{csproj,proj,targets}]
+end_of_line = crlf
+
+# Configs
+[*.config]
+end_of_line = crlf
+
+# nuget packages.config
+[{packages.config,nuget.config}]
+end_of_line = crlf
+
+# Git
+[{.gitignore,.gitattributes}]
+end_of_line = lf
+
+# Robots
+[robots.txt]
+end_of_line = lf
