@@ -14,13 +14,11 @@ namespace RabbitLink.Serialization
 
         static LinkSerializerExtensions()
         {
-            Expression<Action<ILinkSerializer>> expr = 
-                x => x.Deserialize<object>(default(byte[]), default(LinkMessageProperties));
+            Expression<Action<ILinkSerializer>> expr = x => x.Deserialize<object>(default(byte[]), default(LinkMessageProperties));
             
             DeserializeMethod = ((MethodCallExpression)expr.Body)
                 .Method
                 .GetGenericMethodDefinition();
-
         }
         
         /// <summary>

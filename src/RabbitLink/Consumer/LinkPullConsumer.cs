@@ -74,6 +74,9 @@ namespace RabbitLink.Consumer
         public async Task<ILinkPulledMessage<TBody>> GetMessageAsync<TBody>(CancellationToken? cancellation = null)
             where TBody : class
         {
+            if(typeof(TBody) != typeof(byte[]) && _consumer.Serializer == null)
+                throw new InvalidOperationException("Serializer not set");
+            
             if (typeof(TBody) == typeof(object) && _typeNameMapping.IsEmpty)
                 throw new InvalidOperationException("Type name mapping is empty");
 

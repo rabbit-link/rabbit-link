@@ -1,14 +1,15 @@
 ﻿#region Usings
 
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 using RabbitLink;
 using RabbitLink.Messaging;
+using RabbitLink.Serialization.Json;
 using RabbitLink.Topology;
 
 #endregion
@@ -29,12 +30,13 @@ namespace Playground
                 .ConnectionName($"LinkPlayground: {Process.GetCurrentProcess().Id}")
                 .Build();
 
-            using(var cts = new CancellationTokenSource())
+            using (var cts = new CancellationTokenSource())
             using (link)
             {
                 var cancellation = cts.Token;
                 //var ct = Task.Factory.StartNew(() => TestConsumer(link, cancellation), TaskCreationOptions.LongRunning);
-                var ct = Task.Factory.StartNew(() => TestPullConsumer(link, cancellation), TaskCreationOptions.LongRunning).Unwrap();
+                var ct = Task.Factory
+                    .StartNew(() => TestPullConsumer(link, cancellation), TaskCreationOptions.LongRunning).Unwrap();
                 TestPublish(link);
 
                 Console.WriteLine("--- Running ---");
@@ -62,14 +64,17 @@ namespace Playground
                 })
                 .AutoAck(false)
                 .PrefetchCount(5)
+                .Serializer(new LinkJsonSerializer())
                 .Handler(msg =>
                 {
-                    var data = Encoding.UTF8.GetString(msg.Body);
-
-                    Console.WriteLine("---[ Message ]---\n{0}\n\n{1}\n---------", JsonConvert.SerializeObject(msg), data);
+                    Console.WriteLine(
+                        "---[ Message ({1}) ]---\n{0}\n---------",
+                        JsonConvert.SerializeObject(msg.Body, Formatting.Indented),
+                        msg.Body?.GetType()?.Name ?? "None"
+                    );
 
                     return tcs.Task;
-                })
+                }, map => map.Set<Msg>("msg").Set<MsgInt>("msg_int").Set<MsgGuid>("msg_guid"))
                 .Build())
             {
                 cancellation.WaitHandle.WaitOne();
@@ -94,20 +99,22 @@ namespace Playground
                 })
                 .AutoAck(false)
                 .PrefetchCount(5)
+                .Serializer(new LinkJsonSerializer())
+                .TypeNameMap(map => map.Set<Msg>("msg").Set<MsgInt>("msg_int").Set<MsgGuid>("msg_guid"))
                 .Build())
             {
                 try
                 {
                     while (true)
                     {
-                        var msg = await consumer.GetMessageAsync<byte[]>(cancellation)
+                        var msg = await consumer.GetMessageAsync<object>(cancellation)
                             .ConfigureAwait(false);
 
-                        var data = Encoding.UTF8.GetString(msg.Body);
-                        var props = JsonConvert.SerializeObject(msg.Properties);
-                        var rprops = JsonConvert.SerializeObject(msg.RecieveProperties);
-
-                        Console.WriteLine("---[ Message ]---\n{0}\n{1}\n\n{2}\n---------", props, rprops, data);
+                        Console.WriteLine(
+                            "---[ Message ({1}) ]---\n{0}\n---------",
+                            JsonConvert.SerializeObject(msg.Body, Formatting.Indented),
+                            msg.Body?.GetType()?.Name ?? "None"
+                        );
 
                         msg.Ack();
                     }
@@ -136,6 +143,8 @@ namespace Playground
                     Mandatory = false
                 })
                 .PublishTimeout(TimeSpan.FromSeconds(10))
+                .Serializer(new LinkJsonSerializer())
+                .TypeNameMap(map => map.Set<Msg>("msg").Set<MsgInt>("msg_int").Set<MsgGuid>("msg_guid"))
                 .Build()
             )
             {
@@ -148,19 +157,22 @@ namespace Playground
                 var tasks = Enumerable
                     .Range(0, 10)
                     .Select(i => $"Item {i + 1}")
-                    .Select(x => Encoding.UTF8.GetBytes(x))
-                    .Select(x => new LinkPublishMessage<byte[]>(x));
+                    .Select(x => new Msg {Message = x})
+                    .Select(x => new LinkPublishMessage<Msg>(x));
 
                 for (var i = 0; i < 1000; i++)
                 {
-                    //Task.Run(() => Thread.Sleep(1000));
+                    Task.Run(() => Thread.Sleep(1000));
                 }
 
+                var ts = new List<Task>(10);
+                
                 foreach (var msg in tasks)
                 {
-                    producer.PublishAsync(msg)
-                        .GetAwaiter().GetResult();
+                    ts.Add(producer.PublishAsync(msg));
                 }
+
+                Task.WaitAll(ts.ToArray());
 
                 Console.WriteLine("--- Waiting for publish end ---");
                 //Task.WaitAll(tasks);
@@ -219,6 +231,21 @@ namespace Playground
         private static async Task PersConfigure(ILinkTopologyConfig config)
         {
             await config.QueueDeclareExclusive();
+        }
+
+        public class Msg
+        {
+            public string Message { get; set; }
+        }
+
+        public class MsgInt : Msg
+        {
+            public int Value { get; set; }
+        }
+
+        public class MsgGuid : Msg
+        {
+            public Guid Value { get; set; }
         }
     }
 }

@@ -175,11 +175,8 @@ namespace RabbitLink.Builders
             if (value == null)
                 throw new ArgumentNullException(nameof(value));
 
-            if (typeof(TBody) == typeof(byte[]))
-                return Handler(value as LinkConsumerMessageHandlerDelegate<byte[]>);
-
-            if (typeof(TBody) == typeof(object))
-                return Handler(value as LinkConsumerMessageHandlerDelegate<object>);
+            if (typeof(TBody) == typeof(byte[]) || typeof(TBody) == typeof(object))
+                throw new ArgumentException("Type of TBody must be concrete and not equal byte[]");
 
             return new LinkConsumerBuilder(
                 this,
