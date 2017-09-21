@@ -22,6 +22,7 @@ namespace RabbitLink.Consumer
         private readonly object _sync = new object();
         private bool _disposed;
         private readonly LinkTypeNameMapping _typeNameMapping;
+        private readonly ILinkSerializer _serializer;
 
         #endregion
 
@@ -30,7 +31,8 @@ namespace RabbitLink.Consumer
         public LinkPullConsumer(
             ILinkConsumerBuilder consumerBuilder,
             TimeSpan getMessageTimeout,
-            LinkTypeNameMapping typeNameMapping
+            LinkTypeNameMapping typeNameMapping,
+            ILinkSerializer serializer
         )
         {
             if (consumerBuilder == null)
@@ -42,6 +44,7 @@ namespace RabbitLink.Consumer
 
             GetMessageTimeout = getMessageTimeout;
             _typeNameMapping = typeNameMapping ?? throw new ArgumentNullException(nameof(typeNameMapping));
+            _serializer = serializer;
 
             _consumer = consumerBuilder
                 .ErrorStrategy(new LinkConsumerDefaultErrorStrategy())
@@ -63,7 +66,6 @@ namespace RabbitLink.Consumer
         public int Priority => _consumer.Priority;
         public bool CancelOnHaFailover => _consumer.CancelOnHaFailover;
         public bool Exclusive => _consumer.Exclusive;
-        public ILinkSerializer Serializer => _consumer.Serializer;
 
         public Task WaitReadyAsync(CancellationToken? cancellation = null)
             => _consumer.WaitReadyAsync(cancellation);
@@ -74,7 +76,7 @@ namespace RabbitLink.Consumer
         public async Task<ILinkPulledMessage<TBody>> GetMessageAsync<TBody>(CancellationToken? cancellation = null)
             where TBody : class
         {
-            if (typeof(TBody) != typeof(byte[]) && _consumer.Serializer == null)
+            if (typeof(TBody) != typeof(byte[]) && _serializer == null)
                 throw new InvalidOperationException("Serializer not set");
 
             if (typeof(TBody) == typeof(object) && _typeNameMapping.IsEmpty)
@@ -111,7 +113,7 @@ namespace RabbitLink.Consumer
 
                     try
                     {
-                        body = (TBody) _consumer.Serializer.Deserialize(bodyType, msg.Body, props);
+                        body = (TBody) _serializer.Deserialize(bodyType, msg.Body, props);
                     }
                     catch (Exception ex)
                     {

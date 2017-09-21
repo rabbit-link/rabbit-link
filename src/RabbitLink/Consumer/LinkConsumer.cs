@@ -11,7 +11,6 @@ using RabbitLink.Internals.Lens;
 using RabbitLink.Logging;
 using RabbitLink.Messaging;
 using RabbitLink.Messaging.Internals;
-using RabbitLink.Serialization;
 using RabbitLink.Topology;
 using RabbitLink.Topology.Internal;
 using RabbitMQ.Client;
@@ -67,7 +66,6 @@ namespace RabbitLink.Consumer
         public int Priority => _configuration.Priority;
         public bool CancelOnHaFailover => _configuration.CancelOnHaFailover;
         public bool Exclusive => _configuration.Exclusive;
-        public ILinkSerializer Serializer => _configuration.Serializer;
 
         public Task WaitReadyAsync(CancellationToken? cancellation = null)
         {
@@ -424,7 +422,7 @@ namespace RabbitLink.Consumer
                             var strategy = _configuration.ErrorStrategy.HandleError(taskEx);
                             action = new LinkConsumerMessageAction(deliveryTag, strategy, cancellation);
 
-                            _logger.Warning($"Error in MessageHandler (ack strategy: {action.Strategy}): {taskEx}");
+                            _logger.Warning($"Error in MessageHandler (strategy: {action.Strategy}): {taskEx}");
                         }
                         catch (Exception ex)
                         {
@@ -438,6 +436,8 @@ namespace RabbitLink.Consumer
                         {
                             var strategy = _configuration.ErrorStrategy.HandleCancellation();
                             action = new LinkConsumerMessageAction(deliveryTag, strategy, cancellation);
+                            
+                            _logger.Warning($"MessageHandler cancelled (strategy: {action.Strategy})");
                         }
                         catch (Exception ex)
                         {

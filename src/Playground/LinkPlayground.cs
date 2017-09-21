@@ -35,9 +35,9 @@ namespace Playground
             using (link)
             {
                 var cancellation = cts.Token;
-                //var ct = Task.Factory.StartNew(() => TestConsumer(link, cancellation), TaskCreationOptions.LongRunning);
-                var ct = Task.Factory
-                    .StartNew(() => TestPullConsumer(link, cancellation), TaskCreationOptions.LongRunning).Unwrap();
+                var ct = Task.Factory.StartNew(() => TestConsumer(link, cancellation), TaskCreationOptions.LongRunning);
+//                var ct = Task.Factory
+//                    .StartNew(() => TestPullConsumer(link, cancellation), TaskCreationOptions.LongRunning).Unwrap();
                 TestPublish(link);
 
                 Console.WriteLine("--- Running ---");
@@ -66,6 +66,7 @@ namespace Playground
                 .AutoAck(false)
                 .PrefetchCount(5)
                 .Serializer(new LinkJsonSerializer())
+                .TypeNameMap(map => map.Set<Msg>("msg").Set<MsgInt>("msg_int").Set<MsgGuid>("msg_guid"))
                 .Handler(msg =>
                 {
                     Console.WriteLine(
@@ -75,7 +76,7 @@ namespace Playground
                     );
 
                     return tcs.Task;
-                }, map => map.Set<Msg>("msg").Set<MsgInt>("msg_int").Set<MsgGuid>("msg_guid"))
+                })
                 .Build())
             {
                 cancellation.WaitHandle.WaitOne();
@@ -88,7 +89,7 @@ namespace Playground
             tcs.TrySetResult(null);
 
             Console.WriteLine("--- Creating consumer ---");
-            using (var consumer = link.PullConsumer
+            using (var consumer = link.Consumer
                 .Queue(async cfg =>
                 {
                     var exchange = await cfg.ExchangeDeclarePassive("link.consume");
@@ -102,6 +103,7 @@ namespace Playground
                 .PrefetchCount(5)
                 .Serializer(new LinkJsonSerializer())
                 .TypeNameMap(map => map.Set<Msg>("msg").Set<MsgInt>("msg_int").Set<MsgGuid>("msg_guid"))
+                .Pull
                 .Build())
             {
                 try

@@ -29,6 +29,7 @@ namespace RabbitLink.Builders
         private readonly LinkStateHandler<LinkConsumerState> _stateHandler;
         private readonly LinkStateHandler<LinkChannelState> _channelStateHandler;
         private readonly ILinkSerializer _serializer;
+        private readonly LinkTypeNameMapping _typeNameMapping;
 
         public LinkConsumerBuilder(
             Link link,
@@ -43,7 +44,8 @@ namespace RabbitLink.Builders
             LinkConsumerMessageHandlerBuilder messageHandlerBuilder = null,
             ILinkConsumerTopologyHandler topologyHandler = null,
             LinkStateHandler<LinkConsumerState> stateHandler = null,
-            LinkStateHandler<LinkChannelState> channelStateHandler = null
+            LinkStateHandler<LinkChannelState> channelStateHandler = null,
+            LinkTypeNameMapping typeNameMapping = null
         )
         {
             _link = link ?? throw new ArgumentNullException(nameof(link));
@@ -60,6 +62,7 @@ namespace RabbitLink.Builders
             _stateHandler = stateHandler ?? ((old, @new) => { });
             _channelStateHandler = channelStateHandler ?? ((old, @new) => { });
             _serializer = serializer;
+            _typeNameMapping = typeNameMapping ?? new LinkTypeNameMapping();
         }
 
         private LinkConsumerBuilder(
@@ -75,7 +78,8 @@ namespace RabbitLink.Builders
             ILinkConsumerTopologyHandler topologyHandler = null,
             LinkStateHandler<LinkConsumerState> stateHandler = null,
             LinkStateHandler<LinkChannelState> channelStateHandler = null,
-            ILinkSerializer serializer = null
+            ILinkSerializer serializer = null,
+            LinkTypeNameMapping typeNameMapping = null
         ) : this
             (
                 prev._link,
@@ -90,16 +94,15 @@ namespace RabbitLink.Builders
                 messageHandlerBuilder ?? prev._messageHandlerBuilder,
                 topologyHandler ?? prev._topologyHandler,
                 stateHandler ?? prev._stateHandler,
-                channelStateHandler ?? prev._channelStateHandler
+                channelStateHandler ?? prev._channelStateHandler,
+                typeNameMapping ?? prev._typeNameMapping
             )
         {
         }
 
 
-        public ILinkPullConsumerBuilder Pull()
-        {
-            return new LinkPullConsumerBuilder(this);
-        }
+        public ILinkPullConsumerBuilder Pull
+            => new LinkPullConsumerBuilder(this, _typeNameMapping, _serializer);
 
         public ILinkConsumer Build()
         {
@@ -111,6 +114,9 @@ namespace RabbitLink.Builders
 
             if (_messageHandlerBuilder.Serializer && _serializer == null)
                 throw new InvalidOperationException("Serializer needed by message handler not set");
+            
+            if(_messageHandlerBuilder.Mapping && _typeNameMapping.IsEmpty)
+                throw new InvalidOperationException("Type name mapping required by handler");
 
             var config = new LinkConsumerConfiguration(
                 _reconveryInterval,
@@ -122,7 +128,7 @@ namespace RabbitLink.Builders
                 _topologyHandler,
                 _stateHandler, // state handler
                 _errorStrategy,
-                _messageHandlerBuilder.Factory(_serializer),
+                _messageHandlerBuilder.Factory(_serializer, _typeNameMapping),
                 _serializer
             );
 
@@ -175,8 +181,11 @@ namespace RabbitLink.Builders
             if (value == null)
                 throw new ArgumentNullException(nameof(value));
 
-            if (typeof(TBody) == typeof(byte[]) || typeof(TBody) == typeof(object))
-                throw new ArgumentException("Type of TBody must be concrete and not equal byte[]");
+            if (typeof(TBody) == typeof(byte[]))
+                return Handler(value as LinkConsumerMessageHandlerDelegate<byte[]>);
+
+            if (typeof(TBody) == typeof(object))
+                return Handler(value as LinkConsumerMessageHandlerDelegate<object>);
 
             return new LinkConsumerBuilder(
                 this,
@@ -195,30 +204,14 @@ namespace RabbitLink.Builders
             );
         }
 
-        public ILinkConsumerBuilder Handler(
-            LinkConsumerMessageHandlerDelegate<object> value,
-            IDictionary<Type, string> mapping
-        ) => Handler(value, map => map.Set(mapping));
-
-        public ILinkConsumerBuilder Handler(
-            LinkConsumerMessageHandlerDelegate<object> value,
-            Action<ILinkTypeNameMapBuilder> map
-        )
+        public ILinkConsumerBuilder Handler(LinkConsumerMessageHandlerDelegate<object> value)
         {
             if (value == null)
                 throw new ArgumentNullException(nameof(value));
 
-            var builder = new LinkTypeNameMapBuilder();
-            map?.Invoke(builder);
-
-            var mapping = builder.Build();
-
-            if (mapping.IsEmpty)
-                throw new ArgumentException($"{nameof(map)} produced empty mapping");
-
             return new LinkConsumerBuilder(
                 this,
-                messageHandlerBuilder: LinkConsumerMessageHandlerBuilder.Create(value, mapping)
+                messageHandlerBuilder: LinkConsumerMessageHandlerBuilder.Create(value)
             );
         }
 
@@ -268,6 +261,17 @@ namespace RabbitLink.Builders
                 throw new ArgumentNullException(nameof(value));
 
             return new LinkConsumerBuilder(this, serializer: value);
+        }
+
+        public ILinkConsumerBuilder TypeNameMap(IDictionary<Type, string> mapping)
+            => TypeNameMap(map => map.Set(mapping));
+
+        public ILinkConsumerBuilder TypeNameMap(Action<ILinkTypeNameMapBuilder> map)
+        {
+            var builder = new LinkTypeNameMapBuilder(_typeNameMapping);
+            map?.Invoke(builder);
+            
+            return new LinkConsumerBuilder(this, typeNameMapping: builder.Build());
         }
     }
 }

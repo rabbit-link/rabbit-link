@@ -48,11 +48,6 @@ namespace RabbitLink.Consumer
         /// </summary>
         bool Exclusive { get; }
 
-        /// <summary>
-        /// Serializer
-        /// </summary>
-        ILinkSerializer Serializer { get; }
-
         #endregion
 
         /// <summary>

@@ -11,14 +11,16 @@ namespace RabbitLink.Builders
     internal class LinkConsumerMessageHandlerBuilder
     {
         public delegate LinkConsumerMessageHandlerDelegate<byte[]> HandlerFactory(
-            ILinkSerializer serializer
+            ILinkSerializer serializer,
+            LinkTypeNameMapping mapping
         );
 
         public static LinkConsumerMessageHandlerBuilder Create(
             LinkConsumerMessageHandlerDelegate<byte[]> onMessage
         )
             => new LinkConsumerMessageHandlerBuilder(
-                serializer => onMessage,
+                (serializer, mapping) => onMessage,
+                false,
                 false
             );
 
@@ -30,7 +32,7 @@ namespace RabbitLink.Builders
                 throw new ArgumentException("Type of TBody must be concrete and not equal byte[]");
 
             return new LinkConsumerMessageHandlerBuilder(
-                serializer => msg =>
+                (serializer, mapping) => msg =>
                 {
                     TBody body;
                     var props = msg.Properties.Clone();
@@ -54,16 +56,16 @@ namespace RabbitLink.Builders
 
                     return onMessage(concreteMsg);
                 },
-                true
+                true,
+                false
             );
         }
 
         public static LinkConsumerMessageHandlerBuilder Create(
-            LinkConsumerMessageHandlerDelegate<object> onMessage,
-            LinkTypeNameMapping mapping
+            LinkConsumerMessageHandlerDelegate<object> onMessage
         )
             => new LinkConsumerMessageHandlerBuilder(
-                serializer => msg =>
+                (serializer, mapping) => msg =>
                 {
                     object body;
                     var props = msg.Properties.Clone();
@@ -95,18 +97,22 @@ namespace RabbitLink.Builders
 
                     return onMessage(concreteMsg);
                 },
+                true,
                 true
             );
 
         private LinkConsumerMessageHandlerBuilder(
             HandlerFactory factory,
-            bool serializer
+            bool serializer,
+            bool mapping
         )
         {
             Factory = factory ?? throw new ArgumentNullException(nameof(factory));
             Serializer = serializer;
+            Mapping = mapping;
         }
 
+        public bool Mapping { get; }
         public bool Serializer { get; }
         public HandlerFactory Factory { get; }
     }

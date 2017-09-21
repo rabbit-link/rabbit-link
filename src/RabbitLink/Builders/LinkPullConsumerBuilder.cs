@@ -19,6 +19,7 @@ namespace RabbitLink.Builders
         private readonly ILinkConsumerBuilder _consumerBuilder;
         private readonly TimeSpan _getMessageTimeout;
         private readonly LinkTypeNameMapping _typeNameMapping;
+        private readonly ILinkSerializer _serializer;
 
         #endregion
 
@@ -26,24 +27,29 @@ namespace RabbitLink.Builders
 
         public LinkPullConsumerBuilder(
             ILinkConsumerBuilder consumerBuilder,
-            TimeSpan? getMessageTimeout = null,
-            LinkTypeNameMapping typeNameMapping = null
+            LinkTypeNameMapping typeNameMapping,
+            ILinkSerializer serializer,
+            TimeSpan? getMessageTimeout = null
         )
         {
+            _serializer = serializer;
             _consumerBuilder = consumerBuilder ?? throw new ArgumentNullException(nameof(consumerBuilder));
             _getMessageTimeout = getMessageTimeout ?? Timeout.InfiniteTimeSpan;
-            _typeNameMapping = typeNameMapping ?? new LinkTypeNameMapping();
+            _typeNameMapping = typeNameMapping ?? throw new ArgumentNullException(nameof(typeNameMapping));
+            _serializer = serializer;
         }
 
         private LinkPullConsumerBuilder(
             LinkPullConsumerBuilder prev,
             ILinkConsumerBuilder consumerBuilder = null,
-            TimeSpan? getMessageTimeout = null,
-            LinkTypeNameMapping typeNameMapping = null
+            LinkTypeNameMapping typeNameMapping = null,
+            ILinkSerializer serializer = null,
+            TimeSpan? getMessageTimeout = null
         ) : this(
             consumerBuilder ?? prev._consumerBuilder,
-            getMessageTimeout ?? prev._getMessageTimeout,
-            typeNameMapping ?? prev._typeNameMapping
+            typeNameMapping ?? prev._typeNameMapping,
+            serializer ?? prev._serializer,
+            getMessageTimeout ?? prev._getMessageTimeout
         )
         {
         }
@@ -54,7 +60,7 @@ namespace RabbitLink.Builders
 
         public ILinkPullConsumer Build()
         {
-            return new LinkPullConsumer(_consumerBuilder, _getMessageTimeout, _typeNameMapping);
+            return new LinkPullConsumer(_consumerBuilder, _getMessageTimeout, _typeNameMapping, _serializer);
         }
 
         public ILinkPullConsumerBuilder RecoveryInterval(TimeSpan value)
@@ -123,7 +129,12 @@ namespace RabbitLink.Builders
         }
 
         public ILinkPullConsumerBuilder Serializer(ILinkSerializer value)
-            => new LinkPullConsumerBuilder(this, consumerBuilder: _consumerBuilder.Serializer(value));
+        {
+            if (value == null)
+                throw new ArgumentNullException(nameof(value));
+            
+            return new LinkPullConsumerBuilder(this, serializer: value);
+        }
 
         public ILinkPullConsumerBuilder TypeNameMap(IDictionary<Type, string> mapping)
             => TypeNameMap(map => map.Set(mapping));

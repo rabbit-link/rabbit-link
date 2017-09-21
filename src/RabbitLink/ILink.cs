@@ -29,11 +29,6 @@ namespace RabbitLink
         ILinkConsumerBuilder Consumer { get; }
 
         /// <summary>
-        /// Get new pull consumer builder
-        /// </summary>
-        ILinkPullConsumerBuilder PullConsumer { get; }
-
-        /// <summary>
         ///     Invokes when connected, must not perform blocking operations.
         /// </summary>
         event EventHandler Connected;

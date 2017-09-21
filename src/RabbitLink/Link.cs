@@ -51,9 +51,6 @@ namespace RabbitLink
         public ILinkConsumerBuilder Consumer =>
             new LinkConsumerBuilder(this, _configuration.RecoveryInterval, _configuration.Serializer);
 
-        public ILinkPullConsumerBuilder PullConsumer =>
-            new LinkPullConsumerBuilder(Consumer);
-
         public ILinkTopologyBuilder Topology =>
             new LinkTopologyBuilder(this, _configuration.RecoveryInterval);
 
