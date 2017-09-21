@@ -21,7 +21,6 @@ namespace RabbitLink.Consumer
 {
     internal class LinkConsumer : AsyncStateMachine<LinkConsumerState>, ILinkConsumerInternal, ILinkChannelHandler
     {
-
         private readonly LinkConsumerConfiguration _configuration;
         private readonly ILinkChannel _channel;
         private readonly ILinkLogger _logger;
@@ -69,7 +68,7 @@ namespace RabbitLink.Consumer
         public bool CancelOnHaFailover => _configuration.CancelOnHaFailover;
         public bool Exclusive => _configuration.Exclusive;
         public ILinkSerializer Serializer => _configuration.Serializer;
-        
+
         public Task WaitReadyAsync(CancellationToken? cancellation = null)
         {
             return _readyCompletion.Task
@@ -385,7 +384,7 @@ namespace RabbitLink.Consumer
         {
             var cancellation = msg.Cancellation;
 
-            Task task;
+            Task<LinkConsumerAckStrategy> task;
 
             try
             {
@@ -393,18 +392,19 @@ namespace RabbitLink.Consumer
             }
             catch (Exception ex)
             {
-                task = Task.FromException(ex);
+                task = Task.FromException<LinkConsumerAckStrategy>(ex);
             }
 
             task.ContinueWith(
-                t => OnMessageHandledAsync(t, deliveryTag, cancellation), 
-                cancellation, 
-                TaskContinuationOptions.ExecuteSynchronously, 
+                t => OnMessageHandledAsync(t, deliveryTag, cancellation),
+                cancellation,
+                TaskContinuationOptions.ExecuteSynchronously,
                 TaskScheduler.Current
             );
         }
 
-        private async Task OnMessageHandledAsync(Task task, ulong deliveryTag, CancellationToken cancellation)
+        private async Task OnMessageHandledAsync(Task<LinkConsumerAckStrategy> task, ulong deliveryTag,
+            CancellationToken cancellation)
         {
             if (AutoAck) return;
 
@@ -415,7 +415,7 @@ namespace RabbitLink.Consumer
                 switch (task.Status)
                 {
                     case TaskStatus.RanToCompletion:
-                        action = new LinkConsumerMessageAction(deliveryTag, LinkConsumerAckStrategy.Ack, cancellation);
+                        action = new LinkConsumerMessageAction(deliveryTag, task.Result, cancellation);
                         break;
                     case TaskStatus.Faulted:
                         try
@@ -423,13 +423,14 @@ namespace RabbitLink.Consumer
                             var taskEx = task.Exception.GetBaseException();
                             var strategy = _configuration.ErrorStrategy.HandleError(taskEx);
                             action = new LinkConsumerMessageAction(deliveryTag, strategy, cancellation);
-                            
+
                             _logger.Warning($"Error in MessageHandler (ack strategy: {action.Strategy}): {taskEx}");
                         }
                         catch (Exception ex)
                         {
                             _logger.Warning($"Error in ErrorStrategy for Error, NACKing: {ex}");
-                            action = new LinkConsumerMessageAction(deliveryTag, LinkConsumerAckStrategy.Nack, cancellation);
+                            action = new LinkConsumerMessageAction(deliveryTag, LinkConsumerAckStrategy.Nack,
+                                cancellation);
                         }
                         break;
                     case TaskStatus.Canceled:
@@ -441,7 +442,8 @@ namespace RabbitLink.Consumer
                         catch (Exception ex)
                         {
                             _logger.Warning($"Error in ErrorStrategy for Cancellation, NACKing: {ex}");
-                            action = new LinkConsumerMessageAction(deliveryTag, LinkConsumerAckStrategy.Nack, cancellation);
+                            action = new LinkConsumerMessageAction(deliveryTag, LinkConsumerAckStrategy.Nack,
+                                cancellation);
                         }
                         break;
                     default:
@@ -449,7 +451,7 @@ namespace RabbitLink.Consumer
                 }
 
                 await _actionQueue.PutAsync(action)
-                   .ConfigureAwait(false);
+                    .ConfigureAwait(false);
             }
             catch
             {

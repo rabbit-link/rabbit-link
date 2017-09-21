@@ -35,26 +35,26 @@ namespace RabbitLink
 
         #region ILink Members
 
-        public bool IsConnected 
+        public bool IsConnected
             => !_disposed && _connection.State == LinkConnectionState.Active;
 
-        public void Dispose() 
+        public void Dispose()
             => Dispose(true);
 
-        public void Initialize() 
+        public void Initialize()
             => _connection.Initialize();
 
 
-        public ILinkProducerBuilder Producer => 
+        public ILinkProducerBuilder Producer =>
             new LinkProducerBuilder(this, _configuration.RecoveryInterval, _configuration.Serializer);
-        
-        public ILinkConsumerBuilder Consumer => 
+
+        public ILinkConsumerBuilder Consumer =>
             new LinkConsumerBuilder(this, _configuration.RecoveryInterval, _configuration.Serializer);
 
         public ILinkPullConsumerBuilder PullConsumer =>
             new LinkPullConsumerBuilder(Consumer);
 
-        public ILinkTopologyBuilder Topology => 
+        public ILinkTopologyBuilder Topology =>
             new LinkTopologyBuilder(this, _configuration.RecoveryInterval);
 
         public event EventHandler Connected
@@ -89,7 +89,7 @@ namespace RabbitLink
             }
         }
 
-        ~Link() 
+        ~Link()
             => Dispose(false);
 
         internal ILinkChannel CreateChannel(LinkStateHandler<LinkChannelState> stateHandler, TimeSpan recoveryInterval)

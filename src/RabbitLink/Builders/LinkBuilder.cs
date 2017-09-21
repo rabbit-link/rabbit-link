@@ -76,10 +76,10 @@ namespace RabbitLink.Builders
 
         public ILinkBuilder ConnectionName(string value)
         {
-            if(string.IsNullOrWhiteSpace(value))
+            if (string.IsNullOrWhiteSpace(value))
                 throw new ArgumentNullException(nameof(value));
-            
-            return  new LinkBuilder(this, connectionName: value.Trim());
+
+            return new LinkBuilder(this, connectionName: value.Trim());
         }
 
         public ILinkBuilder Uri(string value)
@@ -150,9 +150,9 @@ namespace RabbitLink.Builders
 
         public ILinkBuilder Serializer(ILinkSerializer value)
         {
-            if(value == null)
+            if (value == null)
                 throw new ArgumentNullException(nameof(value));
-            
+
             return new LinkBuilder(this, serializer: value);
         }
 

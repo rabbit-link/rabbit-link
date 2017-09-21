@@ -15,7 +15,7 @@ namespace RabbitLink.Builders
                 _map = mapping;
             }
         }
-        
+
         public ILinkTypeNameMapBuilder Clear()
         {
             _map = new LinkTypeNameMapping();
@@ -30,13 +30,13 @@ namespace RabbitLink.Builders
 
         public ILinkTypeNameMapBuilder Set<T>(string name) where T : class
             => Set(typeof(T), name);
-        
+
         public ILinkTypeNameMapBuilder Set(IDictionary<Type, string> values)
         {
-            if(values == null)
+            if (values == null)
                 throw new ArgumentNullException(nameof(values));
 
-            var ret = (ILinkTypeNameMapBuilder)this;
+            var ret = (ILinkTypeNameMapBuilder) this;
             foreach (var value in values)
             {
                 ret = Set(value.Key, value.Value);

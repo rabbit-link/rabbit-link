@@ -19,12 +19,12 @@ namespace RabbitLink.Builders
         /// Name of connection
         /// </summary>
         ILinkBuilder ConnectionName(string value);
-        
+
         /// <summary>
         /// Amqp connection string
         /// </summary>
         ILinkBuilder Uri(string value);
-        
+
         /// <summary>
         /// Amqp connection string
         /// </summary>
@@ -65,7 +65,7 @@ namespace RabbitLink.Builders
         /// Sets handler for state changes
         /// </summary>
         ILinkBuilder OnStateChange(LinkStateHandler<LinkConnectionState> handler);
-        
+
         /// <summary>
         /// Use background threads for connection handling.
         /// By default false

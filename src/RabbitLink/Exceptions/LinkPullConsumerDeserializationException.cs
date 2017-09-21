@@ -23,7 +23,7 @@ namespace RabbitLink.Exceptions
         /// Raw message
         /// </summary>
         public ILinkPulledMessage<byte[]> RawMessage { get; }
-        
+
         /// <summary>
         /// Target body type
         /// </summary>

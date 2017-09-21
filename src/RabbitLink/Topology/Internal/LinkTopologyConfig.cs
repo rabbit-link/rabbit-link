@@ -80,7 +80,7 @@ namespace RabbitLink.Topology.Internal
             bool autoDelete = false,
             string alternateExchange = null,
             bool delayed = false
-            )
+        )
         {
             if (string.IsNullOrWhiteSpace(name))
                 throw new ArgumentNullException(nameof(name));
@@ -145,7 +145,7 @@ namespace RabbitLink.Topology.Internal
         {
             _logger.Debug("Declared default exchange");
 
-            return Task.FromResult((ILinkExchage)new LinkExchage(""));
+            return Task.FromResult((ILinkExchage) new LinkExchage(""));
         }
 
         public async Task ExchangeDelete(ILinkExchage exchange, bool ifUnused = false)
@@ -184,7 +184,7 @@ namespace RabbitLink.Topology.Internal
             int? maxLengthBytes = null,
             string deadLetterExchange = null,
             string deadLetterRoutingKey = null
-            )
+        )
         {
             return await QueueDeclare(
                     $"exclusive-{Guid.NewGuid():N}", false, true, autoDelete, messageTtl, expires, maxPriority,
@@ -204,7 +204,7 @@ namespace RabbitLink.Topology.Internal
             int? maxLengthBytes = null,
             string deadLetterExchange = null,
             string deadLetterRoutingKey = null
-            )
+        )
         {
             if (string.IsNullOrWhiteSpace(prefix))
                 throw new ArgumentNullException(nameof(prefix));
@@ -237,7 +237,7 @@ namespace RabbitLink.Topology.Internal
             int? maxLengthBytes = null,
             string deadLetterExchange = null,
             string deadLetterRoutingKey = null
-            )
+        )
         {
             var arguments = new Dictionary<string, object>();
 
@@ -247,15 +247,16 @@ namespace RabbitLink.Topology.Internal
                     throw new ArgumentOutOfRangeException(nameof(messageTtl),
                         "Must be greater or equal 0 and less than Int32.MaxValue");
 
-                arguments.Add("x-message-ttl", (int)messageTtl.Value.TotalMilliseconds);
+                arguments.Add("x-message-ttl", (int) messageTtl.Value.TotalMilliseconds);
             }
 
             if (expires != null)
             {
                 if (expires.Value.TotalMilliseconds <= 0 || expires.Value.TotalMilliseconds > int.MaxValue)
-                    throw new ArgumentOutOfRangeException(nameof(expires), "Total milliseconds must be greater than 0 and less than Int32.MaxValue");
+                    throw new ArgumentOutOfRangeException(nameof(expires),
+                        "Total milliseconds must be greater than 0 and less than Int32.MaxValue");
 
-                arguments.Add("x-expires", (int)expires.Value.TotalMilliseconds);
+                arguments.Add("x-expires", (int) expires.Value.TotalMilliseconds);
             }
 
             if (maxPriority != null)
@@ -295,7 +296,7 @@ namespace RabbitLink.Topology.Internal
 
             _logger.Debug(
                 $"Declared queue \"{queue.QueueName}\", durable: {durable}, exclusive: {exclusive}, autoDelete: {autoDelete}, arguments: {string.Join(", ", arguments.Select(x => $"{x.Key} = {x.Value}"))}");
-            
+
             return new LinkQueue(queue.QueueName, exclusive);
         }
 

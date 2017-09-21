@@ -15,7 +15,7 @@ namespace RabbitLink.Builders
     {
         private readonly LinkPublishProperties _publishProperties;
         private readonly LinkMessageProperties _messageProperties;
-        
+
         public LinkProducerConfiguration(
             TimeSpan publishTimeout,
             TimeSpan recoveryInterval,
@@ -30,12 +30,13 @@ namespace RabbitLink.Builders
             LinkTypeNameMapping typeNameMapping
         )
         {
-            if(publishTimeout < TimeSpan.Zero && publishTimeout != Timeout.InfiniteTimeSpan)
-                throw new ArgumentOutOfRangeException(nameof(publishTimeout), "Must be greater or equal TimeSpan.Zero or equal Timeout.InfiniteTimeSpan");
-            
-            if(recoveryInterval < TimeSpan.Zero)
+            if (publishTimeout < TimeSpan.Zero && publishTimeout != Timeout.InfiniteTimeSpan)
+                throw new ArgumentOutOfRangeException(nameof(publishTimeout),
+                    "Must be greater or equal TimeSpan.Zero or equal Timeout.InfiniteTimeSpan");
+
+            if (recoveryInterval < TimeSpan.Zero)
                 throw new ArgumentOutOfRangeException(nameof(recoveryInterval), "Must be greater than TimeSpan.Zero");
-            
+
             PublishTimeout = publishTimeout;
             RecoveryInterval = recoveryInterval;
             MessageIdGenerator = messageIdGenerator ?? throw new ArgumentNullException(nameof(messageIdGenerator));
@@ -48,7 +49,7 @@ namespace RabbitLink.Builders
             Serializer = serializer;
             TypeNameMapping = typeNameMapping ?? throw new ArgumentNullException(nameof(typeNameMapping));
         }
-        
+
         public TimeSpan PublishTimeout { get; }
         public TimeSpan RecoveryInterval { get; }
         public ILinkMessageIdGenerator MessageIdGenerator { get; }

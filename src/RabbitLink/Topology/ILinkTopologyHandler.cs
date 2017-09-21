@@ -16,12 +16,12 @@ namespace RabbitLink.Topology
         /// Configure handler
         /// </summary>
         Task Configure(ILinkTopologyConfig config);
-        
+
         /// <summary>
         /// Ready handler
         /// </summary>
         Task Ready();
-        
+
         /// <summary>
         /// Error handler
         /// </summary>

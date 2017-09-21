@@ -37,7 +37,7 @@ namespace RabbitLink.Tests.Messaging
         public void ClusterIdProperty()
         {
             var props = new LinkMessageProperties();
-            
+
             Assert.Null(props.ClusterId);
 
             props.ClusterId = "test";
@@ -49,7 +49,7 @@ namespace RabbitLink.Tests.Messaging
         public void ContentEncodingProperty()
         {
             var props = new LinkMessageProperties();
-        
+
             Assert.Null(props.ContentEncoding);
 
             props.ContentEncoding = "test";

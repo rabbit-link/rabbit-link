@@ -9,27 +9,27 @@ namespace RabbitLink.Topology
         /// Initializing
         /// </summary>
         Init,
-        
+
         /// <summary>
         /// Configuring channel and topology
         /// </summary>
         Configuring,
-        
+
         /// <summary>
         /// Reconfiguring channel and topology
         /// </summary>
         Reconfiguring,
-        
+
         /// <summary>
         /// Topology sucessfully configured
         /// </summary>
         Ready,
-        
+
         /// <summary>
         /// Stopping
         /// </summary>
         Stopping,
-        
+
         /// <summary>
         /// Disposed
         /// </summary>

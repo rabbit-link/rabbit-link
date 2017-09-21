@@ -47,7 +47,7 @@ namespace RabbitLink.Consumer
         ///     Is consumer exclusive
         /// </summary>
         bool Exclusive { get; }
-        
+
         /// <summary>
         /// Serializer
         /// </summary>

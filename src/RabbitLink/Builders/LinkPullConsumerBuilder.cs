@@ -115,8 +115,9 @@ namespace RabbitLink.Builders
 
         public ILinkPullConsumerBuilder GetMessageTimeout(TimeSpan value)
         {
-            if (value < TimeSpan.Zero && value!= Timeout.InfiniteTimeSpan)
-                throw new ArgumentOutOfRangeException(nameof(value), "Must be greater or equal Zero or equal Timeout.InfiniteTimeSpan");
+            if (value < TimeSpan.Zero && value != Timeout.InfiniteTimeSpan)
+                throw new ArgumentOutOfRangeException(nameof(value),
+                    "Must be greater or equal Zero or equal Timeout.InfiniteTimeSpan");
 
             return new LinkPullConsumerBuilder(this, getMessageTimeout: value);
         }
@@ -131,7 +132,7 @@ namespace RabbitLink.Builders
         {
             var builder = new LinkTypeNameMapBuilder(_typeNameMapping);
             map?.Invoke(builder);
-            
+
             return new LinkPullConsumerBuilder(this, typeNameMapping: builder.Build());
         }
 

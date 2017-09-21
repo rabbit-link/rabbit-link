@@ -9,10 +9,12 @@
         /// ACK message
         /// </summary>
         Ack,
+
         /// <summary>
         /// NACK message
         /// </summary>
         Nack,
+
         /// <summary>
         /// Requeue message
         /// </summary>

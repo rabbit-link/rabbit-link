@@ -6,7 +6,7 @@ namespace RabbitLink.Exceptions
     /// <summary>
     /// Fires when type name mapping not found in pull consumer
     /// </summary>
-    public class LinkPullCosumerTypeNameMappingException:LinkException
+    public class LinkPullCosumerTypeNameMappingException : LinkException
     {
         /// <summary>
         /// Constructs instance when no Type header in message
@@ -31,7 +31,7 @@ namespace RabbitLink.Exceptions
         /// Mapping name
         /// </summary>
         public string Name { get; }
-        
+
         /// <summary>
         /// Raw message
         /// </summary>

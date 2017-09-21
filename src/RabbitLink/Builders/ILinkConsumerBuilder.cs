@@ -73,20 +73,22 @@ namespace RabbitLink.Builders
         /// Raw message handler
         /// </summary>
         ILinkConsumerBuilder Handler(LinkConsumerMessageHandlerDelegate<byte[]> value);
-        
+
         /// <summary>
         /// Type name mapping message handler
         /// </summary>
         /// <param name="value">Handler delegate</param>
         /// <param name="mapping">Type name mapping</param>
-        ILinkConsumerBuilder Handler(LinkConsumerMessageHandlerDelegate<object> value, IDictionary<Type, string> mapping);
-        
+        ILinkConsumerBuilder Handler(LinkConsumerMessageHandlerDelegate<object> value,
+            IDictionary<Type, string> mapping);
+
         /// <summary>
         /// Type name mapping message handler
         /// </summary>
         /// <param name="value">Handler delegate</param>
         /// <param name="map">Type name mapping builder</param>
-        ILinkConsumerBuilder Handler(LinkConsumerMessageHandlerDelegate<object> value, Action<ILinkTypeNameMapBuilder> map);
+        ILinkConsumerBuilder Handler(LinkConsumerMessageHandlerDelegate<object> value,
+            Action<ILinkTypeNameMapBuilder> map);
 
         /// <summary>
         /// Sets handler for state changes

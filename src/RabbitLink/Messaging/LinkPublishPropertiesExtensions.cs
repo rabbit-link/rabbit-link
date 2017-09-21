@@ -17,9 +17,10 @@ namespace RabbitLink.Messaging
         /// <summary>
         /// Extends instance with others. Returns new instance.
         /// </summary>
-        public static LinkPublishProperties Extend(this LinkPublishProperties @this, params LinkPublishProperties[] others)
+        public static LinkPublishProperties Extend(this LinkPublishProperties @this,
+            params LinkPublishProperties[] others)
         {
-            if(@this == null)
+            if (@this == null)
                 throw new ArgumentNullException(nameof(@this));
 
             if (others?.Any() == true)

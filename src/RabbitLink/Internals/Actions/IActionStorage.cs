@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace RabbitLink.Internals.Actions
 {
-    internal interface IActionStorage<TActor>:IDisposable
+    internal interface IActionStorage<TActor> : IDisposable
     {
         Task<T> PutAsync<T>(Func<TActor, T> action, CancellationToken cancellation);
         Task PutAsync(Action<TActor> action, CancellationToken cancellation);

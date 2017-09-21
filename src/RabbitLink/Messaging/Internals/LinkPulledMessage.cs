@@ -2,6 +2,7 @@
 
 using System;
 using System.Threading.Tasks;
+using RabbitLink.Consumer;
 using RabbitLink.Exceptions;
 
 #endregion
@@ -10,23 +11,26 @@ namespace RabbitLink.Messaging.Internals
 {
     internal class LinkPulledMessage<TBody> : LinkConsumedMessage<TBody>, ILinkPulledMessage<TBody> where TBody : class
     {
-        private static LinkPulledMessageAckDelegate CreateAckDelegate(TaskCompletionSource<object> completion)
+        private static LinkPulledMessageActionDelegate CreateActionDelegate(
+            TaskCompletionSource<LinkConsumerAckStrategy> completion,
+            LinkConsumerAckStrategy strategy
+        )
         {
-            return () => completion.TrySetResult(null);
+            return () => completion.TrySetResult(strategy);
         }
 
-        private static LinkPulledMessageNackDelegate CreateNackDelegate(TaskCompletionSource<object> completion)
+        private static LinkPulledMessageExceptionDelegate CreateExceptionDelegate(
+            TaskCompletionSource<LinkConsumerAckStrategy> completion
+        )
         {
-            return requeue => completion.TrySetException(new LinkConsumerNackException(
-                requeue, "NACKed by pulled message"
-            ));
+            return ex => completion.TrySetException(ex);
         }
 
         #region Ctor
 
         public LinkPulledMessage(
             ILinkConsumedMessage<TBody> message,
-            TaskCompletionSource<object> completion
+            TaskCompletionSource<LinkConsumerAckStrategy> completion
         ) : base(
             message.Body,
             message.Properties,
@@ -37,8 +41,10 @@ namespace RabbitLink.Messaging.Internals
             if (completion == null)
                 throw new ArgumentNullException(nameof(completion));
 
-            Ack = CreateAckDelegate(completion);
-            Nack = CreateNackDelegate(completion);
+            Ack = CreateActionDelegate(completion, LinkConsumerAckStrategy.Ack);
+            Nack = CreateActionDelegate(completion, LinkConsumerAckStrategy.Nack);
+            Requeue = CreateActionDelegate(completion, LinkConsumerAckStrategy.Requeue);
+            Exception = CreateExceptionDelegate(completion);
         }
 
         public LinkPulledMessage(
@@ -54,11 +60,16 @@ namespace RabbitLink.Messaging.Internals
         {
             Ack = message.Ack;
             Nack = message.Nack;
+            Requeue = message.Requeue;
+            Exception = message.Exception;
         }
 
         #endregion
 
-        public LinkPulledMessageAckDelegate Ack { get; }
-        public LinkPulledMessageNackDelegate Nack { get; }
+
+        public LinkPulledMessageActionDelegate Ack { get; }
+        public LinkPulledMessageActionDelegate Nack { get; }
+        public LinkPulledMessageActionDelegate Requeue { get; }
+        public LinkPulledMessageExceptionDelegate Exception { get; }
     }
 }

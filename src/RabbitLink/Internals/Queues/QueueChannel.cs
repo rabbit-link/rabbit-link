@@ -91,7 +91,6 @@ namespace RabbitLink.Internals.Queues
 
                     try
                     {
-
                         try
                         {
                             _readSem.Wait(compositeCancellation.Token);
@@ -145,7 +144,6 @@ namespace RabbitLink.Internals.Queues
 
                     try
                     {
-
                         try
                         {
                             await _readSem.WaitAsync(compositeCancellation.Token)

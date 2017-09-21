@@ -3,7 +3,7 @@ using System.Threading.Tasks;
 
 namespace RabbitLink.Topology.Internal
 {
-    internal class LinkConsumerTopologyHandler:ILinkConsumerTopologyHandler
+    internal class LinkConsumerTopologyHandler : ILinkConsumerTopologyHandler
     {
         private readonly LinkConsumerTopologyConfigDelegate _configAction;
         private readonly LinkTopologyErrorDelegate _errorAction;
@@ -14,6 +14,7 @@ namespace RabbitLink.Topology.Internal
             _configAction = configAction ?? throw new ArgumentNullException(nameof(configAction));
             _errorAction = errorAction ?? throw new ArgumentNullException(nameof(errorAction));
         }
+
         public Task<ILinkQueue> Configure(ILinkTopologyConfig config)
         {
             return _configAction(config);

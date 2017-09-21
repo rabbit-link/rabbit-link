@@ -10,10 +10,10 @@ namespace RabbitLink.Messaging
     /// <summary>
     /// Represend message properties
     /// </summary>
-    public sealed class LinkMessageProperties 
+    public sealed class LinkMessageProperties
     {
         #region Fields
-        
+
         private string _appId;
         private string _clusterId;
         private string _contentEncoding;
@@ -24,7 +24,7 @@ namespace RabbitLink.Messaging
         private string _messageId;
         private string _type;
         private string _userId;
-        
+
         #endregion
 
         /// <summary>
@@ -145,10 +145,11 @@ namespace RabbitLink.Messaging
         public IDictionary<string, object> Headers { get; } = new Dictionary<string, object>();
 
         #region Private methods
+
         private static string CheckShortString(string name, string input)
         {
             input = NormalizeString(input);
-            
+
             if (input != null && input.Length > 255)
             {
                 throw new ArgumentOutOfRangeException(name, "Must be less than 256 characters long");
@@ -159,11 +160,12 @@ namespace RabbitLink.Messaging
 
         private static string NormalizeString(string input)
         {
-            if (string.IsNullOrWhiteSpace(input)) 
+            if (string.IsNullOrWhiteSpace(input))
                 return null;
 
             return input.Trim();
         }
+
         #endregion
     }
 }

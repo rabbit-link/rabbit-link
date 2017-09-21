@@ -12,17 +12,17 @@ namespace RabbitLink.Builders
         /// Clear map
         /// </summary>
         ILinkTypeNameMapBuilder Clear();
-        
+
         /// <summary>
         /// Map type and name
         /// </summary>
         ILinkTypeNameMapBuilder Set<T>(string name) where T : class;
-        
+
         /// <summary>
         /// Map type and name
         /// </summary>
         ILinkTypeNameMapBuilder Set(Type type, string name);
-        
+
         /// <summary>
         /// Map type and name by merging dictionary with internal state
         /// </summary>

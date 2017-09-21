@@ -3,7 +3,7 @@
     /// <summary>
     /// Fires when type name mapping not found
     /// </summary>
-    public class LinkCosumerTypeNameMappingException:LinkException
+    public class LinkCosumerTypeNameMappingException : LinkException
     {
         /// <summary>
         /// Constructs instance when no Type header in message
@@ -21,7 +21,7 @@
         {
             Name = name;
         }
-        
+
         /// <summary>
         /// Mapping name
         /// </summary>

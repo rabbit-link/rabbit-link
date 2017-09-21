@@ -124,7 +124,7 @@ namespace RabbitLink.Producer
                         }
                         finally
                         {
-                            if(_readyCompletion.Task.IsCompleted)
+                            if (_readyCompletion.Task.IsCompleted)
                                 _readyCompletion = new TaskCompletionSource<object>();
                         }
                         break;
@@ -191,7 +191,7 @@ namespace RabbitLink.Producer
                 try
                 {
                     var correlationId = correlationValue is string
-                        ? (string)correlationValue
+                        ? (string) correlationValue
                         : Encoding.UTF8.GetString(correlationValue as byte[]);
                     if (correlationId != null)
                     {
@@ -228,7 +228,7 @@ namespace RabbitLink.Producer
                 );
         }
 
-        public Task PublishAsync<TBody>(ILinkPublishMessage<TBody> message, CancellationToken? cancellation = null) 
+        public Task PublishAsync<TBody>(ILinkPublishMessage<TBody> message, CancellationToken? cancellation = null)
             where TBody : class
         {
             if (message == null)
@@ -236,10 +236,10 @@ namespace RabbitLink.Producer
 
             var props = message.Properties.Clone();
             byte[] body;
-            
+
             try
             {
-                if(_configuration.Serializer == null)
+                if (_configuration.Serializer == null)
                     throw new InvalidOperationException("Serializer not set for producer");
 
                 body = _configuration.Serializer.Serialize(message.Body, props);
@@ -248,12 +248,13 @@ namespace RabbitLink.Producer
             {
                 throw new LinkSerializationException(ex);
             }
-            
+
             var typeName = _configuration.TypeNameMapping.Map(typeof(TBody));
             if (typeName != null)
             {
                 props.Type = typeName;
-            } else if (!_configuration.TypeNameMapping.IsEmpty)
+            }
+            else if (!_configuration.TypeNameMapping.IsEmpty)
             {
                 throw new LinkProducerTypeNameMappingException(typeof(TBody));
             }
@@ -272,7 +273,7 @@ namespace RabbitLink.Producer
             if (message == null)
                 throw new ArgumentNullException(nameof(message));
 
-            if(message.PublishProperties.Mandatory == true && !ConfirmsMode)
+            if (message.PublishProperties.Mandatory == true && !ConfirmsMode)
                 throw new LinkNotSupportedException("Mandatory without ConfirmsMode not supported");
 
             if (cancellation == null)

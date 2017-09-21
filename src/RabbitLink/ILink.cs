@@ -27,7 +27,7 @@ namespace RabbitLink
         /// Gets new consumer builder
         /// </summary>
         ILinkConsumerBuilder Consumer { get; }
-        
+
         /// <summary>
         /// Get new pull consumer builder
         /// </summary>

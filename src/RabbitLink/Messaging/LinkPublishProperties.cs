@@ -1,5 +1,4 @@
-﻿
-namespace RabbitLink.Messaging
+﻿namespace RabbitLink.Messaging
 {
     /// <summary>
     /// Message publish properties

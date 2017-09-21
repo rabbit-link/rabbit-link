@@ -118,7 +118,7 @@ namespace RabbitLink.Internals.Channels
                         item.TrySetCanceled(item.Cancellation);
                         continue;
                     }
-                    
+
                     _retryQueue.Put(item, CancellationToken.None);
                 }
             }
@@ -132,7 +132,7 @@ namespace RabbitLink.Internals.Channels
                 {
                     var item = await _channel.SpinAsync(cancellation)
                         .ConfigureAwait(false);
-                    
+
                     if (item.Cancellation.IsCancellationRequested)
                     {
                         item.TrySetCanceled(item.Cancellation);

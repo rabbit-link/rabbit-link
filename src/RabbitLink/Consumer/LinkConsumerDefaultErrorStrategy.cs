@@ -1,45 +1,34 @@
 ﻿#region Usings
 
 using System;
-using RabbitLink.Exceptions;
 
 #endregion
 
 namespace RabbitLink.Consumer
 {
+    /// <inheritdoc />
     /// <summary>
-    ///     Default error strategy for <see cref="ILinkConsumer" />.
-    ///     Nacks or requeue message on <see cref="LinkConsumerNackException" />.
-    ///     Nack message on any other exception.
+    ///     Default error strategy for <see cref="T:RabbitLink.Consumer.ILinkConsumer" />.
+    ///     Nack message on exception.
     ///     Requeue message on handler task cancellation.
     /// </summary>
     public class LinkConsumerDefaultErrorStrategy : ILinkConsumerErrorStrategy
     {
         #region ILinkConsumerErrorStrategy Members
 
+        /// <inheritdoc />
         /// <summary>
-        ///     Nacks or requeue message on <see cref="LinkConsumerNackException" />.
         ///     Nack message on any other exception.
         /// </summary>
         public LinkConsumerAckStrategy HandleError(Exception ex)
-        {
-            if (ex is LinkConsumerNackException nackEx)
-            {
-                return nackEx.Requeue
-                    ? LinkConsumerAckStrategy.Requeue
-                    : LinkConsumerAckStrategy.Nack;
-            }
+            => LinkConsumerAckStrategy.Nack;
 
-            return LinkConsumerAckStrategy.Nack;
-        }
-
+        /// <inheritdoc />
         /// <summary>
         ///     Requeue message
         /// </summary>
         public LinkConsumerAckStrategy HandleCancellation()
-        {
-            return LinkConsumerAckStrategy.Requeue;
-        }
+            => LinkConsumerAckStrategy.Requeue;
 
         #endregion
     }

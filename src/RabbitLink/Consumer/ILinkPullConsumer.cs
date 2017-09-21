@@ -26,6 +26,6 @@ namespace RabbitLink.Consumer
         /// </typeparam>
         /// <param name="cancellation">operation cancellation</param>
         Task<ILinkPulledMessage<TBody>> GetMessageAsync<TBody>(CancellationToken? cancellation = null)
-            where TBody: class;
+            where TBody : class;
     }
 }

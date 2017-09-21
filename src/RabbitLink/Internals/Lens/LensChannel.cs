@@ -130,7 +130,6 @@ namespace RabbitLink.Internals.Lens
 
                     try
                     {
-
                         try
                         {
                             _readSem.Wait(compositeCancellation.Token);
@@ -187,7 +186,6 @@ namespace RabbitLink.Internals.Lens
 
                     try
                     {
-
                         try
                         {
                             await _readSem.WaitAsync(compositeCancellation.Token)

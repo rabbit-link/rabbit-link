@@ -17,12 +17,12 @@ namespace RabbitLink.Builders
         /// By default <see cref="ILinkBuilder.RecoveryInterval"/>
         /// </summary>
         ILinkTopologyBuilder RecoveryInterval(TimeSpan value);
-        
+
         /// <summary>
         /// Sets handler for state changes
         /// </summary>
         ILinkTopologyBuilder OnStateChange(LinkStateHandler<LinkTopologyState> value);
-        
+
         /// <summary>
         /// Sets handler for channel state changes
         /// </summary>
@@ -32,12 +32,12 @@ namespace RabbitLink.Builders
         /// Sets topology handler
         ///</summary>
         ILinkTopologyBuilder Handler(ILinkTopologyHandler handler);
-        
+
         /// <summary>
         /// Sets topology configuration handler
         /// </summary>
         ILinkTopologyBuilder Handler(LinkTopologyConfigDelegate config);
-        
+
         /// <summary>
         /// Sets topology configuration and ready handlers
         /// </summary>
@@ -51,7 +51,7 @@ namespace RabbitLink.Builders
             LinkTopologyReadyDelegate ready,
             LinkTopologyErrorDelegate error
         );
-        
+
         /// <summary>
         /// Builds <see cref="ILinkTopology"/> instance
         /// </summary>

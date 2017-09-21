@@ -5,7 +5,7 @@ namespace RabbitLink.Exceptions
     /// <summary>
     /// Fires when type name mapping not found
     /// </summary>
-    public class LinkProducerTypeNameMappingException:LinkException
+    public class LinkProducerTypeNameMappingException : LinkException
     {
         /// <summary>
         /// Constructs instance when Name for Type not found

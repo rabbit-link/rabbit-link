@@ -41,15 +41,15 @@ namespace RabbitLink.Consumer
             => Dispose(true);
 
         #endregion
-        
 
-        public Task PutAsync(ILinkConsumedMessage<byte[]> message)
+
+        public Task<LinkConsumerAckStrategy> PutAsync(ILinkConsumedMessage<byte[]> message)
         {
-            var completion = new TaskCompletionSource<object>();
+            var completion = new TaskCompletionSource<LinkConsumerAckStrategy>();
             var msg = new LinkPulledMessage<byte[]>(message, completion);
 
             if (msg.Cancellation.IsCancellationRequested || _disposedCancellation.IsCancellationRequested)
-                return Task.FromCanceled(msg.Cancellation);
+                return Task.FromCanceled<LinkConsumerAckStrategy>(msg.Cancellation);
 
             try
             {
@@ -75,7 +75,7 @@ namespace RabbitLink.Consumer
             }
             catch (OperationCanceledException)
             {
-                return Task.FromCanceled(msg.Cancellation);
+                return Task.FromCanceled<LinkConsumerAckStrategy>(msg.Cancellation);
             }
 
             _readSem.Release();
@@ -182,13 +182,14 @@ namespace RabbitLink.Consumer
 
             private readonly object _cancellationSync = new object();
             private CancellationTokenRegistration? _cancellationRegistration;
-            private readonly TaskCompletionSource<object> _completion;
+            private readonly TaskCompletionSource<LinkConsumerAckStrategy> _completion;
 
             #endregion
 
             #region Ctor
 
-            public QueueItem(LinkPulledMessage<byte[]> message, TaskCompletionSource<object> completion)
+            public QueueItem(LinkPulledMessage<byte[]> message,
+                TaskCompletionSource<LinkConsumerAckStrategy> completion)
             {
                 _completion = completion;
                 Message = message;

@@ -28,8 +28,9 @@ namespace RabbitLink.Connection
         private readonly CancellationToken _disposeCancellation;
         private readonly CancellationTokenSource _disposeCts;
         private readonly ILinkLogger _logger;
+
         private readonly CompositeActionStorage<IConnection> _storage = new CompositeActionStorage<IConnection>(
-                new CompositeChannel<ActionItem<IConnection>>(new LensChannel<ActionItem<IConnection>>())
+            new CompositeChannel<ActionItem<IConnection>>(new LensChannel<ActionItem<IConnection>>())
         );
 
         private readonly object _sync = new object();
@@ -48,7 +49,7 @@ namespace RabbitLink.Connection
             _configuration = configuration;
 
             _logger = _configuration.LoggerFactory.CreateLogger($"{GetType().Name}({Id:D})")
-                ?? throw new ArgumentException("Cannot create logger", nameof(configuration.LoggerFactory));
+                      ?? throw new ArgumentException("Cannot create logger", nameof(configuration.LoggerFactory));
 
             _connectionFactory = new LinkConnectionFactory(
                 _configuration.ConnectionName,
@@ -96,7 +97,7 @@ namespace RabbitLink.Connection
                     // no op
                 }
 
-               _storage.Dispose();
+                _storage.Dispose();
 
                 ChangeState(LinkConnectionState.Disposed);
 
@@ -158,7 +159,7 @@ namespace RabbitLink.Connection
             {
                 _logger.Warning($"Exception in state handler: {ex}");
             }
-            
+
             base.OnStateChange(newState);
         }
 
@@ -316,7 +317,6 @@ namespace RabbitLink.Connection
             {
                 _logger.Warning($"Cleaning exception: {ex}");
             }
-
         }
 
         private void Active()
@@ -347,7 +347,7 @@ namespace RabbitLink.Connection
                         }
                         catch (Exception ex)
                         {
-                            _storage.PutRetry(new[] { item }, CancellationToken.None);
+                            _storage.PutRetry(new[] {item}, CancellationToken.None);
                             _logger.Error($"Cannot create model: {ex.Message}");
                             throw;
                         }

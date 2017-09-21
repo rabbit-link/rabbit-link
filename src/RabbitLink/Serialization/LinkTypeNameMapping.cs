@@ -17,7 +17,7 @@ namespace RabbitLink.Serialization
         }
 
         public LinkTypeNameMapping(LinkTypeNameMapping mapping) : this(mapping._typeMap)
-        {            
+        {
         }
 
         private LinkTypeNameMapping(IReadOnlyDictionary<Type, string> mapping)
@@ -45,7 +45,7 @@ namespace RabbitLink.Serialization
         {
             if (type == null)
                 throw new ArgumentNullException(nameof(type));
-            
+
             if (string.IsNullOrWhiteSpace(name))
                 throw new ArgumentNullException(nameof(name));
 
@@ -60,7 +60,7 @@ namespace RabbitLink.Serialization
 
             var mapping = _typeMap.ToDictionary(x => x.Key, x => x.Value);
             mapping[type] = name.Trim();
-            
+
             return new LinkTypeNameMapping(mapping);
         }
 

@@ -13,7 +13,7 @@ namespace RabbitLink.Topology
         /// Configure topology handler
         /// </summary>
         Task<ILinkExchage> Configure(ILinkTopologyConfig config);
-        
+
         /// <summary>
         /// Topology configuration error handler
         /// </summary>

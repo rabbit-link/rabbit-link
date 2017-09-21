@@ -42,7 +42,7 @@ namespace RabbitLink.Builders
                     catch (Exception ex)
                     {
                         var sException = new LinkDeserializationException(msg, typeof(TBody), ex);
-                        return Task.FromException(sException);
+                        return Task.FromException<LinkConsumerAckStrategy>(sException);
                     }
 
                     var concreteMsg = new LinkConsumedMessage<TBody>(
@@ -71,13 +71,14 @@ namespace RabbitLink.Builders
                     var typeName = props.Type;
 
                     if (string.IsNullOrWhiteSpace(typeName))
-                        return Task.FromException(new LinkCosumerTypeNameMappingException());
+                        return Task.FromException<LinkConsumerAckStrategy>(new LinkCosumerTypeNameMappingException());
 
                     typeName = typeName.Trim();
                     var bodyType = mapping.Map(typeName);
 
                     if (bodyType == null)
-                        return Task.FromException(new LinkCosumerTypeNameMappingException(typeName));
+                        return Task.FromException<LinkConsumerAckStrategy>(
+                            new LinkCosumerTypeNameMappingException(typeName));
 
                     try
                     {
@@ -86,7 +87,7 @@ namespace RabbitLink.Builders
                     catch (Exception ex)
                     {
                         var sException = new LinkDeserializationException(msg, bodyType, ex);
-                        return Task.FromException(sException);
+                        return Task.FromException<LinkConsumerAckStrategy>(sException);
                     }
 
                     var concreteMsg = LinkMessageFactory

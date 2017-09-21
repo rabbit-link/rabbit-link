@@ -9,17 +9,17 @@
         /// Direct
         /// </summary>
         Direct,
-        
+
         /// <summary>
         /// Fanout
         /// </summary>
         Fanout,
-        
+
         /// <summary>
         /// Topic
         /// </summary>
         Topic,
-        
+
         /// <summary>
         /// Headers
         /// </summary>

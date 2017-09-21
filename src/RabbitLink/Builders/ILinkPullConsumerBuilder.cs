@@ -86,7 +86,7 @@ namespace RabbitLink.Builders
         /// </summary>
         ///<param name="value">Use <see cref="Timeout.InfiniteTimeSpan"/> or <see cref="TimeSpan.Zero"/> for infinite</param>
         ILinkPullConsumerBuilder GetMessageTimeout(TimeSpan value);
-        
+
         // <summary>
         /// Serializer for (de)serialize messages.
         /// By default value of <see cref="ILinkBuilder.Serializer"/>

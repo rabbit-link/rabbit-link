@@ -8,6 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 using RabbitLink;
+using RabbitLink.Consumer;
 using RabbitLink.Messaging;
 using RabbitLink.Serialization.Json;
 using RabbitLink.Topology;
@@ -48,8 +49,8 @@ namespace Playground
 
         private static void TestConsumer(ILink link, CancellationToken cancellation)
         {
-            var tcs = new TaskCompletionSource<object>();
-            tcs.TrySetResult(null);
+            var tcs = new TaskCompletionSource<LinkConsumerAckStrategy>();
+            tcs.TrySetResult(LinkConsumerAckStrategy.Ack);
 
             Console.WriteLine("--- Creating consumer ---");
             using (link.Consumer
@@ -166,16 +167,14 @@ namespace Playground
                 }
 
                 var ts = new List<Task>(10);
-                
+
                 foreach (var msg in tasks)
                 {
                     ts.Add(producer.PublishAsync(msg));
                 }
 
-                Task.WaitAll(ts.ToArray());
-
                 Console.WriteLine("--- Waiting for publish end ---");
-                //Task.WaitAll(tasks);
+                Task.WaitAll(ts.ToArray());
                 Console.WriteLine("--- Publish done ---");
 
                 sw.Stop();

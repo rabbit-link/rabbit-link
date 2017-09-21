@@ -78,12 +78,12 @@ namespace RabbitLink.Builders
         ///  Sets topology handler
         /// </summary>
         ILinkProducerBuilder Exchange(ILinkProducerTopologyHandler handler);
-        
+
         /// <summary>
         /// Sets handler for state changes
         /// </summary>
         ILinkProducerBuilder OnStateChange(LinkStateHandler<LinkProducerState> value);
-        
+
         /// <summary>
         /// Sets handler for channel state changes
         /// </summary>
@@ -99,7 +99,7 @@ namespace RabbitLink.Builders
         /// Assing type-name mappings for (de)serialization
         /// </summary>
         ILinkProducerBuilder TypeNameMap(IDictionary<Type, string> mapping);
-        
+
         /// <summary>
         /// Assigns type-name mappings for (de)serialization with builder
         /// </summary>

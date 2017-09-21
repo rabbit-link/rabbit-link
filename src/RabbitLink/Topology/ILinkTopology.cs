@@ -18,7 +18,7 @@ namespace RabbitLink.Topology
         /// Id
         /// </summary>
         Guid Id { get; }
-        
+
         /// <summary>
         /// Operational state
         /// </summary>

@@ -38,12 +38,12 @@ namespace RabbitLink.Connection
         /// Emitted when disposed
         /// </summary>
         event EventHandler Disposed;
-        
+
         /// <summary>
         /// Emmited when connected
         /// </summary>
         event EventHandler Connected;
-        
+
         /// <summary>
         /// Emmited when disconnected
         /// </summary>
@@ -53,13 +53,13 @@ namespace RabbitLink.Connection
         /// Initialize connection
         /// </summary>
         void Initialize();
-        
+
         /// <summary>
         /// Create <see cref="IModel"/>
         /// </summary>
         /// <param name="cancellation">Action cancellation</param>
         Task<IModel> CreateModelAsync(CancellationToken cancellation);
-        
+
         /// <summary>
         /// Configuration
         /// </summary>

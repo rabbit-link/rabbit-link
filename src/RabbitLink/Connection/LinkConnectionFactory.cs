@@ -22,10 +22,10 @@ namespace RabbitLink.Connection
         #region Ctor
 
         public LinkConnectionFactory(
-            string name, 
-            string appId, 
-            Uri connectionString, 
-            TimeSpan timeout, 
+            string name,
+            string appId,
+            Uri connectionString,
+            TimeSpan timeout,
             bool useBackgroundThreads
         )
         {

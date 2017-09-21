@@ -20,16 +20,16 @@ namespace RabbitLink.Builders
             ILinkSerializer serializer
         )
         {
-            if(string.IsNullOrWhiteSpace(connectionName))
+            if (string.IsNullOrWhiteSpace(connectionName))
                 throw new ArgumentNullException(nameof(connectionName));
-            
-            if(timeout <= TimeSpan.Zero)
+
+            if (timeout <= TimeSpan.Zero)
                 throw new ArgumentOutOfRangeException(nameof(timeout), "Must be greater than TimeSpan.Zero");
-            
-            if(recoveryInterval <= TimeSpan.Zero)
+
+            if (recoveryInterval <= TimeSpan.Zero)
                 throw new ArgumentOutOfRangeException(nameof(recoveryInterval), "Must be greater than TimeSpan.Zero");
-            
-            if(string.IsNullOrWhiteSpace(appId))
+
+            if (string.IsNullOrWhiteSpace(appId))
                 throw new ArgumentNullException(nameof(appId));
 
             ConnectionName = connectionName.Trim();
@@ -43,7 +43,7 @@ namespace RabbitLink.Builders
             UseBackgroundThreadsForConnection = useBackgroundThreadsForConnection;
             Serializer = serializer;
         }
-        
+
         public string ConnectionName { get; }
         public Uri ConnectionString { get; }
         public bool AutoStart { get; }

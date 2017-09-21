@@ -13,11 +13,12 @@ namespace RabbitLink.Messaging
         /// <summary>
         /// Extend instance with other instances, returns instance.
         /// </summary>
-        public static LinkMessageProperties Extend(this LinkMessageProperties @this, params LinkMessageProperties[] others)
+        public static LinkMessageProperties Extend(this LinkMessageProperties @this,
+            params LinkMessageProperties[] others)
         {
-            if(@this == null)
+            if (@this == null)
                 throw new ArgumentNullException(nameof(@this));
-            
+
             if (others?.Any() == true)
             {
                 foreach (var other in others)
@@ -48,7 +49,7 @@ namespace RabbitLink.Messaging
                     }
                 }
             }
-            
+
             return @this;
         }
 
@@ -63,9 +64,9 @@ namespace RabbitLink.Messaging
         /// </summary>
         internal static LinkMessageProperties Extend(this LinkMessageProperties @this, params IBasicProperties[] others)
         {
-            if(@this == null)
+            if (@this == null)
                 throw new ArgumentNullException(nameof(@this));
-            
+
             if (others?.Any() == true)
             {
                 foreach (var other in others)
@@ -106,9 +107,9 @@ namespace RabbitLink.Messaging
         /// </summary>
         internal static IBasicProperties Extend(this IBasicProperties @this, params LinkMessageProperties[] others)
         {
-            if(@this == null)
+            if (@this == null)
                 throw new ArgumentNullException(nameof(@this));
-            
+
             if (others?.Any() == true)
             {
                 foreach (var other in others)

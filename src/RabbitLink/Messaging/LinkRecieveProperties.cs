@@ -3,7 +3,7 @@
     /// <summary>
     /// Recieve properties of message
     /// </summary>
-    public class LinkRecieveProperties 
+    public class LinkRecieveProperties
     {
         /// <summary>
         /// Creates new intance
@@ -14,10 +14,10 @@
         /// <param name="queueName">Message was consumed from this queue</param>
         /// <param name="isFromThisApp">Message was published from this application</param>
         public LinkRecieveProperties(
-            bool redelivered, 
-            string exchangeName, 
-            string routingKey, 
-            string queueName, 
+            bool redelivered,
+            string exchangeName,
+            string routingKey,
+            string queueName,
             bool isFromThisApp
         )
         {
@@ -32,14 +32,17 @@
         /// Is message was redelivered
         /// </summary>
         public bool Redelivered { get; }
+
         /// <summary>
         /// Message was published to this exchange
         /// </summary>
         public string ExchangeName { get; }
+
         /// <summary>
         /// Message was published with this routing key
         /// </summary>
         public string RoutingKey { get; }
+
         /// <summary>
         /// Message was consumed from this queue
         /// </summary>

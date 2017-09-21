@@ -38,7 +38,7 @@ namespace RabbitLink.Topology.Internal
         {
             _channel = channel ?? throw new ArgumentNullException(nameof(channel));
             _configuration = configuration;
-            
+
             _logger = _channel.Connection.Configuration.LoggerFactory.CreateLogger($"{GetType().Name}({Id:D})")
                       ?? throw new InvalidOperationException("Cannot create logger");
 
@@ -52,7 +52,7 @@ namespace RabbitLink.Topology.Internal
             _channel.Disposed += ChannelOnDisposed;
 
             _logger.Debug($"Created(channelId: {_channel.Id})");
-            
+
             _channel.Initialize(this);
         }
 
@@ -162,8 +162,8 @@ namespace RabbitLink.Topology.Internal
         {
             return _readyCompletion.Task
                 .ContinueWith(
-                    t => t.Result, 
-                    cancellation ?? CancellationToken.None, 
+                    t => t.Result,
+                    cancellation ?? CancellationToken.None,
                     TaskContinuationOptions.RunContinuationsAsynchronously,
                     TaskScheduler.Current
                 );
@@ -236,7 +236,7 @@ namespace RabbitLink.Topology.Internal
             {
                 if (State == LinkTopologyState.Disposed)
                     return;
-                
+
                 _logger.Debug($"Disposing ( by channel: {byChannel} )");
 
                 _channel.Disposed -= ChannelOnDisposed;

@@ -123,7 +123,8 @@ namespace RabbitLink.Builders
         public ILinkProducerBuilder PublishTimeout(TimeSpan value)
         {
             if (value < TimeSpan.Zero && value != Timeout.InfiniteTimeSpan)
-                throw new ArgumentOutOfRangeException(nameof(value), "Must be greater or equal TimeSpan.Zero or equal Timeout.InfiniteTimeSpan");
+                throw new ArgumentOutOfRangeException(nameof(value),
+                    "Must be greater or equal TimeSpan.Zero or equal Timeout.InfiniteTimeSpan");
 
             return new LinkProducerBuilder(this, publishTimeout: value);
         }
@@ -183,17 +184,17 @@ namespace RabbitLink.Builders
 
         public ILinkProducerBuilder OnChannelStateChange(LinkStateHandler<LinkChannelState> value)
         {
-            if(value == null)
+            if (value == null)
                 throw new ArgumentNullException(nameof(value));
-            
+
             return new LinkProducerBuilder(this, channelStateHandler: value);
         }
 
         public ILinkProducerBuilder Serializer(ILinkSerializer value)
         {
-            if(value == null)
+            if (value == null)
                 throw new ArgumentNullException(nameof(value));
-            
+
             return new LinkProducerBuilder(this, serializer: value);
         }
 
@@ -204,7 +205,7 @@ namespace RabbitLink.Builders
         {
             var builder = new LinkTypeNameMapBuilder(_typeNameMapping);
             map?.Invoke(builder);
-            
+
             return new LinkProducerBuilder(this, typeNameMapping: builder.Build());
         }
 
@@ -213,7 +214,7 @@ namespace RabbitLink.Builders
         {
             if (_topologyHandler == null)
                 throw new InvalidOperationException("Exchange must be set");
-            
+
             var config = new LinkProducerConfiguration(
                 _publishTimeout,
                 _recoveryInterval,

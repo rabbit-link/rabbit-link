@@ -12,7 +12,7 @@ using RabbitLink.Internals.Channels;
 namespace RabbitLink.Internals.Queues
 {
     internal class RetryQueue<TItem> : IDisposable
-        where TItem: class, IChannelItem
+        where TItem : class, IChannelItem
     {
         private readonly LinkedList<QueueItem> _queue = new LinkedList<QueueItem>();
         private readonly AsyncLock _queueSync = new AsyncLock();
@@ -34,7 +34,7 @@ namespace RabbitLink.Internals.Queues
         {
             while (true)
             {
-                if(_disposedCancellation.IsCancellationRequested)
+                if (_disposedCancellation.IsCancellationRequested)
                     throw new ObjectDisposedException(GetType().Name);
 
                 try
@@ -65,7 +65,7 @@ namespace RabbitLink.Internals.Queues
                 }
                 catch (OperationCanceledException)
                 {
-                    if(_disposedCancellation.IsCancellationRequested)
+                    if (_disposedCancellation.IsCancellationRequested)
                         throw new ObjectDisposedException(GetType().Name);
 
                     throw;
@@ -84,7 +84,7 @@ namespace RabbitLink.Internals.Queues
             {
                 cancellation.ThrowIfCancellationRequested();
 
-                if(_disposedCancellation.IsCancellationRequested)
+                if (_disposedCancellation.IsCancellationRequested)
                     throw new ObjectDisposedException(GetType().Name);
 
                 try
@@ -115,7 +115,7 @@ namespace RabbitLink.Internals.Queues
                 }
                 catch (OperationCanceledException)
                 {
-                    if(_disposedCancellation.IsCancellationRequested)
+                    if (_disposedCancellation.IsCancellationRequested)
                         throw new ObjectDisposedException(GetType().Name);
 
                     throw;
@@ -125,7 +125,7 @@ namespace RabbitLink.Internals.Queues
 
         public void Put(TItem item, CancellationToken cancellation)
         {
-            if(_disposedCancellation.IsCancellationRequested)
+            if (_disposedCancellation.IsCancellationRequested)
                 throw new ObjectDisposedException(GetType().Name);
 
             try
@@ -155,7 +155,7 @@ namespace RabbitLink.Internals.Queues
             }
             catch (OperationCanceledException)
             {
-                if(_disposedCancellation.IsCancellationRequested)
+                if (_disposedCancellation.IsCancellationRequested)
                     throw new ObjectDisposedException(GetType().Name);
 
                 throw;
@@ -164,7 +164,7 @@ namespace RabbitLink.Internals.Queues
 
         public async Task PutAsync(TItem item, CancellationToken cancellation)
         {
-            if(_disposedCancellation.IsCancellationRequested)
+            if (_disposedCancellation.IsCancellationRequested)
                 throw new ObjectDisposedException(GetType().Name);
 
             try
@@ -194,7 +194,7 @@ namespace RabbitLink.Internals.Queues
             }
             catch (OperationCanceledException)
             {
-                if(_disposedCancellation.IsCancellationRequested)
+                if (_disposedCancellation.IsCancellationRequested)
                     throw new ObjectDisposedException(GetType().Name);
 
                 throw;
@@ -203,9 +203,9 @@ namespace RabbitLink.Internals.Queues
 
         public void PutRetry(IEnumerable<TItem> items, CancellationToken cancellation)
         {
-            if(_disposedCancellation.IsCancellationRequested)
+            if (_disposedCancellation.IsCancellationRequested)
                 throw new ObjectDisposedException(GetType().Name);
-            
+
             var enableCancellations = new Stack<Action>();
             LinkedListNode<QueueItem> prevNode = null;
 
@@ -258,18 +258,18 @@ namespace RabbitLink.Internals.Queues
             }
             catch (OperationCanceledException)
             {
-                if(_disposedCancellation.IsCancellationRequested)
+                if (_disposedCancellation.IsCancellationRequested)
                     throw new ObjectDisposedException(GetType().Name);
 
                 throw;
             }
         }
-        
+
         public async Task PutRetryAsync(IEnumerable<TItem> items, CancellationToken cancellation)
         {
-            if(_disposedCancellation.IsCancellationRequested)
+            if (_disposedCancellation.IsCancellationRequested)
                 throw new ObjectDisposedException(GetType().Name);
-            
+
             var enableCancellations = new Stack<Action>();
             LinkedListNode<QueueItem> prevNode = null;
 
@@ -321,26 +321,26 @@ namespace RabbitLink.Internals.Queues
             }
             catch (OperationCanceledException)
             {
-                if(_disposedCancellation.IsCancellationRequested)
+                if (_disposedCancellation.IsCancellationRequested)
                     throw new ObjectDisposedException(GetType().Name);
 
                 throw;
             }
         }
-        
+
         public void Dispose()
         {
-            if(_disposedCancellation.IsCancellationRequested)
+            if (_disposedCancellation.IsCancellationRequested)
                 return;
 
             using (_sync.Lock(CancellationToken.None))
             {
-                if(_disposedCancellation.IsCancellationRequested)
+                if (_disposedCancellation.IsCancellationRequested)
                     return;
-                
+
                 _disposedCancellationSource.Cancel();
 
-                
+
                 var itemException = new ObjectDisposedException(GetType().Name);
 
                 while (true)
@@ -350,9 +350,9 @@ namespace RabbitLink.Internals.Queues
                     using (_queueSync.Lock(CancellationToken.None))
                     {
                         var qitem = _queue.First;
-                        if(qitem == null)
+                        if (qitem == null)
                             break;
-                        
+
                         _queue.RemoveFirst();
                         item = qitem.Value;
                     }
@@ -375,7 +375,7 @@ namespace RabbitLink.Internals.Queues
                         // no-op
                     }
                 }
-                
+
                 _disposedCancellationSource.Dispose();
             }
         }
@@ -450,7 +450,5 @@ namespace RabbitLink.Internals.Queues
         #endregion
 
         #endregion
-
-       
     }
 }

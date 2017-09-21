@@ -74,50 +74,60 @@ namespace RabbitLink.Consumer
         public async Task<ILinkPulledMessage<TBody>> GetMessageAsync<TBody>(CancellationToken? cancellation = null)
             where TBody : class
         {
-            if(typeof(TBody) != typeof(byte[]) && _consumer.Serializer == null)
+            if (typeof(TBody) != typeof(byte[]) && _consumer.Serializer == null)
                 throw new InvalidOperationException("Serializer not set");
-            
+
             if (typeof(TBody) == typeof(object) && _typeNameMapping.IsEmpty)
                 throw new InvalidOperationException("Type name mapping is empty");
 
-            var msg = await GetRawMessageAsync(cancellation)
-                .ConfigureAwait(false);
-
-            if (typeof(TBody) == typeof(byte[]))
-                return (ILinkPulledMessage<TBody>) msg;
-
-            Type bodyType = null;
-            if (typeof(TBody) == typeof(object))
+            while (true)
             {
-                var typeName = msg.Properties.Type;
-                if (string.IsNullOrWhiteSpace(typeName))
-                    throw new LinkPullCosumerTypeNameMappingException(msg);
+                var msg = await GetRawMessageAsync(cancellation)
+                    .ConfigureAwait(false);
 
-                bodyType = _typeNameMapping.Map(typeName.Trim());
-                if (bodyType == null)
-                    throw new LinkPullCosumerTypeNameMappingException(msg, typeName);
-            }
-            else
-            {
-                bodyType = typeof(TBody);
-            }
+                if (typeof(TBody) == typeof(byte[]))
+                    return (ILinkPulledMessage<TBody>) msg;
 
-            TBody body;
-            var props = msg.Properties.Clone();
+                try
+                {
+                    Type bodyType;
+                    if (typeof(TBody) == typeof(object))
+                    {
+                        var typeName = msg.Properties.Type;
+                        if (string.IsNullOrWhiteSpace(typeName))
+                            throw new LinkPullCosumerTypeNameMappingException(msg);
 
-            try
-            {
-                body = (TBody) _consumer.Serializer.Deserialize(bodyType, msg.Body, props);
-            }
-            catch (Exception ex)
-            {
-                throw new LinkPullConsumerDeserializationException(msg, bodyType, ex);
-            }
-            
-            var concreteMsg = LinkMessageFactory
-                .ConstructPulledMessage(bodyType, msg, body, props);
+                        bodyType = _typeNameMapping.Map(typeName.Trim());
+                        if (bodyType == null)
+                            throw new LinkPullCosumerTypeNameMappingException(msg, typeName);
+                    }
+                    else
+                    {
+                        bodyType = typeof(TBody);
+                    }
 
-            return (ILinkPulledMessage<TBody>) concreteMsg;
+                    TBody body;
+                    var props = msg.Properties.Clone();
+
+                    try
+                    {
+                        body = (TBody) _consumer.Serializer.Deserialize(bodyType, msg.Body, props);
+                    }
+                    catch (Exception ex)
+                    {
+                        throw new LinkPullConsumerDeserializationException(msg, bodyType, ex);
+                    }
+
+                    var concreteMsg = LinkMessageFactory
+                        .ConstructPulledMessage(bodyType, msg, body, props);
+
+                    return (ILinkPulledMessage<TBody>) concreteMsg;
+                }
+                catch (Exception ex)
+                {
+                    msg.Exception(ex);
+                }
+            }
         }
 
         private async Task<LinkPulledMessage<byte[]>> GetRawMessageAsync(CancellationToken? cancellation = null)
@@ -151,10 +161,8 @@ namespace RabbitLink.Consumer
             }
         }
 
-        private Task OnMessageRecieved(ILinkConsumedMessage<byte[]> message)
-        {
-            return _queue.PutAsync(message);
-        }
+        private Task<LinkConsumerAckStrategy> OnMessageRecieved(ILinkConsumedMessage<byte[]> message)
+            => _queue.PutAsync(message);
 
         private void OnDispose()
         {

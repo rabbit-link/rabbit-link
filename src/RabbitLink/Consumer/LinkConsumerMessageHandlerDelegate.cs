@@ -11,7 +11,7 @@ namespace RabbitLink.Consumer
     ///     Message handler delegate for <see cref="ILinkConsumer" />
     /// </summary>
     /// <returns>Task when handle</returns>
-    public delegate Task LinkConsumerMessageHandlerDelegate<in TBody>(
+    public delegate Task<LinkConsumerAckStrategy> LinkConsumerMessageHandlerDelegate<in TBody>(
         ILinkConsumedMessage<TBody> message
     ) where TBody : class;
 }

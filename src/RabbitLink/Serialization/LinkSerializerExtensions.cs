@@ -14,13 +14,14 @@ namespace RabbitLink.Serialization
 
         static LinkSerializerExtensions()
         {
-            Expression<Action<ILinkSerializer>> expr = x => x.Deserialize<object>(default(byte[]), default(LinkMessageProperties));
-            
-            DeserializeMethod = ((MethodCallExpression)expr.Body)
+            Expression<Action<ILinkSerializer>> expr = x =>
+                x.Deserialize<object>(default(byte[]), default(LinkMessageProperties));
+
+            DeserializeMethod = ((MethodCallExpression) expr.Body)
                 .Method
                 .GetGenericMethodDefinition();
         }
-        
+
         /// <summary>
         ///     Deserialize messsage and set properties
         /// </summary>
@@ -28,8 +29,7 @@ namespace RabbitLink.Serialization
             byte[] body, LinkMessageProperties properties)
         {
             var genericMethod = DeserializeMethod.MakeGenericMethod(bodyType);
-            return genericMethod.Invoke(@this, new object[] { body, properties });
+            return genericMethod.Invoke(@this, new object[] {body, properties});
         }
-
     }
 }

@@ -5,9 +5,9 @@ namespace RabbitLink.Messaging.Internals
 {
     internal static class LinkMessageFactory
     {
-        private static readonly Type LinkConsumedMessageType = typeof (LinkConsumedMessage<>);
-        private static readonly Type LinkPulledMessageType = typeof (LinkPulledMessage<>);
-        
+        private static readonly Type LinkConsumedMessageType = typeof(LinkConsumedMessage<>);
+        private static readonly Type LinkPulledMessageType = typeof(LinkPulledMessage<>);
+
         public static ILinkConsumedMessage<object> ConstructConsumedMessage(
             Type bodyType,
             object body,
@@ -20,7 +20,7 @@ namespace RabbitLink.Messaging.Internals
             return (ILinkConsumedMessage<object>) Activator
                 .CreateInstance(genericType, body, properties, recievedProperties, cancellation);
         }
-        
+
         public static ILinkPulledMessage<object> ConstructPulledMessage(
             Type bodyType,
             LinkPulledMessage<byte[]> message,

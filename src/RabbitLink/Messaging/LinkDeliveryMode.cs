@@ -9,10 +9,12 @@
         /// Default
         /// </summary>
         Default = 0,
+
         /// <summary>
         /// Transiend
         /// </summary>
         Transient = 1,
+
         /// <summary>
         /// Durable
         /// </summary>
