@@ -1,5 +1,7 @@
 # RabbitLink
-[![NuGet](https://img.shields.io/nuget/v/RabbitLink.svg)](https://www.nuget.org/packages/RabbitLink)
+| **RabbitLink** | [![RabbitLink](https://img.shields.io/nuget/v/RabbitLink.svg)](https://www.nuget.org/packages/RabbitLink) [![Downloads](https://img.shields.io/nuget/dt/RabbitLink.svg)](https://www.nuget.org/packages/RabbitLink) |
+|:-|:-|
+| **RabbitLink.Serialization.Json** | [![RabbitLink.Serialization.Json](https://img.shields.io/nuget/v/RabbitLink.Serialization.Json.svg)](https://www.nuget.org/packages/RabbitLink.Serialization.Json) [![Downloads](https://img.shields.io/nuget/dt/RabbitLink.Serialization.Json.svg)](https://www.nuget.org/packages/RabbitLink.Serialization.Json) |
 
 Advanced .Net API for RabbitMQ
 
