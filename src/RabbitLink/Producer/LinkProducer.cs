@@ -361,12 +361,11 @@ namespace RabbitLink.Producer
                 {
                     message = _messageQueue.Wait(cancellation);
                 }
-                catch (OperationCanceledException)
-                {
-                    continue;
-                }
                 catch (Exception ex)
                 {
+                    if (!cancellation.IsCancellationRequested)
+                        continue;
+                    
                     _logger.Error($"Cannot read message from queue: {ex}");
                     return;
                 }
