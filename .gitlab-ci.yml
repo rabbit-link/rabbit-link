@@ -7,10 +7,10 @@ before_script:
 - chcp 65001
 
 build:
-  tags: 
+  tags:
   - windows
   - dotnet
-  stage: build  
+  stage: build
   script:
   - echo Restoring packages
   - dotnet restore "%cd%\src\RabbitLink"
@@ -19,24 +19,44 @@ build:
   - dotnet build "%cd%\src\RabbitLink" -c Release
   - dotnet build "%cd%\src\RabbitLink.Serialization.Json" -c Release
 
-pack:
-  tags: 
+pack-RabbitLink:
+  tags:
   - windows
   - dotnet
   stage: pack
   only:
-  - /^v([0-9]+)(\.([0-9]+)){1,2}.*$/
+  - /^rabbitlink-v([0-9]+)(\.([0-9]+)){1,2}.*$/
   except:
   - branches
-#  - triggers  
+#  - triggers
   dependencies:
     - build
   script:
   - echo Restoring packages
   - dotnet restore "%cd%\src\RabbitLink"
-  - dotnet restore "%cd%\src\RabbitLink.Serialization.Json"
   - echo Building
   - dotnet pack "%cd%\src\RabbitLink" -c Release -o "%cd%\artifacts\"
+  artifacts:
+    expire_in: 31d
+    paths:
+    - artifacts/*
+
+pack-RabbitLink.Serialization.Json:
+  tags:
+  - windows
+  - dotnet
+  stage: pack
+  only:
+  - /^json-v([0-9]+)(\.([0-9]+)){1,2}.*$/
+  except:
+  - branches
+#  - triggers
+  dependencies:
+    - build
+  script:
+  - echo Restoring packages
+  - dotnet restore "%cd%\src\RabbitLink.Serialization.Json"
+  - echo Building
   - dotnet pack "%cd%\src\RabbitLink.Serialization.Json" -c Release -o "%cd%\artifacts\"
   artifacts:
     expire_in: 31d
@@ -57,5 +77,5 @@ publish:
   dependencies:
   - pack
   script:
-  - echo "Publishing nuget package"  
-  - dotnet nuget push --force-english-output -s https://api.nuget.org/v3/index.json -k "%NUGET_API_KEY%" artifacts\*.nupkg 
+  - echo "Publishing nuget package"
+  - dotnet nuget push --force-english-output -s https://api.nuget.org/v3/index.json -k "%NUGET_API_KEY%" artifacts\*.nupkg
