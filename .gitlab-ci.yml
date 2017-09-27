@@ -1,7 +1,6 @@
 stages:
 - build
-- pack
-- publish
+- nuget
 
 build:
   tags:
@@ -21,7 +20,7 @@ nuget-main:
   tags:
   - windows
   - dotnet
-  stage: pack
+  stage: nuget
   only:
   - /^v([0-9]+)(\.([0-9]+)){1,2}.*$/
   except:
@@ -42,7 +41,7 @@ nuget-json:
   tags:
   - windows
   - dotnet
-  stage: pack
+  stage: nuget
   only:
   - /^json-v([0-9]+)(\.([0-9]+)){1,2}.*$/
   except:
