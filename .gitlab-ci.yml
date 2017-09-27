@@ -75,7 +75,8 @@ publish:
   - branches
 #  - triggers
   dependencies:
-  - pack
+  - pack-RabbitLink
+  - pack-RabbitLink.Serialization.Json
   script:
   - echo "Publishing nuget package"
   - dotnet nuget push --force-english-output -s https://api.nuget.org/v3/index.json -k "%NUGET_API_KEY%" artifacts\*.nupkg
