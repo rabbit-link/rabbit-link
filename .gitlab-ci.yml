@@ -3,15 +3,13 @@ stages:
 - pack
 - publish
 
-before_script:
-- chcp 65001
-
 build:
   tags:
   - windows
   - dotnet
   stage: build
   script:
+  - chcp 65001
   - echo Restoring packages
   - dotnet restore "%cd%\src\RabbitLink"
   - dotnet restore "%cd%\src\RabbitLink.Serialization.Json"
@@ -19,29 +17,28 @@ build:
   - dotnet build "%cd%\src\RabbitLink" -c Release
   - dotnet build "%cd%\src\RabbitLink.Serialization.Json" -c Release
 
-pack-RabbitLink:
+nuget-main:
   tags:
   - windows
   - dotnet
   stage: pack
   only:
-  - /^rabbitlink-v([0-9]+)(\.([0-9]+)){1,2}.*$/
+  - /^v([0-9]+)(\.([0-9]+)){1,2}.*$/
   except:
   - branches
-#  - triggers
-  dependencies:
-    - build
   script:
+  - chcp 65001
   - echo Restoring packages
   - dotnet restore "%cd%\src\RabbitLink"
   - echo Building
   - dotnet pack "%cd%\src\RabbitLink" -c Release -o "%cd%\artifacts\"
+  - dotnet nuget push --force-english-output -s https://api.nuget.org/v3/index.json -k "%NUGET_API_KEY%" artifacts\*.nupkg
   artifacts:
     expire_in: 31d
     paths:
     - artifacts/*
 
-pack-RabbitLink.Serialization.Json:
+nuget-json:
   tags:
   - windows
   - dotnet
@@ -50,33 +47,15 @@ pack-RabbitLink.Serialization.Json:
   - /^json-v([0-9]+)(\.([0-9]+)){1,2}.*$/
   except:
   - branches
-#  - triggers
-  dependencies:
-    - build
   script:
+  - chcp 65001
   - echo Restoring packages
   - dotnet restore "%cd%\src\RabbitLink.Serialization.Json"
   - echo Building
   - dotnet pack "%cd%\src\RabbitLink.Serialization.Json" -c Release -o "%cd%\artifacts\"
+  - dotnet nuget push --force-english-output -s https://api.nuget.org/v3/index.json -k "%NUGET_API_KEY%" artifacts\*.nupkg
   artifacts:
     expire_in: 31d
     paths:
     - artifacts/*
 
-publish:
-#  when: manual
-  tags:
-  - windows
-  - dotnet
-  stage: publish
-  only:
-  - /^v([0-9]+)(\.([0-9]+)){1,2}.*$/
-  except:
-  - branches
-#  - triggers
-  dependencies:
-  - pack-RabbitLink
-  - pack-RabbitLink.Serialization.Json
-  script:
-  - echo "Publishing nuget package"
-  - dotnet nuget push --force-english-output -s https://api.nuget.org/v3/index.json -k "%NUGET_API_KEY%" artifacts\*.nupkg
