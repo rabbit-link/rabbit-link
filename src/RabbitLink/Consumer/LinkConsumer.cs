@@ -263,8 +263,16 @@ namespace RabbitLink.Consumer
             )
             {
                 var token = ccs.Token;
-                await AsyncHelper.RunAsync(() => ProcessActionQueue(model, token))
-                    .ConfigureAwait(false);
+
+                try
+                {
+                    await AsyncHelper.RunAsync(() => ProcessActionQueue(model, token))
+                        .ConfigureAwait(false);
+                }
+                catch
+                {
+                    // no-op
+                }
             }
         }
 
