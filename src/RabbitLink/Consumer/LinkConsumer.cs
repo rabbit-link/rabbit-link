@@ -277,12 +277,11 @@ namespace RabbitLink.Consumer
                 {
                     action = _actionQueue.Wait(cancellation);
                 }
-                catch (OperationCanceledException)
-                {
-                    continue;
-                }
                 catch (Exception ex)
                 {
+                    if(cancellation.IsCancellationRequested)
+                        continue;
+                    
                     _logger.Error($"Cannot read message from action queue: {ex}");
                     return;
                 }
