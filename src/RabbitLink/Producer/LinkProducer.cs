@@ -168,6 +168,10 @@ namespace RabbitLink.Producer
                 await _messageQueue.YieldAsync(cancellation)
                     .ConfigureAwait(false);
             }
+            catch (TaskCanceledException)
+            {
+                // No op
+            }
             catch (OperationCanceledException)
             {
                 // No op

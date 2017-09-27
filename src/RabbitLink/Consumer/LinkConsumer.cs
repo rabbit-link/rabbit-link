@@ -494,6 +494,10 @@ namespace RabbitLink.Consumer
                 await _actionQueue.YieldAsync(cancellation)
                     .ConfigureAwait(false);
             }
+            catch (TaskCanceledException)
+            {
+                // No op
+            }
             catch (OperationCanceledException)
             {
                 // No op
