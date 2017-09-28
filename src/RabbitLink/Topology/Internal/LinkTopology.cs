@@ -177,7 +177,7 @@ namespace RabbitLink.Topology.Internal
             {
                 try
                 {
-                    _logger.Info($"Retrying in {_configuration.RecoveryInterval.TotalSeconds:0.###}s");
+                    _logger.Debug($"Retrying in {_configuration.RecoveryInterval.TotalSeconds:0.###}s");
                     await Task.Delay(_configuration.RecoveryInterval, cancellation)
                         .ConfigureAwait(false);
                 }
@@ -187,7 +187,7 @@ namespace RabbitLink.Topology.Internal
                 }
             }
 
-            _logger.Info("Configuring topology");
+            _logger.Debug("Configuring topology");
 
             try
             {
@@ -222,7 +222,7 @@ namespace RabbitLink.Topology.Internal
                 _logger.Error($"Error in ready handler: {ex}");
             }
 
-            _logger.Info("Topology configured");
+            _logger.Debug("Topology configured");
 
             return LinkTopologyState.Ready;
         }

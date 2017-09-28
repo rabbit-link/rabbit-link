@@ -219,12 +219,12 @@ namespace RabbitLink.Connection
                 {
                     if (reopen && _connection.State == LinkConnectionState.Active)
                     {
-                        _logger.Info($"Reopening in {_recoveryInterval.TotalSeconds:0.###}s");
+                        _logger.Debug($"Reopening in {_recoveryInterval.TotalSeconds:0.###}s");
                         await Task.Delay(_recoveryInterval, _disposeCancellation)
                             .ConfigureAwait(false);
                     }
 
-                    _logger.Info("Opening");
+                    _logger.Debug("Opening");
                     _model = await _connection
                         .CreateModelAsync(_disposeCancellation)
                         .ConfigureAwait(false);
@@ -260,7 +260,7 @@ namespace RabbitLink.Connection
                 }
             }
 
-            _logger.Info($"Opened(channelNumber: {_model.ChannelNumber})");
+            _logger.Debug($"Opened(channelNumber: {_model.ChannelNumber})");
             return true;
         }
 

@@ -430,7 +430,7 @@ namespace RabbitLink.Producer
             {
                 try
                 {
-                    _logger.Info($"Retrying in {_configuration.RecoveryInterval.TotalSeconds:0.###}s");
+                    _logger.Debug($"Retrying in {_configuration.RecoveryInterval.TotalSeconds:0.###}s");
                     await Task.Delay(_configuration.RecoveryInterval, cancellation)
                         .ConfigureAwait(false);
                 }
@@ -440,7 +440,7 @@ namespace RabbitLink.Producer
                 }
             }
 
-            _logger.Info("Configuring topology");
+            _logger.Debug("Configuring topology");
 
             try
             {
@@ -465,7 +465,7 @@ namespace RabbitLink.Producer
                 return false;
             }
 
-            _logger.Info("Topology configured");
+            _logger.Debug("Topology configured");
 
             return true;
         }

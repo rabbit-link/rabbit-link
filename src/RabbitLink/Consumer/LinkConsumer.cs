@@ -201,7 +201,7 @@ namespace RabbitLink.Consumer
             {
                 try
                 {
-                    _logger.Info($"Retrying in {_configuration.RecoveryInterval.TotalSeconds:0.###}s");
+                    _logger.Debug($"Retrying in {_configuration.RecoveryInterval.TotalSeconds:0.###}s");
                     await Task.Delay(_configuration.RecoveryInterval, cancellation)
                         .ConfigureAwait(false);
                 }
@@ -211,7 +211,7 @@ namespace RabbitLink.Consumer
                 }
             }
 
-            _logger.Info("Configuring topology");
+            _logger.Debug("Configuring topology");
 
             try
             {
@@ -236,7 +236,7 @@ namespace RabbitLink.Consumer
                 return false;
             }
 
-            _logger.Info("Topology configured");
+            _logger.Debug("Topology configured");
 
             return true;
         }
@@ -347,7 +347,7 @@ namespace RabbitLink.Consumer
         }
 
         private void ConsumerOnRegistered(object sender, ConsumerEventArgs e)
-            => _logger.Info($"Consuming: {e.ConsumerTag}");
+            => _logger.Debug($"Consuming: {e.ConsumerTag}");
 
 
         private void ConsumerOnReceived(object sender, BasicDeliverEventArgs e)
@@ -468,7 +468,7 @@ namespace RabbitLink.Consumer
 
         private void ConsumerOnConsumerCancelled(object sender, ConsumerEventArgs e)
         {
-            _logger.Info($"Cancelled: {e.ConsumerTag}");
+            _logger.Debug($"Cancelled: {e.ConsumerTag}");
             _consumerCancellationTokenSource?.Cancel();
             _consumerCancellationTokenSource?.Dispose();
         }
