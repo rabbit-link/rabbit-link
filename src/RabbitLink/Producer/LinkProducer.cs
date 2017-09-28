@@ -163,6 +163,9 @@ namespace RabbitLink.Producer
 
         public async Task OnConnecting(CancellationToken cancellation)
         {
+            if(cancellation.IsCancellationRequested)
+                return;
+            
             try
             {
                 await _messageQueue.YieldAsync(cancellation)

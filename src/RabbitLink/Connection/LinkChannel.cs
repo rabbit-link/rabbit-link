@@ -212,7 +212,7 @@ namespace RabbitLink.Connection
                 var openCancellation = openCts.Token;
                 var openTask = Task.Run(
                     async () => await _handler.OnConnecting(openCancellation).ConfigureAwait(false),
-                    openCancellation
+                    CancellationToken.None
                 );
 
                 try
