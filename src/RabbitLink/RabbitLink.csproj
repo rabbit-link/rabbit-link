@@ -6,9 +6,9 @@
     <PackageProjectUrl>https://github.com/rabbit-link/rabbit-link</PackageProjectUrl>
     <PackageLicenseUrl>https://raw.githubusercontent.com/rabbit-link/rabbit-link/master/LICENSE</PackageLicenseUrl>
     <PackageTags>RabbitMQ Messaging AMQP</PackageTags>
-      <VersionPrefix>0.5.5</VersionPrefix>
+      <VersionPrefix>0.5.6</VersionPrefix>
     <VersionSuffix></VersionSuffix>
-    <PackageReleaseNotes>Change consumer default prefetch count to 1 and not allow 0
+      <PackageReleaseNotes>Make logging less verbose.
 </PackageReleaseNotes>
   </PropertyGroup>
   <PropertyGroup>
