@@ -51,7 +51,7 @@ namespace RabbitLink.Builders
             _link = link ?? throw new ArgumentNullException(nameof(link));
 
             _reconveryInterval = recoveryInterval;
-            _prefetchCount = prefetchCount ?? 0;
+            _prefetchCount = prefetchCount ?? 1;
             _autoAck = autoAck ?? false;
             _priority = priority ?? 0;
             _cancelOnHaFailover = cancelOnHaFailover ?? false;
@@ -145,6 +145,9 @@ namespace RabbitLink.Builders
 
         public ILinkConsumerBuilder PrefetchCount(ushort value)
         {
+            if(value == 0)
+                throw new ArgumentOutOfRangeException(nameof(value), "Must be greater than 0");
+            
             return new LinkConsumerBuilder(this, prefetchCount: value);
         }
 

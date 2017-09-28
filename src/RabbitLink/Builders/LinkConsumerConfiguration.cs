@@ -27,6 +27,9 @@ namespace RabbitLink.Builders
         {
             if (recoveryInterval < TimeSpan.Zero)
                 throw new ArgumentOutOfRangeException(nameof(recoveryInterval), "Must be greater than TimeSpan.Zero");
+            
+            if(prefetchCount == 0)
+                throw new ArgumentOutOfRangeException(nameof(prefetchCount), "Must be greater than 0");
 
             RecoveryInterval = recoveryInterval;
             PrefetchCount = prefetchCount;

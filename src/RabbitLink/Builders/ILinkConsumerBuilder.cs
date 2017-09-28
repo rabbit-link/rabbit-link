@@ -35,7 +35,7 @@ namespace RabbitLink.Builders
 
         /// <summary>
         ///     Message prefetch count
-        ///     By default 0 = no limit
+        ///     By default 1
         /// </summary>
         ILinkConsumerBuilder PrefetchCount(ushort value);
 
