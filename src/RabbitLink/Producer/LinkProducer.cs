@@ -370,7 +370,7 @@ namespace RabbitLink.Producer
                 }
                 catch (Exception ex)
                 {
-                    if (!cancellation.IsCancellationRequested)
+                    if (cancellation.IsCancellationRequested)
                         continue;
                     
                     _logger.Error($"Cannot read message from queue: {ex}");
