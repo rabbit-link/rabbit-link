@@ -164,18 +164,10 @@ namespace RabbitLink.Consumer
                             : LinkConsumerState.Reconfiguring;
                         break;
                     case LinkConsumerState.Active:
-                        try
-                        {
-                            await ActiveAsync(model, cancellation)
-                                .ConfigureAwait(false);
+                        await ActiveAsync(model, cancellation)
+                            .ConfigureAwait(false);
 
-                            newState = LinkConsumerState.Stopping;
-                        }
-                        finally
-                        {
-                            if (_readyCompletion.Task.IsCompleted)
-                                _readyCompletion = new TaskCompletionSource<object>();
-                        }
+                        newState = LinkConsumerState.Stopping;
                         break;
                     case LinkConsumerState.Stopping:
                         await AsyncHelper.RunAsync(() => Stop(model))
@@ -266,12 +258,19 @@ namespace RabbitLink.Consumer
 
                 try
                 {
+                    _readyCompletion.TrySetResult(null);
+                    
                     await AsyncHelper.RunAsync(() => ProcessActionQueue(model, token))
                         .ConfigureAwait(false);
                 }
                 catch
                 {
                     // no-op
+                }
+                finally
+                {
+                    if (_readyCompletion.Task.IsCompleted)
+                        _readyCompletion = new TaskCompletionSource<object>();
                 }
             }
         }
@@ -287,9 +286,9 @@ namespace RabbitLink.Consumer
                 }
                 catch (Exception ex)
                 {
-                    if(cancellation.IsCancellationRequested)
+                    if (cancellation.IsCancellationRequested)
                         continue;
-                    
+
                     _logger.Error($"Cannot read message from action queue: {ex}");
                     return;
                 }
@@ -443,7 +442,7 @@ namespace RabbitLink.Consumer
                         {
                             var strategy = _configuration.ErrorStrategy.HandleCancellation();
                             action = new LinkConsumerMessageAction(deliveryTag, strategy, cancellation);
-                            
+
                             _logger.Warning($"MessageHandler cancelled (strategy: {action.Strategy})");
                         }
                         catch (Exception ex)
@@ -497,9 +496,9 @@ namespace RabbitLink.Consumer
 
         public async Task OnConnecting(CancellationToken cancellation)
         {
-            if(cancellation.IsCancellationRequested)
+            if (cancellation.IsCancellationRequested)
                 return;
-            
+
             try
             {
                 await _actionQueue.YieldAsync(cancellation)
