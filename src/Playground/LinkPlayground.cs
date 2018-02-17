@@ -1,4 +1,4 @@
-﻿#region Usings
+#region Usings
 
 using System;
 using System.Collections.Generic;
@@ -26,7 +26,7 @@ namespace Playground
 
             var link = LinkBuilder.Configure
                 .Uri("amqp://localhost/")
-                .AutoStart(false)
+                .AutoStart(true)
                 .LoggerFactory(new ConsoleLinkLoggerFactory())
                 .ConnectionName($"LinkPlayground: {Process.GetCurrentProcess().Id}")
                 .Build();
@@ -35,15 +35,72 @@ namespace Playground
             using (link)
             {
                 var cancellation = cts.Token;
-                var ct = Task.Factory.StartNew(() => TestConsumer(link, cancellation), TaskCreationOptions.LongRunning);
+//                var ct = Task.Factory.StartNew(() => TestConsumer(link, cancellation), TaskCreationOptions.LongRunning);
 //                var ct = Task.Factory
 //                    .StartNew(() => TestPullConsumer(link, cancellation), TaskCreationOptions.LongRunning).Unwrap();
-                TestPublish(link);
+                //TestPublish(link);
+                TestRpc(link, cts.Token);
 
                 Console.WriteLine("--- Running ---");
                 Console.ReadLine();
                 cts.Cancel();
-                ct.Wait();
+                //ct.Wait();
+            }
+        }
+
+        private static void TestRpc(ILink link, CancellationToken cancellation)
+        {
+            Console.WriteLine("--- Creating server ---");
+            using (var replayExcahnge = link.Producer
+                .Exchange(cfg => cfg.ExchangeDeclareDefault())
+                .Serializer(new LinkJsonSerializer())
+                .Build())
+            {
+                using (link.Consumer
+                    .Queue(async cfg =>
+                    {
+                        var exchange = await cfg.ExchangeDeclare("link.rpc", LinkExchangeType.Direct);
+                        var queue = await cfg.QueueDeclare("link.rpc.server", expires: TimeSpan.FromMinutes(2));
+                        await cfg.Bind(queue, exchange, "test");
+                        return queue;
+                    })
+                    .Serializer(new LinkJsonSerializer())
+                    .Serve(replayExcahnge)
+                    .Handler<string, string>(async msg =>
+                    {
+                        Console.WriteLine($"Request incommed: {msg.Body}");
+                        return new LinkPublishMessage<string>($"Hellow, {msg.Body}");
+                    })
+                    .Build()
+                )
+                {
+                    Console.WriteLine("--- Prepare client ---");
+                    using (var responses = link.Consumer
+                        .Queue(cfg => cfg.QueueDeclare("link.responses", expires: TimeSpan.FromMinutes(2)))
+                        .Serializer(new LinkJsonSerializer())
+                        .BuildReplayConsumer())
+                    {
+                        using (var requester = link.Producer
+                            .Exchange(cfg => cfg.ExchangeDeclarePassive("link.rpc"))
+                            .Serializer(new LinkJsonSerializer())
+                            .ConfirmsMode(true)
+                            .Build())
+                        {
+                            Console.WriteLine("Sending request");
+                            var result = requester.CallAsync<string, string>(new LinkPublishMessage<string>("Vasja",
+                                new LinkMessageProperties
+                                {
+                                    ReplyTo = "link.responses",
+                                    CorrelationId = "test"
+                                }, new LinkPublishProperties
+                                {
+                                    RoutingKey = "test"
+                                }), responses, cancellation).GetAwaiter().GetResult();
+                            Console.WriteLine($"Answer received {result.Body}");
+                            Console.ReadKey();
+                        }
+                    }
+                }
             }
         }
 

@@ -5,6 +5,8 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using RabbitLink.Connection;
 using RabbitLink.Consumer;
+using RabbitLink.Producer;
+using RabbitLink.Rpc;
 using RabbitLink.Serialization;
 using RabbitLink.Topology;
 using RabbitLink.Topology.Internal;
@@ -114,7 +116,7 @@ namespace RabbitLink.Builders
 
             if (_messageHandlerBuilder.Serializer && _serializer == null)
                 throw new InvalidOperationException("Serializer needed by message handler not set");
-            
+
             if(_messageHandlerBuilder.Mapping && _typeNameMapping.IsEmpty)
                 throw new InvalidOperationException("Type name mapping required by handler");
 
@@ -147,7 +149,7 @@ namespace RabbitLink.Builders
         {
             if(value == 0)
                 throw new ArgumentOutOfRangeException(nameof(value), "Must be greater than 0");
-            
+
             return new LinkConsumerBuilder(this, prefetchCount: value);
         }
 
@@ -273,8 +275,22 @@ namespace RabbitLink.Builders
         {
             var builder = new LinkTypeNameMapBuilder(_typeNameMapping);
             map?.Invoke(builder);
-            
+
             return new LinkConsumerBuilder(this, typeNameMapping: builder.Build());
+        }
+
+        public ILinkRpcServerBuilder Serve(ILinkProducer replayProducer)
+        {
+            return new LinkRpcServerBuilder(this, replayProducer,
+                _link.Configuration.LoggerFactory.CreateLogger("RpcServer"),
+                _serializer ?? _link.Configuration.Serializer, false, null);
+        }
+
+        public LinkReplayConsumer BuildReplayConsumer()
+        {
+            var dictionary = new CorrelationDictonary();
+            var consumer = this.Handler(RpcImpl.ReplayHandler(dictionary)).Build();
+            return new LinkReplayConsumer(consumer, dictionary, _serializer ?? _link.Configuration.Serializer);
         }
     }
 }
