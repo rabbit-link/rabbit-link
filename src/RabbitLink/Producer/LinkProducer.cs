@@ -14,6 +14,7 @@ using RabbitLink.Internals.Channels;
 using RabbitLink.Internals.Lens;
 using RabbitLink.Logging;
 using RabbitLink.Messaging;
+using RabbitLink.Rpc;
 using RabbitLink.Topology;
 using RabbitLink.Topology.Internal;
 using RabbitMQ.Client;
@@ -165,7 +166,7 @@ namespace RabbitLink.Producer
         {
             if(cancellation.IsCancellationRequested)
                 return;
-            
+
             try
             {
                 await _messageQueue.YieldAsync(cancellation)
@@ -247,9 +248,14 @@ namespace RabbitLink.Producer
             try
             {
                 if (_configuration.Serializer == null)
-                    throw new InvalidOperationException("Serializer not set for producer");
-
-                body = _configuration.Serializer.Serialize(message.Body, props);
+                {
+                    if (typeof(TBody) == typeof(byte[]))
+                        body = (byte[]) (object) message.Body;
+                    else
+                        throw new InvalidOperationException("Serializer not set for producer");
+                }
+                else
+                    body = _configuration.Serializer.Serialize(message.Body, props);
             }
             catch (Exception ex)
             {
@@ -327,6 +333,57 @@ namespace RabbitLink.Producer
         public bool ConfirmsMode => _configuration.ConfirmsMode;
         public TimeSpan? PublishTimeout => _configuration.PublishTimeout;
 
+        public async Task<ILinkConsumedMessage<byte[]>> CallAsync(ILinkPublishMessage<byte[]> message, LinkReplayConsumer replayConsumer, CancellationToken? cancellation = null)
+        {
+            if (message == null) throw new ArgumentNullException(nameof(message));
+            if (replayConsumer == null) throw new ArgumentNullException(nameof(replayConsumer));
+            if(string.IsNullOrWhiteSpace(message.Properties.CorrelationId))
+                throw new InvalidOperationException("No correlation id specified");
+            if (cancellation == null)
+            {
+                if (_configuration.PublishTimeout != TimeSpan.Zero &&
+                    _configuration.PublishTimeout != Timeout.InfiniteTimeSpan)
+                {
+                    cancellation = new CancellationTokenSource(_configuration.PublishTimeout).Token;
+                }
+                else
+                {
+                    cancellation = CancellationToken.None;
+                }
+            }
+
+            await replayConsumer.WaitReadyAsync(cancellation);
+            var response = replayConsumer.Subscribe(message.Properties.CorrelationId, cancellation.Value);
+            await PublishAsync(message, cancellation);
+            return await response;
+        }
+
+        public async Task<ILinkConsumedMessage<TResponse>> CallAsync<TRequest, TResponse>(ILinkPublishMessage<TRequest> message, LinkReplayConsumer replayConsumer,
+            CancellationToken? cancellation = null) where TRequest : class where TResponse : class
+        {
+            if (message == null) throw new ArgumentNullException(nameof(message));
+            if (replayConsumer == null) throw new ArgumentNullException(nameof(replayConsumer));
+            if(string.IsNullOrWhiteSpace(message.Properties.CorrelationId))
+                throw new InvalidOperationException("No correlation id specified");
+            if (cancellation == null)
+            {
+                if (_configuration.PublishTimeout != TimeSpan.Zero &&
+                    _configuration.PublishTimeout != Timeout.InfiniteTimeSpan)
+                {
+                    cancellation = new CancellationTokenSource(_configuration.PublishTimeout).Token;
+                }
+                else
+                {
+                    cancellation = CancellationToken.None;
+                }
+            }
+
+            await replayConsumer.WaitReadyAsync(cancellation);
+            var response = replayConsumer.Subscribe<TResponse>(message.Properties.CorrelationId, cancellation.Value);
+            await PublishAsync(message, cancellation);
+            return await response;
+        }
+
         #endregion
 
         private void Stop()
@@ -372,7 +429,7 @@ namespace RabbitLink.Producer
                 {
                     if (cancellation.IsCancellationRequested)
                         continue;
-                    
+
                     _logger.Error($"Cannot read message from queue: {ex}");
                     return;
                 }

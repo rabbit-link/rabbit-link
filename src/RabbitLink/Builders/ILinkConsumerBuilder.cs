@@ -4,6 +4,8 @@ using RabbitLink.Consumer;
 using System;
 using System.Collections.Generic;
 using RabbitLink.Connection;
+using RabbitLink.Producer;
+using RabbitLink.Rpc;
 using RabbitLink.Serialization;
 using RabbitLink.Topology;
 
@@ -17,11 +19,11 @@ namespace RabbitLink.Builders
     public interface ILinkConsumerBuilder
     {
         /// <summary>
-        /// Gets new pull consumer builder. 
+        /// Gets new pull consumer builder.
         /// All properties except handler will be inherited.
         /// </summary>
         ILinkPullConsumerBuilder Pull { get; }
-        
+
         /// <summary>
         /// Builds instance of <see cref="ILinkConsumer"/>
         /// </summary>
@@ -116,7 +118,7 @@ namespace RabbitLink.Builders
         /// By default value of <see cref="ILinkBuilder.Serializer"/>
         /// </summary>
         ILinkConsumerBuilder Serializer(ILinkSerializer value);
-        
+
         /// <summary>
         /// Assing type-name mappings for (de)serialization
         /// </summary>
@@ -126,5 +128,18 @@ namespace RabbitLink.Builders
         /// Assigns type-name mappings for (de)serialization with builder
         /// </summary>
         ILinkConsumerBuilder TypeNameMap(Action<ILinkTypeNameMapBuilder> map);
+
+        /// <summary>
+        /// Make consumer a rpc server incomming channel
+        /// </summary>
+        /// <param name="replayProducer">replay rpc channel</param>
+        /// <returns>rpc specific builder</returns>
+        ILinkRpcServerBuilder Serve(ILinkProducer replayProducer);
+
+        /// <summary>
+        /// Make rpc cleint replay consumer
+        /// </summary>
+        /// <returns><see cref="LinkReplayConsumer"/></returns>
+        LinkReplayConsumer BuildReplayConsumer();
     }
 }

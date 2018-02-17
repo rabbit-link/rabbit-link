@@ -93,5 +93,8 @@ namespace RabbitLink
         {
             return new LinkChannel(_connection, stateHandler, recoveryInterval);
         }
+
+
+        internal LinkConfiguration Configuration => _configuration;
     }
 }
