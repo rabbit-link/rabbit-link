@@ -4,34 +4,25 @@ stages:
 
 build:
   tags:
-  - windows
-  - dotnet
+  - docker
+  image: dotnet:latest
   stage: build
   script:
-  - chcp 65001
-  - echo Restoring packages
-  - dotnet restore "%cd%\src\RabbitLink"
-  - dotnet restore "%cd%\src\RabbitLink.Serialization.Json"
-  - echo Building
-  - dotnet build "%cd%\src\RabbitLink" -c Release
-  - dotnet build "%cd%\src\RabbitLink.Serialization.Json" -c Release
+  - dotnet build ./src/RabbitLink -c Release
+  - dotnet build ./src/RabbitLink.Serialization.Json -c Release
 
 nuget-main:
   tags:
-  - windows
-  - dotnet
+  - docker
+  image: dotnet:latest
   stage: nuget
   only:
   - /^v([0-9]+)(\.([0-9]+)){1,2}.*$/
   except:
   - branches
   script:
-  - chcp 65001
-  - echo Restoring packages
-  - dotnet restore "%cd%\src\RabbitLink"
-  - echo Building
-  - dotnet pack "%cd%\src\RabbitLink" -c Release -o "%cd%\artifacts\"
-  - dotnet nuget push --force-english-output -s https://api.nuget.org/v3/index.json -k "%NUGET_API_KEY%" artifacts\*.nupkg
+  - dotnet pack ./src/RabbitLink -c Release -o "${PWD}/artifacts/"
+  - dotnet nuget push --force-english-output -s https://api.nuget.org/v3/index.json -k "${NUGET_API_KEY}" ./artifacts/*.nupkg
   artifacts:
     expire_in: 31d
     paths:
@@ -39,20 +30,16 @@ nuget-main:
 
 nuget-json:
   tags:
-  - windows
-  - dotnet
+  - docker
+  image: dotnet:latest
   stage: nuget
   only:
   - /^json-v([0-9]+)(\.([0-9]+)){1,2}.*$/
   except:
   - branches
   script:
-  - chcp 65001
-  - echo Restoring packages
-  - dotnet restore "%cd%\src\RabbitLink.Serialization.Json"
-  - echo Building
-  - dotnet pack "%cd%\src\RabbitLink.Serialization.Json" -c Release -o "%cd%\artifacts\"
-  - dotnet nuget push --force-english-output -s https://api.nuget.org/v3/index.json -k "%NUGET_API_KEY%" artifacts\*.nupkg
+  - dotnet pack ./src/RabbitLink.Serialization.Json -c Release -o "${PWD}/artifacts/"
+  - dotnet nuget push --force-english-output -s https://api.nuget.org/v3/index.json -k "${NUGET_API_KEY}" ./artifacts/*.nupkg
   artifacts:
     expire_in: 31d
     paths:
