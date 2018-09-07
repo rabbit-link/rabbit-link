@@ -2,14 +2,14 @@
     <PropertyGroup>
         <Authors>Artur Kraev</Authors>
         <Description>Advanced .Net API for RabbitMQ</Description>
-        <Copyright>Artur Kraev 2015-2017</Copyright>
+        <Copyright>Artur Kraev 2015-2018</Copyright>
         <PackageProjectUrl>https://github.com/rabbit-link/rabbit-link</PackageProjectUrl>
         <PackageLicenseUrl>https://raw.githubusercontent.com/rabbit-link/rabbit-link/master/LICENSE</PackageLicenseUrl>
         <PackageTags>RabbitMQ Messaging AMQP</PackageTags>
-        <VersionPrefix>0.6.0</VersionPrefix>
+        <VersionPrefix>0.6.1</VersionPrefix>
         <VersionSuffix></VersionSuffix>
         <PackageReleaseNotes>
-            Removed Net 4.6 support
+            Dependencies update
         </PackageReleaseNotes>
     </PropertyGroup>
     <PropertyGroup>
