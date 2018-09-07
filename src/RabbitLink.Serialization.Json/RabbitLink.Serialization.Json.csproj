@@ -19,7 +19,7 @@
         <TargetFrameworks>netstandard1.6</TargetFrameworks>
     </PropertyGroup>
     <ItemGroup>
-        <PackageReference Include="Newtonsoft.Json" Version="10.0.3" />
+        <PackageReference Include="Newtonsoft.Json" Version="11.0.2" />
     </ItemGroup>
     <ItemGroup>
         <ProjectReference Include="..\RabbitLink\RabbitLink.csproj" />

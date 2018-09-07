@@ -4,10 +4,10 @@
     <TargetFramework>netcoreapp1.1</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Newtonsoft.Json" Version="10.0.3" />
+    <PackageReference Include="Newtonsoft.Json" Version="11.0.2" />
   </ItemGroup>
   <ItemGroup>
-      <ProjectReference Include="..\RabbitLink.Serialization.Json\RabbitLink.Serialization.Json.csproj"/>
+      <ProjectReference Include="..\RabbitLink.Serialization.Json\RabbitLink.Serialization.Json.csproj" />
     <ProjectReference Include="..\RabbitLink\RabbitLink.csproj" />
   </ItemGroup>
 </Project>
