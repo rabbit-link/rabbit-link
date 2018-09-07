@@ -1,26 +1,27 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup>
-    <Authors>Artur Kraev</Authors>
-    <Description>Advanced .Net API for RabbitMQ JSON Serialization</Description>
-    <Copyright>Artur Kraev 2015-2017</Copyright>
-    <PackageProjectUrl>https://github.com/rabbit-link/rabbit-link</PackageProjectUrl>
-    <PackageLicenseUrl>https://raw.githubusercontent.com/rabbit-link/rabbit-link/master/LICENSE</PackageLicenseUrl>
-    <PackageTags>RabbitMQ Messaging AMQP</PackageTags>
-    <VersionPrefix>0.6.0</VersionPrefix>
-    <VersionSuffix></VersionSuffix>
-    <PackageReleaseNotes>Removed Net 4.6 support
-    </PackageReleaseNotes>
-  </PropertyGroup>
-  <PropertyGroup>
-    <GenerateDocumentationFile>true</GenerateDocumentationFile>
-  </PropertyGroup>
-  <PropertyGroup>
-    <TargetFrameworks>netstandard1.6</TargetFrameworks>
-  </PropertyGroup>
-  <ItemGroup>
-    <PackageReference Include="Newtonsoft.Json" Version="10.0.3" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\RabbitLink\RabbitLink.csproj" />
-  </ItemGroup>
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <Authors>Artur Kraev</Authors>
+        <Description>Advanced .Net API for RabbitMQ JSON Serialization</Description>
+        <Copyright>Artur Kraev 2015-2017</Copyright>
+        <PackageProjectUrl>https://github.com/rabbit-link/rabbit-link</PackageProjectUrl>
+        <PackageLicenseUrl>https://raw.githubusercontent.com/rabbit-link/rabbit-link/master/LICENSE</PackageLicenseUrl>
+        <PackageTags>RabbitMQ Messaging AMQP</PackageTags>
+        <VersionPrefix>0.6.0</VersionPrefix>
+        <VersionSuffix></VersionSuffix>
+        <PackageReleaseNotes>
+            Removed Net 4.6 support
+        </PackageReleaseNotes>
+    </PropertyGroup>
+    <PropertyGroup>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    </PropertyGroup>
+    <PropertyGroup>
+        <TargetFrameworks>netstandard1.6</TargetFrameworks>
+    </PropertyGroup>
+    <ItemGroup>
+        <PackageReference Include="Newtonsoft.Json" Version="10.0.3" />
+    </ItemGroup>
+    <ItemGroup>
+        <ProjectReference Include="..\RabbitLink\RabbitLink.csproj" />
+    </ItemGroup>
 </Project>
