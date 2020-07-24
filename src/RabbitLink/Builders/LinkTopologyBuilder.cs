@@ -1,19 +1,23 @@
-﻿using System;
+#region Usings
+
+using System;
 using System.Threading;
 using System.Threading.Tasks;
 using RabbitLink.Connection;
 using RabbitLink.Topology;
 using RabbitLink.Topology.Internal;
 
+#endregion
+
 namespace RabbitLink.Builders
 {
     internal class LinkTopologyBuilder : ILinkTopologyBuilder
     {
+        private readonly LinkStateHandler<LinkChannelState> _channelStateHandler;
         private readonly Link _link;
 
         private readonly TimeSpan _recoveryInterval;
         private readonly LinkStateHandler<LinkTopologyState> _stateHandler;
-        private readonly LinkStateHandler<LinkChannelState> _channelStateHandler;
         private readonly ILinkTopologyHandler _topologyHandler;
 
         public LinkTopologyBuilder(

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -182,7 +182,7 @@ namespace RabbitLink.Consumer
                         break;
 
                     default:
-                        throw new NotImplementedException($"Handler for state ${State} not implemeted");
+                        throw new NotImplementedException($"Handler for state ${State} not implemented");
                 }
             }
         }
@@ -356,18 +356,18 @@ namespace RabbitLink.Consumer
                 var props = new LinkMessageProperties();
                 props.Extend(e.BasicProperties);
 
-                var recieveProps = new LinkRecieveProperties(e.Redelivered, e.Exchange, e.RoutingKey, _queue.Name,
+                var receiveProps = new LinkReceiveProperties(e.Redelivered, e.Exchange, e.RoutingKey, _queue.Name,
                     props.AppId == _appId);
 
                 var token = _consumerCancellationTokenSource.Token;
 
-                var msg = new LinkConsumedMessage<byte[]>(e.Body, props, recieveProps, token);
+                var msg = new LinkConsumedMessage<byte[]>(e.Body, props, receiveProps, token);
 
                 HandleMessageAsync(msg, e.DeliveryTag);
             }
             catch (Exception ex)
             {
-                _logger.Error($"Recieve message error, NACKing: {ex}");
+                _logger.Error($"Receive message error, NACKing: {ex}");
 
                 try
                 {

@@ -1,10 +1,14 @@
-﻿using System;
+#region Usings
+
+using System;
 using System.Threading.Tasks;
 using RabbitLink.Consumer;
 using RabbitLink.Exceptions;
 using RabbitLink.Messaging;
 using RabbitLink.Messaging.Internals;
 using RabbitLink.Serialization;
+
+#endregion
 
 namespace RabbitLink.Builders
 {
@@ -14,6 +18,21 @@ namespace RabbitLink.Builders
             ILinkSerializer serializer,
             LinkTypeNameMapping mapping
         );
+
+        private LinkConsumerMessageHandlerBuilder(
+            HandlerFactory factory,
+            bool serializer,
+            bool mapping
+        )
+        {
+            Factory = factory ?? throw new ArgumentNullException(nameof(factory));
+            Serializer = serializer;
+            Mapping = mapping;
+        }
+
+        public bool Mapping { get; }
+        public bool Serializer { get; }
+        public HandlerFactory Factory { get; }
 
         public static LinkConsumerMessageHandlerBuilder Create(
             LinkConsumerMessageHandlerDelegate<byte[]> onMessage
@@ -50,7 +69,7 @@ namespace RabbitLink.Builders
                     var concreteMsg = new LinkConsumedMessage<TBody>(
                         body,
                         props,
-                        msg.RecieveProperties,
+                        msg.ReceiveProperties,
                         msg.Cancellation
                     );
 
@@ -73,14 +92,14 @@ namespace RabbitLink.Builders
                     var typeName = props.Type;
 
                     if (string.IsNullOrWhiteSpace(typeName))
-                        return Task.FromException<LinkConsumerAckStrategy>(new LinkCosumerTypeNameMappingException());
+                        return Task.FromException<LinkConsumerAckStrategy>(new LinkConsumerTypeNameMappingException());
 
                     typeName = typeName.Trim();
                     var bodyType = mapping.Map(typeName);
 
                     if (bodyType == null)
                         return Task.FromException<LinkConsumerAckStrategy>(
-                            new LinkCosumerTypeNameMappingException(typeName));
+                            new LinkConsumerTypeNameMappingException(typeName));
 
                     try
                     {
@@ -93,27 +112,12 @@ namespace RabbitLink.Builders
                     }
 
                     var concreteMsg = LinkMessageFactory
-                        .ConstructConsumedMessage(bodyType, body, props, msg.RecieveProperties, msg.Cancellation);
+                        .ConstructConsumedMessage(bodyType, body, props, msg.ReceiveProperties, msg.Cancellation);
 
                     return onMessage(concreteMsg);
                 },
                 true,
                 true
             );
-
-        private LinkConsumerMessageHandlerBuilder(
-            HandlerFactory factory,
-            bool serializer,
-            bool mapping
-        )
-        {
-            Factory = factory ?? throw new ArgumentNullException(nameof(factory));
-            Serializer = serializer;
-            Mapping = mapping;
-        }
-
-        public bool Mapping { get; }
-        public bool Serializer { get; }
-        public HandlerFactory Factory { get; }
     }
 }

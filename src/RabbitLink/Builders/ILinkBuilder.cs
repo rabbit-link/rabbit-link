@@ -1,4 +1,4 @@
-﻿#region Usings
+#region Usings
 
 using System;
 using RabbitLink.Connection;
@@ -21,12 +21,12 @@ namespace RabbitLink.Builders
         ILinkBuilder ConnectionName(string value);
 
         /// <summary>
-        /// Amqp connection string
+        /// AMQP connection string
         /// </summary>
         ILinkBuilder Uri(string value);
 
         /// <summary>
-        /// Amqp connection string
+        /// AMQP connection string
         /// </summary>
         ILinkBuilder Uri(Uri value);
 
@@ -57,7 +57,7 @@ namespace RabbitLink.Builders
         /// <summary>
         ///     Sets <see cref="LinkMessageProperties.AppId" /> to all published messages, white spaces will be trimmed, must be
         ///     not null or white space
-        ///     By default Guit.NewValue().ToString("D")
+        ///     By default Guid.NewValue().ToString("D")
         /// </summary>
         ILinkBuilder AppId(string value);
 

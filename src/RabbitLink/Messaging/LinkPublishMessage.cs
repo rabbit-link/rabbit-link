@@ -1,6 +1,6 @@
-﻿namespace RabbitLink.Messaging
+namespace RabbitLink.Messaging
 {
-    /// <inheritdoc />
+    /// <inheritdoc cref="ILinkPublishMessage{TBody}" />
     public class LinkPublishMessage<TBody> : LinkMessage<TBody>, ILinkPublishMessage<TBody> where TBody : class
     {
         #region Ctor

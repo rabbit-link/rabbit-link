@@ -1,12 +1,12 @@
-﻿namespace RabbitLink.Exceptions
+namespace RabbitLink.Exceptions
 {
     /// <summary>
-    /// Fired when published message was NACKed
+    ///     Fired when published message was NACKed
     /// </summary>
     public class LinkMessageNackedException : LinkMessagePublishException
     {
         /// <summary>
-        /// Constructs instance
+        ///     Constructs instance
         /// </summary>
         public LinkMessageNackedException() : base("Message NACKed")
         {

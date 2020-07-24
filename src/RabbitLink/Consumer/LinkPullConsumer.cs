@@ -1,4 +1,4 @@
-﻿#region Usings
+#region Usings
 
 using System;
 using System.Threading;
@@ -48,7 +48,7 @@ namespace RabbitLink.Consumer
 
             _consumer = consumerBuilder
                 .ErrorStrategy(new LinkConsumerDefaultErrorStrategy())
-                .Handler(OnMessageRecieved)
+                .Handler(OnMessageReceived)
                 .OnStateChange(OnStateChanged)
                 .Build();
         }
@@ -97,11 +97,11 @@ namespace RabbitLink.Consumer
                     {
                         var typeName = msg.Properties.Type;
                         if (string.IsNullOrWhiteSpace(typeName))
-                            throw new LinkPullCosumerTypeNameMappingException(msg);
+                            throw new LinkPullConsumerTypeNameMappingException(msg);
 
                         bodyType = _typeNameMapping.Map(typeName.Trim());
                         if (bodyType == null)
-                            throw new LinkPullCosumerTypeNameMappingException(msg, typeName);
+                            throw new LinkPullConsumerTypeNameMappingException(msg, typeName);
                     }
                     else
                     {
@@ -163,7 +163,7 @@ namespace RabbitLink.Consumer
             }
         }
 
-        private Task<LinkConsumerAckStrategy> OnMessageRecieved(ILinkConsumedMessage<byte[]> message)
+        private Task<LinkConsumerAckStrategy> OnMessageReceived(ILinkConsumedMessage<byte[]> message)
             => _queue.PutAsync(message);
 
         private void OnDispose()

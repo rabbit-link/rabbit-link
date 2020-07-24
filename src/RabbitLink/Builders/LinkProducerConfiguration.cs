@@ -1,4 +1,4 @@
-﻿#region Usings
+#region Usings
 
 using System;
 using System.Threading;
@@ -11,7 +11,7 @@ using RabbitLink.Topology;
 
 namespace RabbitLink.Builders
 {
-    internal struct LinkProducerConfiguration
+    internal readonly struct LinkProducerConfiguration
     {
         private readonly LinkPublishProperties _publishProperties;
         private readonly LinkMessageProperties _messageProperties;

@@ -1,4 +1,4 @@
-﻿#region Usings
+#region Usings
 
 using System;
 
@@ -19,7 +19,7 @@ namespace RabbitLink.Consumer
         LinkConsumerAckStrategy HandleError(Exception ex);
 
         /// <summary>
-        /// Handle message handler task cancelleation
+        /// Handle message handler task cancellation
         /// </summary>
         /// <returns>Strategy to deal with message</returns>
         LinkConsumerAckStrategy HandleCancellation();

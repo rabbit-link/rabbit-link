@@ -1,10 +1,8 @@
-﻿#region Usings
+#region Usings
 
 using System;
-using System.Diagnostics;
 using RabbitLink.Messaging;
 using RabbitLink.Tests.Helpers;
-using RabbitMQ.Client.Impl;
 using Xunit;
 
 #endregion
@@ -13,12 +11,6 @@ namespace RabbitLink.Tests.Messaging
 {
     public class LinkMessagePropertiesTests
     {
-        [Fact]
-        public void Ctor()
-        {
-            new LinkMessageProperties();
-        }
-
         #region Properties
 
         [Fact]
@@ -30,7 +22,7 @@ namespace RabbitLink.Tests.Messaging
 
             props.AppId = "test";
 
-            Assert.Equal(props.AppId, "test");
+            Assert.Equal("test", props.AppId);
         }
 
         [Fact]
@@ -42,7 +34,7 @@ namespace RabbitLink.Tests.Messaging
 
             props.ClusterId = "test";
 
-            Assert.Equal(props.ClusterId, "test");
+            Assert.Equal("test", props.ClusterId);
         }
 
         [Fact]
@@ -54,7 +46,7 @@ namespace RabbitLink.Tests.Messaging
 
             props.ContentEncoding = "test";
 
-            Assert.Equal(props.ContentEncoding, "test");
+            Assert.Equal("test", props.ContentEncoding);
         }
 
         [Fact]
@@ -66,7 +58,7 @@ namespace RabbitLink.Tests.Messaging
 
             props.ContentType = "test";
 
-            Assert.Equal(props.ContentType, "test");
+            Assert.Equal("test", props.ContentType);
         }
 
         [Fact]
@@ -78,7 +70,7 @@ namespace RabbitLink.Tests.Messaging
 
             props.CorrelationId = "test";
 
-            Assert.Equal(props.CorrelationId, "test");
+            Assert.Equal("test", props.CorrelationId);
 
             props.CorrelationId = null;
             Assert.Null(props.CorrelationId);
@@ -187,7 +179,7 @@ namespace RabbitLink.Tests.Messaging
 
             props.UserId = "test";
 
-            Assert.Equal(props.UserId, "test");
+            Assert.Equal("test", props.UserId);
         }
 
         [Fact]
@@ -199,7 +191,7 @@ namespace RabbitLink.Tests.Messaging
 
             props.Headers.Add("test", 1);
 
-            Assert.Equal(props.Headers["test"], 1);
+            Assert.Equal(1, props.Headers["test"]);
             Assert.NotEmpty(props.Headers);
         }
 

@@ -1,4 +1,4 @@
-﻿#region Usings
+#region Usings
 
 using System;
 using RabbitLink.Connection;
@@ -19,7 +19,7 @@ namespace RabbitLink.Builders
         private readonly ILinkLoggerFactory _loggerFactory;
         private readonly string _appId;
         private readonly LinkStateHandler<LinkConnectionState> _stateHandler;
-        private readonly bool _useBackgoundsThreadsForConnection;
+        private readonly bool _useBackgroundThreadsForConnection;
         private readonly ILinkSerializer _serializer;
 
         public LinkBuilder(
@@ -43,7 +43,7 @@ namespace RabbitLink.Builders
             _loggerFactory = loggerFactory ?? new LinkNullLoggingFactory();
             _appId = appId ?? Guid.NewGuid().ToString("D");
             _stateHandler = stateHandler ?? ((old, @new) => { });
-            _useBackgoundsThreadsForConnection = useBackgroundThreadsForConnection ?? false;
+            _useBackgroundThreadsForConnection = useBackgroundThreadsForConnection ?? false;
             _serializer = serializer;
         }
 
@@ -68,7 +68,7 @@ namespace RabbitLink.Builders
             loggerFactory ?? prev._loggerFactory,
             appId ?? prev._appId,
             stateHandler ?? prev._stateHandler,
-            useBackgroundThreadsForConnection ?? prev._useBackgoundsThreadsForConnection,
+            useBackgroundThreadsForConnection ?? prev._useBackgroundThreadsForConnection,
             serializer ?? prev._serializer
         )
         {
@@ -167,7 +167,7 @@ namespace RabbitLink.Builders
                 _loggerFactory,
                 _appId,
                 _stateHandler,
-                _useBackgoundsThreadsForConnection,
+                _useBackgroundThreadsForConnection,
                 _serializer
             );
 

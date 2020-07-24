@@ -1,4 +1,4 @@
-﻿#region Usings
+#region Usings
 
 using System;
 using System.Linq;
@@ -12,7 +12,7 @@ namespace RabbitLink.Tests
     public class TopologyTests
     {
         [Fact]
-        public void TologyExchangeOperations()
+        public void TopologyExchangeOperations()
         {
             var exchangeTypes = Enum
                 .GetValues(typeof(LinkExchangeType))
@@ -40,12 +40,16 @@ namespace RabbitLink.Tests
             }
         }
 
-        public void TopologyExchangeConfig(LinkExchangeType exchangeType, bool durable, bool autoDelete,
-            string alternateExhange, bool delayed)
+        private void TopologyExchangeConfig(
+            LinkExchangeType exchangeType,
+            bool durable, bool autoDelete,
+            string alternateExchange,
+            bool delayed
+            )
         {
-            using (var rabbitConneciton = TestsOptions.GetConnection())
+            using (var rabbitConnection = TestsOptions.GetConnection())
             {
-                var rabbitModel = rabbitConneciton.CreateModel();
+                var rabbitModel = rabbitConnection.CreateModel();
 
                 var exchangeName = TestsOptions.TestExchangeName;
 
@@ -53,7 +57,7 @@ namespace RabbitLink.Tests
                 {
                     Assert.ThrowsAny<Exception>(() => { rabbitModel.ExchangeDeclarePassive(exchangeName); });
 
-                    rabbitModel = rabbitConneciton.CreateModel();
+                    rabbitModel = rabbitConnection.CreateModel();
 
                     link.Topology
                         .Handler(async cfg =>
@@ -61,12 +65,12 @@ namespace RabbitLink.Tests
                             var e1 =
                                 await
                                     cfg.ExchangeDeclare(exchangeName, exchangeType, durable, autoDelete,
-                                        alternateExhange,
+                                        alternateExchange,
                                         delayed);
                             var e2 =
                                 await
                                     cfg.ExchangeDeclare(exchangeName + "-second", exchangeType, durable, autoDelete,
-                                        alternateExhange, delayed);
+                                        alternateExchange, delayed);
 
                             await cfg.ExchangeDeclarePassive(exchangeName);
 

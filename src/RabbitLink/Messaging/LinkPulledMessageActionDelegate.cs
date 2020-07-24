@@ -1,7 +1,7 @@
-﻿namespace RabbitLink.Messaging
+namespace RabbitLink.Messaging
 {
     /// <summary>
-    /// Delegate for <see cref="ILinkPulledMessage{TBody}"/> actions
+    ///     Delegate for <see cref="ILinkPulledMessage{TBody}" /> actions
     /// </summary>
     public delegate void LinkPulledMessageActionDelegate();
 }

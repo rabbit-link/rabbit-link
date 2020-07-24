@@ -1,21 +1,25 @@
-﻿using System;
+#region Usings
+
+using System;
 using System.Threading.Tasks;
 using RabbitLink.Consumer;
+
+#endregion
 
 namespace RabbitLink.Topology
 {
     /// <summary>
-    /// Topology handler for <see cref="ILinkConsumer"/>
+    ///     Topology handler for <see cref="ILinkConsumer" />
     /// </summary>
     public interface ILinkConsumerTopologyHandler
     {
         /// <summary>
-        /// Configure topology handler
+        ///     Configure topology handler
         /// </summary>
         Task<ILinkQueue> Configure(ILinkTopologyConfig config);
 
         /// <summary>
-        /// Topology configuration error handler
+        ///     Topology configuration error handler
         /// </summary>
         Task ConfigurationError(Exception ex);
     }

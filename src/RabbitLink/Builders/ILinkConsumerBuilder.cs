@@ -1,4 +1,4 @@
-﻿#region Usings
+#region Usings
 
 using RabbitLink.Consumer;
 using System;
@@ -118,7 +118,7 @@ namespace RabbitLink.Builders
         ILinkConsumerBuilder Serializer(ILinkSerializer value);
         
         /// <summary>
-        /// Assing type-name mappings for (de)serialization
+        /// Assign type-name mappings for (de)serialization
         /// </summary>
         ILinkConsumerBuilder TypeNameMap(IDictionary<Type, string> mapping);
 

@@ -1,5 +1,9 @@
-﻿using System;
+#region Usings
+
+using System;
 using System.Threading;
+
+#endregion
 
 namespace RabbitLink.Messaging.Internals
 {
@@ -12,13 +16,13 @@ namespace RabbitLink.Messaging.Internals
             Type bodyType,
             object body,
             LinkMessageProperties properties,
-            LinkRecieveProperties recievedProperties,
+            LinkReceiveProperties receivedProperties,
             CancellationToken cancellation
         )
         {
             var genericType = LinkConsumedMessageType.MakeGenericType(bodyType);
             return (ILinkConsumedMessage<object>) Activator
-                .CreateInstance(genericType, body, properties, recievedProperties, cancellation);
+                .CreateInstance(genericType, body, properties, receivedProperties, cancellation);
         }
 
         public static ILinkPulledMessage<object> ConstructPulledMessage(

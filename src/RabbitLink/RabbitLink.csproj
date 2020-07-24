@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
         <Authors>Artur Kraev</Authors>
         <Description>Advanced .Net API for RabbitMQ</Description>
@@ -6,17 +6,17 @@
         <PackageProjectUrl>https://github.com/rabbit-link/rabbit-link</PackageProjectUrl>
         <PackageLicenseUrl>https://raw.githubusercontent.com/rabbit-link/rabbit-link/master/LICENSE</PackageLicenseUrl>
         <PackageTags>RabbitMQ Messaging AMQP</PackageTags>
-        <VersionPrefix>0.6.1</VersionPrefix>
+        <VersionPrefix>0.7.0</VersionPrefix>
         <VersionSuffix></VersionSuffix>
         <PackageReleaseNotes>
-            Dependencies update
+            Update client to 6.X
         </PackageReleaseNotes>
     </PropertyGroup>
     <PropertyGroup>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
     </PropertyGroup>
     <PropertyGroup>
-        <TargetFrameworks>netstandard1.6</TargetFrameworks>        
+        <TargetFrameworks>netstandard2.0</TargetFrameworks>        
     </PropertyGroup>
     <ItemGroup>
         <PackageReference Include="RabbitMQ.Client" Version="5.1.0" />

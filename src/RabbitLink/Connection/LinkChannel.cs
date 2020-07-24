@@ -1,4 +1,4 @@
-﻿#region Usings
+#region Usings
 
 using System;
 using System.IO;
@@ -193,7 +193,7 @@ namespace RabbitLink.Connection
                             newState = LinkChannelState.Reopening;
                             break;
                         default:
-                            throw new NotImplementedException($"Handler for state ${State} not implemeted");
+                            throw new NotImplementedException($"Handler for state ${State} not implemented");
                     }
                 }
                 catch (Exception ex)

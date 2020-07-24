@@ -1,4 +1,4 @@
-﻿#region Usings
+#region Usings
 
 using System;
 using System.Collections.Generic;
@@ -96,7 +96,7 @@ namespace RabbitLink.Builders
         ILinkProducerBuilder Serializer(ILinkSerializer value);
 
         /// <summary>
-        /// Assing type-name mappings for (de)serialization
+        /// Assign type-name mappings for (de)serialization
         /// </summary>
         ILinkProducerBuilder TypeNameMap(IDictionary<Type, string> mapping);
 

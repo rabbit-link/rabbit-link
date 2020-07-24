@@ -17,7 +17,7 @@ namespace RabbitLink.Builders
         ILinkConsumerBuilder
     {
         private readonly Link _link;
-        private readonly TimeSpan _reconveryInterval;
+        private readonly TimeSpan _recoveryInterval;
         private readonly ushort _prefetchCount;
         private readonly bool _autoAck;
         private readonly bool _cancelOnHaFailover;
@@ -50,7 +50,7 @@ namespace RabbitLink.Builders
         {
             _link = link ?? throw new ArgumentNullException(nameof(link));
 
-            _reconveryInterval = recoveryInterval;
+            _recoveryInterval = recoveryInterval;
             _prefetchCount = prefetchCount ?? 1;
             _autoAck = autoAck ?? false;
             _priority = priority ?? 0;
@@ -83,7 +83,7 @@ namespace RabbitLink.Builders
         ) : this
             (
                 prev._link,
-                recoveryInterval ?? prev._reconveryInterval,
+                recoveryInterval ?? prev._recoveryInterval,
                 serializer ?? prev._serializer,
                 prefetchCount ?? prev._prefetchCount,
                 autoAck ?? prev._autoAck,
@@ -119,7 +119,7 @@ namespace RabbitLink.Builders
                 throw new InvalidOperationException("Type name mapping required by handler");
 
             var config = new LinkConsumerConfiguration(
-                _reconveryInterval,
+                _recoveryInterval,
                 _prefetchCount,
                 _autoAck,
                 _priority,

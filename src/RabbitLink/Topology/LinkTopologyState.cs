@@ -1,37 +1,37 @@
 namespace RabbitLink.Topology
 {
     /// <summary>
-    /// State of <see cref="ILinkTopology"/>
+    ///     State of <see cref="ILinkTopology" />
     /// </summary>
     public enum LinkTopologyState
     {
         /// <summary>
-        /// Initializing
+        ///     Initializing
         /// </summary>
         Init,
 
         /// <summary>
-        /// Configuring channel and topology
+        ///     Configuring channel and topology
         /// </summary>
         Configuring,
 
         /// <summary>
-        /// Reconfiguring channel and topology
+        ///     Reconfiguring channel and topology
         /// </summary>
         Reconfiguring,
 
         /// <summary>
-        /// Topology sucessfully configured
+        ///     Topology successfully configured
         /// </summary>
         Ready,
 
         /// <summary>
-        /// Stopping
+        ///     Stopping
         /// </summary>
         Stopping,
 
         /// <summary>
-        /// Disposed
+        ///     Disposed
         /// </summary>
         Disposed
     }

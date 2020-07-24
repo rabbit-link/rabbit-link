@@ -17,7 +17,7 @@ namespace RabbitLink.Topology.Internal
             _errorAction = errorAction ?? throw new ArgumentNullException(nameof(errorAction));
         }
 
-        public Task<ILinkExchage> Configure(ILinkTopologyConfig config)
+        public Task<ILinkExchange> Configure(ILinkTopologyConfig config)
         {
             return _configAction(config);
         }

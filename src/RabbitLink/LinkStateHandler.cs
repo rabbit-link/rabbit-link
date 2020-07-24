@@ -1,9 +1,13 @@
-﻿using System;
+#region Usings
+
+using System;
+
+#endregion
 
 namespace RabbitLink
 {
     /// <summary>
-    /// Handler delegate for state changes
+    ///     Handler delegate for state changes
     /// </summary>
     /// <typeparam name="TState">State type</typeparam>
     /// <param name="oldState">Old state</param>

@@ -1,7 +1,7 @@
-﻿namespace RabbitLink.Topology
+namespace RabbitLink.Topology
 {
     /// <summary>
-    /// Type of RabbitMQ exchage
+    /// Type of RabbitMQ exchange
     /// </summary>
     public enum LinkExchangeType
     {

@@ -1,9 +1,13 @@
-﻿using System;
+#region Usings
+
+using System;
+
+#endregion
 
 namespace RabbitLink.Exceptions
 {
     /// <summary>
-    /// Fires when message cannot be serialized
+    ///     Fires when message cannot be serialized
     /// </summary>
     public class LinkSerializationException : LinkException
     {

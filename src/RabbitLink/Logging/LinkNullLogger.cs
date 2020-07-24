@@ -1,4 +1,4 @@
-﻿namespace RabbitLink.Logging
+namespace RabbitLink.Logging
 {
     /// <summary>
     ///     Implementation of <see cref="ILinkLogger" /> which does nothing
@@ -6,7 +6,7 @@
     public sealed class LinkNullLogger : ILinkLogger
     {
         /// <summary>
-        /// Does nothing
+        ///     Does nothing
         /// </summary>
         public void Write(LinkLoggerLevel level, string message)
         {
@@ -14,7 +14,7 @@
         }
 
         /// <summary>
-        /// Does nonthing
+        ///     Does nothing
         /// </summary>
         public void Dispose()
         {

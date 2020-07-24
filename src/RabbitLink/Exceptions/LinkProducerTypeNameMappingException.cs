@@ -1,14 +1,18 @@
-﻿using System;
+#region Usings
+
+using System;
+
+#endregion
 
 namespace RabbitLink.Exceptions
 {
     /// <summary>
-    /// Fires when type name mapping not found
+    ///     Fires when type name mapping not found
     /// </summary>
     public class LinkProducerTypeNameMappingException : LinkException
     {
         /// <summary>
-        /// Constructs instance when Name for Type not found
+        ///     Constructs instance when Name for Type not found
         /// </summary>
         public LinkProducerTypeNameMappingException(Type type)
             : base($"Cannot get mapping for Type {type}")
@@ -17,7 +21,7 @@ namespace RabbitLink.Exceptions
         }
 
         /// <summary>
-        /// Mapping type
+        ///     Mapping type
         /// </summary>
         public Type Type { get; }
     }

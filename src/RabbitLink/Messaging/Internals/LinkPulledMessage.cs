@@ -1,9 +1,8 @@
-﻿#region Usings
+#region Usings
 
 using System;
 using System.Threading.Tasks;
 using RabbitLink.Consumer;
-using RabbitLink.Exceptions;
 
 #endregion
 
@@ -11,6 +10,11 @@ namespace RabbitLink.Messaging.Internals
 {
     internal class LinkPulledMessage<TBody> : LinkConsumedMessage<TBody>, ILinkPulledMessage<TBody> where TBody : class
     {
+        public LinkPulledMessageActionDelegate Ack { get; }
+        public LinkPulledMessageActionDelegate Nack { get; }
+        public LinkPulledMessageActionDelegate Requeue { get; }
+        public LinkPulledMessageExceptionDelegate Exception { get; }
+
         private static LinkPulledMessageActionDelegate CreateActionDelegate(
             TaskCompletionSource<LinkConsumerAckStrategy> completion,
             LinkConsumerAckStrategy strategy
@@ -34,7 +38,7 @@ namespace RabbitLink.Messaging.Internals
         ) : base(
             message.Body,
             message.Properties,
-            message.RecieveProperties,
+            message.ReceiveProperties,
             message.Cancellation
         )
         {
@@ -54,7 +58,7 @@ namespace RabbitLink.Messaging.Internals
         ) : base(
             body,
             properties,
-            message.RecieveProperties,
+            message.ReceiveProperties,
             message.Cancellation
         )
         {
@@ -65,11 +69,5 @@ namespace RabbitLink.Messaging.Internals
         }
 
         #endregion
-
-
-        public LinkPulledMessageActionDelegate Ack { get; }
-        public LinkPulledMessageActionDelegate Nack { get; }
-        public LinkPulledMessageActionDelegate Requeue { get; }
-        public LinkPulledMessageExceptionDelegate Exception { get; }
     }
 }

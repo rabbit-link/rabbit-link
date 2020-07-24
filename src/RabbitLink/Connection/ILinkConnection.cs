@@ -1,4 +1,4 @@
-﻿#region Usings
+#region Usings
 
 using System;
 using System.Threading;
@@ -40,12 +40,12 @@ namespace RabbitLink.Connection
         event EventHandler Disposed;
 
         /// <summary>
-        /// Emmited when connected
+        /// Emitted when connected
         /// </summary>
         event EventHandler Connected;
 
         /// <summary>
-        /// Emmited when disconnected
+        /// Emitted when disconnected
         /// </summary>
         event EventHandler Disconnected;
 
