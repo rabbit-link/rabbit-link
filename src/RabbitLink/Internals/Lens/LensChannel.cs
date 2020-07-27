@@ -116,233 +116,229 @@ namespace RabbitLink.Internals.Lens
 
         public T Wait(CancellationToken cancellation)
         {
-            using (var compositeCancellation =
-                CancellationTokenSource.CreateLinkedTokenSource(_disposedCancellation, cancellation))
-            {
-                while (true)
-                {
-                    if (_disposedCancellation.IsCancellationRequested)
-                        throw new ObjectDisposedException(GetType().Name);
+            using var compositeCancellation = CancellationTokenSource
+                .CreateLinkedTokenSource(_disposedCancellation, cancellation);
 
-                    Interlocked.MemoryBarrier();
-                    Interlocked.Increment(ref _readersCount);
-                    Interlocked.MemoryBarrier();
+            while (true)
+            {
+                if (_disposedCancellation.IsCancellationRequested)
+                    throw new ObjectDisposedException(GetType().Name);
+
+                Interlocked.MemoryBarrier();
+                Interlocked.Increment(ref _readersCount);
+                Interlocked.MemoryBarrier();
+
+                try
+                {
+                    try
+                    {
+                        _readSem.Wait(compositeCancellation.Token);
+                    }
+                    catch
+                    {
+                        if (_disposedCancellation.IsCancellationRequested)
+                            throw new ObjectDisposedException(GetType().Name);
+
+                        throw;
+                    }
 
                     try
                     {
-                        try
-                        {
-                            _readSem.Wait(compositeCancellation.Token);
-                        }
-                        catch
-                        {
-                            if (_disposedCancellation.IsCancellationRequested)
-                                throw new ObjectDisposedException(GetType().Name);
+                        if (_item == null)
+                            continue;
 
-                            throw;
+                        if (_item.Cancellation.IsCancellationRequested)
+                        {
+                            _item.TrySetCanceled(_item.Cancellation);
+                            continue;
                         }
 
-                        try
-                        {
-                            if (_item == null)
-                                continue;
-
-                            if (_item.Cancellation.IsCancellationRequested)
-                            {
-                                _item.TrySetCanceled(_item.Cancellation);
-                                continue;
-                            }
-
-                            return _item;
-                        }
-                        finally
-                        {
-                            _item = null;
-                            _writeSem.Release();
-                        }
+                        return _item;
                     }
                     finally
                     {
-                        Interlocked.MemoryBarrier();
-                        Interlocked.Decrement(ref _readersCount);
+                        _item = null;
+                        _writeSem.Release();
                     }
+                }
+                finally
+                {
+                    Interlocked.MemoryBarrier();
+                    Interlocked.Decrement(ref _readersCount);
                 }
             }
         }
 
         public async Task<T> WaitAsync(CancellationToken cancellation)
         {
-            using (var compositeCancellation =
-                CancellationTokenSource.CreateLinkedTokenSource(_disposedCancellation, cancellation))
-            {
-                while (true)
-                {
-                    if (_disposedCancellation.IsCancellationRequested)
-                        throw new ObjectDisposedException(GetType().Name);
+            using var compositeCancellation = CancellationTokenSource
+                .CreateLinkedTokenSource(_disposedCancellation, cancellation);
 
-                    Interlocked.MemoryBarrier();
-                    Interlocked.Increment(ref _readersCount);
-                    Interlocked.MemoryBarrier();
+            while (true)
+            {
+                if (_disposedCancellation.IsCancellationRequested)
+                    throw new ObjectDisposedException(GetType().Name);
+
+                Interlocked.MemoryBarrier();
+                Interlocked.Increment(ref _readersCount);
+                Interlocked.MemoryBarrier();
+
+                try
+                {
+                    try
+                    {
+                        await _readSem.WaitAsync(compositeCancellation.Token)
+                            .ConfigureAwait(false);
+                    }
+                    catch
+                    {
+                        if (_disposedCancellation.IsCancellationRequested)
+                            throw new ObjectDisposedException(GetType().Name);
+
+                        throw;
+                    }
 
                     try
                     {
-                        try
-                        {
-                            await _readSem.WaitAsync(compositeCancellation.Token)
-                                .ConfigureAwait(false);
-                        }
-                        catch
-                        {
-                            if (_disposedCancellation.IsCancellationRequested)
-                                throw new ObjectDisposedException(GetType().Name);
+                        if (_item == null)
+                            continue;
 
-                            throw;
+                        if (_item.Cancellation.IsCancellationRequested)
+                        {
+                            _item.TrySetCanceled(_item.Cancellation);
+                            continue;
                         }
 
-                        try
-                        {
-                            if (_item == null)
-                                continue;
-
-                            if (_item.Cancellation.IsCancellationRequested)
-                            {
-                                _item.TrySetCanceled(_item.Cancellation);
-                                continue;
-                            }
-
-                            return _item;
-                        }
-                        finally
-                        {
-                            _item = null;
-                            _writeSem.Release();
-                        }
+                        return _item;
                     }
                     finally
                     {
-                        Interlocked.MemoryBarrier();
-                        Interlocked.Decrement(ref _readersCount);
+                        _item = null;
+                        _writeSem.Release();
                     }
+                }
+                finally
+                {
+                    Interlocked.MemoryBarrier();
+                    Interlocked.Decrement(ref _readersCount);
                 }
             }
         }
 
         public T Spin(CancellationToken cancellation)
         {
-            using (var compositeCancellation =
-                CancellationTokenSource.CreateLinkedTokenSource(_disposedCancellation, cancellation))
+            using var compositeCancellation = CancellationTokenSource
+                .CreateLinkedTokenSource(_disposedCancellation, cancellation);
+
+            while (true)
             {
-                while (true)
+                if (_disposedCancellation.IsCancellationRequested)
+                    throw new ObjectDisposedException(GetType().Name);
+
+                Interlocked.MemoryBarrier();
+                Interlocked.Increment(ref _readersCount);
+                Interlocked.MemoryBarrier();
+
+                try
                 {
-                    if (_disposedCancellation.IsCancellationRequested)
-                        throw new ObjectDisposedException(GetType().Name);
-
-                    Interlocked.MemoryBarrier();
-                    Interlocked.Increment(ref _readersCount);
-                    Interlocked.MemoryBarrier();
-
                     try
                     {
-                        try
-                        {
-                            _readSem.Wait(compositeCancellation.Token);
-                        }
-                        catch
-                        {
-                            if (_disposedCancellation.IsCancellationRequested)
-                                throw new ObjectDisposedException(GetType().Name);
-
-                            throw;
-                        }
-
-                        if (_item == null)
-                        {
-                            _writeSem.Release();
-                            continue;
-                        }
-
-                        if (_item.Cancellation.IsCancellationRequested)
-                        {
-                            _item.TrySetCanceled(_item.Cancellation);
-                            _item = null;
-                            _writeSem.Release();
-                            continue;
-                        }
+                        _readSem.Wait(compositeCancellation.Token);
                     }
-                    finally
+                    catch
                     {
-                        Interlocked.MemoryBarrier();
-                        Interlocked.Decrement(ref _readersCount);
+                        if (_disposedCancellation.IsCancellationRequested)
+                            throw new ObjectDisposedException(GetType().Name);
+
+                        throw;
                     }
 
-                    _readSem.Release();
+                    if (_item == null)
+                    {
+                        _writeSem.Release();
+                        continue;
+                    }
 
-                    Task.Delay(100, compositeCancellation.Token)
-                        .WaitWithoutException();
+                    if (_item.Cancellation.IsCancellationRequested)
+                    {
+                        _item.TrySetCanceled(_item.Cancellation);
+                        _item = null;
+                        _writeSem.Release();
+                        continue;
+                    }
                 }
+                finally
+                {
+                    Interlocked.MemoryBarrier();
+                    Interlocked.Decrement(ref _readersCount);
+                }
+
+                _readSem.Release();
+
+                Task.Delay(100, compositeCancellation.Token)
+                    .WaitWithoutException();
             }
         }
 
         public async Task<T> SpinAsync(CancellationToken cancellation)
         {
-            using (var compositeCancellation =
-                CancellationTokenSource.CreateLinkedTokenSource(_disposedCancellation, cancellation))
+            using var compositeCancellation = CancellationTokenSource
+                .CreateLinkedTokenSource(_disposedCancellation, cancellation);
+
+            while (true)
             {
-                while (true)
+                if (_disposedCancellation.IsCancellationRequested)
+                    throw new ObjectDisposedException(GetType().Name);
+
+                Interlocked.MemoryBarrier();
+                Interlocked.Increment(ref _readersCount);
+                Interlocked.MemoryBarrier();
+
+                try
                 {
-                    if (_disposedCancellation.IsCancellationRequested)
-                        throw new ObjectDisposedException(GetType().Name);
-
-                    Interlocked.MemoryBarrier();
-                    Interlocked.Increment(ref _readersCount);
-                    Interlocked.MemoryBarrier();
-
                     try
                     {
-                        try
-                        {
-                            await _readSem.WaitAsync(compositeCancellation.Token)
-                                .ConfigureAwait(false);
-                        }
-                        catch
-                        {
-                            if (_disposedCancellation.IsCancellationRequested)
-                                throw new ObjectDisposedException(GetType().Name);
-
-                            throw;
-                        }
-
-                        if (_item == null)
-                        {
-                            _writeSem.Release();
-                            continue;
-                        }
-
-                        if (_item.Cancellation.IsCancellationRequested)
-                        {
-                            _item.TrySetCanceled(_item.Cancellation);
-                            _item = null;
-                            _writeSem.Release();
-                            continue;
-                        }
-                    }
-                    finally
-                    {
-                        Interlocked.MemoryBarrier();
-                        Interlocked.Decrement(ref _readersCount);
-                    }
-
-                    _readSem.Release();
-
-                    try
-                    {
-                        await Task.Delay(100, compositeCancellation.Token)
+                        await _readSem.WaitAsync(compositeCancellation.Token)
                             .ConfigureAwait(false);
                     }
                     catch
                     {
-                        // no-op
+                        if (_disposedCancellation.IsCancellationRequested)
+                            throw new ObjectDisposedException(GetType().Name);
+
+                        throw;
                     }
+
+                    if (_item == null)
+                    {
+                        _writeSem.Release();
+                        continue;
+                    }
+
+                    if (_item.Cancellation.IsCancellationRequested)
+                    {
+                        _item.TrySetCanceled(_item.Cancellation);
+                        _item = null;
+                        _writeSem.Release();
+                        continue;
+                    }
+                }
+                finally
+                {
+                    Interlocked.MemoryBarrier();
+                    Interlocked.Decrement(ref _readersCount);
+                }
+
+                _readSem.Release();
+
+                try
+                {
+                    await Task.Delay(100, compositeCancellation.Token)
+                        .ConfigureAwait(false);
+                }
+                catch
+                {
+                    // no-op
                 }
             }
         }
