@@ -38,7 +38,7 @@ namespace RabbitLink.Connection
 
         #region Ctor
 
-        public LinkChannel(ILinkConnection connection, LinkStateHandler<LinkChannelState>stateHandler,
+        public LinkChannel(ILinkConnection connection, LinkStateHandler<LinkChannelState> stateHandler,
             TimeSpan recoveryInterval)
             : base(LinkChannelState.Init)
         {
@@ -211,7 +211,7 @@ namespace RabbitLink.Connection
             {
                 var openCancellation = openCts.Token;
                 var openTask = Task.Run(
-                    async () => await _handler.OnConnecting(openCancellation).ConfigureAwait(false),
+                    async () => await _handler!.OnConnecting(openCancellation).ConfigureAwait(false),
                     CancellationToken.None
                 );
 
@@ -285,22 +285,20 @@ namespace RabbitLink.Connection
 
         private async Task ActiveAsync()
         {
-            using (var activeCts =
-                CancellationTokenSource.CreateLinkedTokenSource(_disposeCancellation, _modelActiveCts.Token))
+            using var activeCts = CancellationTokenSource
+                .CreateLinkedTokenSource(_disposeCancellation, _modelActiveCts!.Token);
+            try
             {
-                try
-                {
-                    await _handler.OnActive(_model, activeCts.Token)
-                        .ConfigureAwait(false);
-                }
-                catch (Exception ex)
-                {
-                    _logger.Warning($"Processing handler exception: {ex}");
-                }
-
-                await activeCts.Token.WaitCancellation()
+                await _handler!.OnActive(_model!, activeCts.Token)
                     .ConfigureAwait(false);
             }
+            catch (Exception ex)
+            {
+                _logger.Warning($"Processing handler exception: {ex}");
+            }
+
+            await activeCts.Token.WaitCancellation()
+                .ConfigureAwait(false);
         }
 
         #endregion
@@ -318,19 +316,19 @@ namespace RabbitLink.Connection
             _logger.Debug(
                 $"Return, code: {e.ReplyCode}, message: {e.ReplyText},  message id:{e.BasicProperties.MessageId}");
 
-            _handler.MessageReturn(e);
+            _handler!.MessageReturn(e);
         }
 
         private void ModelOnBasicNacks(object sender, BasicNackEventArgs e)
         {
             _logger.Debug($"Nack, tag: {e.DeliveryTag}, multiple: {e.Multiple}");
-            _handler.MessageNack(e);
+            _handler!.MessageNack(e);
         }
 
         private void ModelOnBasicAcks(object sender, BasicAckEventArgs e)
         {
             _logger.Debug($"Ack, tag: {e.DeliveryTag}, multiple: {e.Multiple}");
-            _handler.MessageAck(e);
+            _handler!.MessageAck(e);
         }
 
         private void ModelOnCallbackException(object sender, CallbackExceptionEventArgs e)

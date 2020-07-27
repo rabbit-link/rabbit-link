@@ -165,7 +165,7 @@ namespace RabbitLink.Producer
         {
             if(cancellation.IsCancellationRequested)
                 return;
-            
+
             try
             {
                 await _messageQueue.YieldAsync(cancellation)
@@ -372,7 +372,7 @@ namespace RabbitLink.Producer
                 {
                     if (cancellation.IsCancellationRequested)
                         continue;
-                    
+
                     _logger.Error($"Cannot read message from queue: {ex}");
                     return;
                 }

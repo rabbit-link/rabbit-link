@@ -50,9 +50,7 @@ namespace RabbitLink.Internals.Queues
                             {
                                 var node = _queue.First;
                                 if (node == null)
-                                {
-                                    return null;
-                                }
+                                    return null!;
 
                                 node.List.Remove(node);
                                 item = node.Value;
@@ -100,9 +98,7 @@ namespace RabbitLink.Internals.Queues
                             {
                                 var node = _queue.First;
                                 if (node == null)
-                                {
-                                    return null;
-                                }
+                                    return null!;
 
                                 node.List.Remove(node);
                                 item = node.Value;

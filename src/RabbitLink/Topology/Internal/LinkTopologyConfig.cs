@@ -108,7 +108,7 @@ namespace RabbitLink.Topology.Internal
 
             if (!string.IsNullOrWhiteSpace(alternateExchange))
             {
-                arguments.Add("alternate-exchange", alternateExchange);
+                arguments.Add("alternate-exchange", alternateExchange!);
             }
 
             if (delayed)

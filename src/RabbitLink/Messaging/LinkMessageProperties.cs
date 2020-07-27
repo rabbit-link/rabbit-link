@@ -163,7 +163,7 @@ namespace RabbitLink.Messaging
             if (string.IsNullOrWhiteSpace(input))
                 return null;
 
-            return input.Trim();
+            return input!.Trim();
         }
 
         #endregion

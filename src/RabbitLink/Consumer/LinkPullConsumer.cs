@@ -99,9 +99,9 @@ namespace RabbitLink.Consumer
                         if (string.IsNullOrWhiteSpace(typeName))
                             throw new LinkPullConsumerTypeNameMappingException(msg);
 
-                        bodyType = _typeNameMapping.Map(typeName.Trim());
+                        bodyType = _typeNameMapping.Map(typeName!.Trim());
                         if (bodyType == null)
-                            throw new LinkPullConsumerTypeNameMappingException(msg, typeName);
+                            throw new LinkPullConsumerTypeNameMappingException(msg, typeName!);
                     }
                     else
                     {

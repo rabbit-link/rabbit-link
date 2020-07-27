@@ -132,7 +132,7 @@ namespace RabbitLink.Builders
         {
             if (value == null)
                 throw new ArgumentNullException(nameof(value));
-            
+
             return new LinkPullConsumerBuilder(this, serializer: value);
         }
 

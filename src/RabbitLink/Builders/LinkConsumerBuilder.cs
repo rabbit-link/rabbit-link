@@ -114,7 +114,7 @@ namespace RabbitLink.Builders
 
             if (_messageHandlerBuilder.Serializer && _serializer == null)
                 throw new InvalidOperationException("Serializer needed by message handler not set");
-            
+
             if(_messageHandlerBuilder.Mapping && _typeNameMapping.IsEmpty)
                 throw new InvalidOperationException("Type name mapping required by handler");
 
@@ -147,7 +147,7 @@ namespace RabbitLink.Builders
         {
             if(value == 0)
                 throw new ArgumentOutOfRangeException(nameof(value), "Must be greater than 0");
-            
+
             return new LinkConsumerBuilder(this, prefetchCount: value);
         }
 
@@ -273,7 +273,7 @@ namespace RabbitLink.Builders
         {
             var builder = new LinkTypeNameMapBuilder(_typeNameMapping);
             map?.Invoke(builder);
-            
+
             return new LinkConsumerBuilder(this, typeNameMapping: builder.Build());
         }
     }

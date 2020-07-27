@@ -7,16 +7,12 @@
         <PackageLicenseUrl>https://raw.githubusercontent.com/rabbit-link/rabbit-link/master/LICENSE</PackageLicenseUrl>
         <PackageTags>RabbitMQ Messaging AMQP</PackageTags>
         <VersionPrefix>0.7.0</VersionPrefix>
-        <VersionSuffix></VersionSuffix>
         <PackageReleaseNotes>
             Update client to 6.X
         </PackageReleaseNotes>
-    </PropertyGroup>
-    <PropertyGroup>
+        <LangVersion>8</LangVersion>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    </PropertyGroup>
-    <PropertyGroup>
-        <TargetFrameworks>netstandard2.0</TargetFrameworks>        
+        <TargetFramework>netstandard2.0</TargetFramework>
     </PropertyGroup>
     <ItemGroup>
         <PackageReference Include="RabbitMQ.Client" Version="5.1.0" />

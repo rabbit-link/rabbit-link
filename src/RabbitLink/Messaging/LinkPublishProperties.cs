@@ -13,7 +13,7 @@
         public string RoutingKey
         {
             get => _routingKey;
-            set => _routingKey = string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+            set => _routingKey = string.IsNullOrWhiteSpace(value) ? null : value!.Trim();
         }
 
         /// <summary>

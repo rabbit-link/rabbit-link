@@ -250,28 +250,25 @@ namespace RabbitLink.Consumer
                 return;
             }
 
-            using (var ccs = CancellationTokenSource
-                .CreateLinkedTokenSource(cancellation, _consumerCancellationTokenSource.Token)
-            )
-            {
-                var token = ccs.Token;
+            using var ccs = CancellationTokenSource
+                .CreateLinkedTokenSource(cancellation, _consumerCancellationTokenSource.Token);
+            var token = ccs.Token;
 
-                try
-                {
-                    _readyCompletion.TrySetResult(null);
-                    
-                    await AsyncHelper.RunAsync(() => ProcessActionQueue(model, token))
-                        .ConfigureAwait(false);
-                }
-                catch
-                {
-                    // no-op
-                }
-                finally
-                {
-                    if (_readyCompletion.Task.IsCompleted)
-                        _readyCompletion = new TaskCompletionSource<object>();
-                }
+            try
+            {
+                _readyCompletion.TrySetResult(null);
+
+                await AsyncHelper.RunAsync(() => ProcessActionQueue(model, token))
+                    .ConfigureAwait(false);
+            }
+            catch
+            {
+                // no-op
+            }
+            finally
+            {
+                if (_readyCompletion.Task.IsCompleted)
+                    _readyCompletion = new TaskCompletionSource<object>();
             }
         }
 

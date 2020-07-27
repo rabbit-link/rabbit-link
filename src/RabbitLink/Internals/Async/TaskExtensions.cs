@@ -59,7 +59,7 @@ namespace RabbitLink.Internals.Async
         public static Task WaitCancellation(this CancellationToken token)
         {
             if (token.IsCancellationRequested)
-                return Task.FromResult<object>(null);
+                return Task.FromResult<object>(null!);
 
             var tcs = new TaskCompletionSource<object>();
             token.Register(() => tcs.TrySetResult(null));

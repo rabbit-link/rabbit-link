@@ -94,7 +94,7 @@ namespace RabbitLink.Builders
                     if (string.IsNullOrWhiteSpace(typeName))
                         return Task.FromException<LinkConsumerAckStrategy>(new LinkConsumerTypeNameMappingException());
 
-                    typeName = typeName.Trim();
+                    typeName = typeName!.Trim();
                     var bodyType = mapping.Map(typeName);
 
                     if (bodyType == null)
