@@ -6,7 +6,11 @@
         <PackageProjectUrl>https://github.com/rabbit-link/rabbit-link</PackageProjectUrl>
         <PackageLicenseUrl>https://raw.githubusercontent.com/rabbit-link/rabbit-link/master/LICENSE</PackageLicenseUrl>
         <PackageTags>RabbitMQ Messaging AMQP</PackageTags>
-        <VersionPrefix>0.7.0</VersionPrefix>
+        <LibraryPrefix>v</LibraryPrefix>
+        <CommitTagVersion Condition="$([System.Text.RegularExpressions.Regex]::Match($(CI_COMMIT_TAG), `^$(LibraryPrefix)([0-9]+)(\.([0-9]+)){1,2}.*$`).Success)">$([System.Text.RegularExpressions.Regex]::Replace($(CI_COMMIT_TAG), $(LibraryPrefix), ``))</CommitTagVersion>
+        <Version Condition="'$(CommitTagVersion)' != ''">$(CommitTagVersion)</Version>
+        <Version Condition="'$(CommitTagVersion)' == ''">0.0.1</Version>
+
         <PackageReleaseNotes>
             Update client to 6.X
         </PackageReleaseNotes>

@@ -23,6 +23,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RabbitLink.Serialization.Js
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RabbitLink.FunctionalTests", "RabbitLink.FunctionalTests\RabbitLink.FunctionalTests.csproj", "{31954DE5-8DAE-4454-892B-81056E9B0E71}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RabbitLink.Microsoft.Extensions.Logging", "RabbitLink.Microsoft.Extensions.Logging\RabbitLink.Microsoft.Extensions.Logging.csproj", "{195AC81F-B906-4BB2-B1ED-63829B5940B4}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RabbitLink.System.Text.Json", "RabbitLink.System.Text.Json\RabbitLink.System.Text.Json.csproj", "{91DCF4D7-D0C5-4915-A96E-3EE53DE10007}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -45,6 +49,14 @@ Global
 		{6A5A7A43-295E-4DF2-B4FB-0858B2343A28}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{6A5A7A43-295E-4DF2-B4FB-0858B2343A28}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{6A5A7A43-295E-4DF2-B4FB-0858B2343A28}.Release|Any CPU.Build.0 = Release|Any CPU
+		{195AC81F-B906-4BB2-B1ED-63829B5940B4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{195AC81F-B906-4BB2-B1ED-63829B5940B4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{195AC81F-B906-4BB2-B1ED-63829B5940B4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{195AC81F-B906-4BB2-B1ED-63829B5940B4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{91DCF4D7-D0C5-4915-A96E-3EE53DE10007}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{91DCF4D7-D0C5-4915-A96E-3EE53DE10007}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{91DCF4D7-D0C5-4915-A96E-3EE53DE10007}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{91DCF4D7-D0C5-4915-A96E-3EE53DE10007}.Release|Any CPU.Build.0 = Release|Any CPU
 		{31954DE5-8DAE-4454-892B-81056E9B0E71}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{31954DE5-8DAE-4454-892B-81056E9B0E71}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{31954DE5-8DAE-4454-892B-81056E9B0E71}.Release|Any CPU.ActiveCfg = Release|Any CPU

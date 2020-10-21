@@ -7,7 +7,6 @@
     <PackageReference Include="Newtonsoft.Json" Version="11.0.2" />
   </ItemGroup>
   <ItemGroup>
-      <ProjectReference Include="..\RabbitLink.Serialization.Json\RabbitLink.Serialization.Json.csproj" />
-    <ProjectReference Include="..\RabbitLink\RabbitLink.csproj" />
+    <ProjectReference Include="..\RabbitLink.Serialization.Json\RabbitLink.Serialization.Json.csproj" />
   </ItemGroup>
 </Project>

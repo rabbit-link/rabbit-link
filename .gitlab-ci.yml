@@ -10,6 +10,8 @@ build:
   script:
   - dotnet build ./src/RabbitLink -c Release
   - dotnet build ./src/RabbitLink.Serialization.Json -c Release
+  - dotnet build ./src/RabbitLink.System.Text.Json -c Release
+  - dotnet build ./src/RabbitLink.Microsoft.Extensions.Logging -c Release
 
 nuget-main:
   tags:
@@ -45,3 +47,36 @@ nuget-json:
     paths:
     - artifacts/*
 
+nuget-ms-json:
+  tags:
+  - docker
+  image: microsoft/dotnet:2.1-sdk
+  stage: nuget
+  only:
+  - /^ms-json-v([0-9]+)(\.([0-9]+)){1,2}.*$/
+  except:
+  - branches
+  script:
+  - dotnet pack ./src/RabbitLink.System.Text.Json -c Release -o "${PWD}/artifacts/"
+  - dotnet nuget push --force-english-output -s https://api.nuget.org/v3/index.json -k "${NUGET_API_KEY}" ./artifacts/*.nupkg
+  artifacts:
+    expire_in: 31d
+    paths:
+    - artifacts/*
+
+nuget-ms-log:
+  tags:
+  - docker
+  image: microsoft/dotnet:2.1-sdk
+  stage: nuget
+  only:
+  - /^ms-log-v([0-9]+)(\.([0-9]+)){1,2}.*$/
+  except:
+  - branches
+  script:
+  - dotnet pack ./src/RabbitLink.Microsoft.Extensions.Logging -c Release -o "${PWD}/artifacts/"
+  - dotnet nuget push --force-english-output -s https://api.nuget.org/v3/index.json -k "${NUGET_API_KEY}" ./artifacts/*.nupkg
+  artifacts:
+    expire_in: 31d
+    paths:
+    - artifacts/*
