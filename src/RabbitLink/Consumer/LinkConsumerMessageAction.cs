@@ -1,5 +1,9 @@
-﻿using System.Threading;
+#region Usings
+
+using System.Threading;
 using RabbitLink.Internals.Channels;
+
+#endregion
 
 namespace RabbitLink.Consumer
 {

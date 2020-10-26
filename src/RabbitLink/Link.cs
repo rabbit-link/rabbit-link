@@ -90,8 +90,6 @@ namespace RabbitLink
             => Dispose(false);
 
         internal ILinkChannel CreateChannel(LinkStateHandler<LinkChannelState> stateHandler, TimeSpan recoveryInterval)
-        {
-            return new LinkChannel(_connection, stateHandler, recoveryInterval);
-        }
+            => new LinkChannel(_connection, stateHandler, recoveryInterval);
     }
 }

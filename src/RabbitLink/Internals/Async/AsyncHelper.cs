@@ -1,7 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+﻿#region Usings
+
+using System;
 using System.Threading.Tasks;
+
+#endregion
 
 namespace RabbitLink.Internals.Async
 {

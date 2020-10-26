@@ -1,11 +1,15 @@
-﻿using System;
+#region Usings
+
+using System;
 using RabbitLink.Connection;
 using RabbitLink.Logging;
 using RabbitLink.Serialization;
 
+#endregion
+
 namespace RabbitLink.Builders
 {
-    internal struct LinkConfiguration
+    internal readonly struct LinkConfiguration
     {
         public LinkConfiguration(
             string connectionName,

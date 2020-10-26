@@ -1,15 +1,19 @@
-﻿using System;
+#region Usings
+
+using System;
 using RabbitLink.Messaging;
+
+#endregion
 
 namespace RabbitLink.Exceptions
 {
     /// <summary>
-    /// Fires when message cannot be deserialized by pull consumer
+    ///     Fires when message cannot be deserialized by pull consumer
     /// </summary>
     public class LinkPullConsumerDeserializationException : LinkException
     {
         /// <summary>
-        /// Constructs instance
+        ///     Constructs instance
         /// </summary>
         public LinkPullConsumerDeserializationException(
             ILinkPulledMessage<byte[]> rawMessage, Type targetBodyType, Exception innerException)
@@ -20,12 +24,12 @@ namespace RabbitLink.Exceptions
         }
 
         /// <summary>
-        /// Raw message
+        ///     Raw message
         /// </summary>
         public ILinkPulledMessage<byte[]> RawMessage { get; }
 
         /// <summary>
-        /// Target body type
+        ///     Target body type
         /// </summary>
         public Type TargetBodyType { get; }
     }

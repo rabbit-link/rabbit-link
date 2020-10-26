@@ -17,7 +17,7 @@ namespace RabbitLink.Builders
         ILinkConsumerBuilder
     {
         private readonly Link _link;
-        private readonly TimeSpan _reconveryInterval;
+        private readonly TimeSpan _recoveryInterval;
         private readonly ushort _prefetchCount;
         private readonly bool _autoAck;
         private readonly bool _cancelOnHaFailover;
@@ -50,7 +50,7 @@ namespace RabbitLink.Builders
         {
             _link = link ?? throw new ArgumentNullException(nameof(link));
 
-            _reconveryInterval = recoveryInterval;
+            _recoveryInterval = recoveryInterval;
             _prefetchCount = prefetchCount ?? 1;
             _autoAck = autoAck ?? false;
             _priority = priority ?? 0;
@@ -83,7 +83,7 @@ namespace RabbitLink.Builders
         ) : this
             (
                 prev._link,
-                recoveryInterval ?? prev._reconveryInterval,
+                recoveryInterval ?? prev._recoveryInterval,
                 serializer ?? prev._serializer,
                 prefetchCount ?? prev._prefetchCount,
                 autoAck ?? prev._autoAck,
@@ -114,12 +114,12 @@ namespace RabbitLink.Builders
 
             if (_messageHandlerBuilder.Serializer && _serializer == null)
                 throw new InvalidOperationException("Serializer needed by message handler not set");
-            
+
             if(_messageHandlerBuilder.Mapping && _typeNameMapping.IsEmpty)
                 throw new InvalidOperationException("Type name mapping required by handler");
 
             var config = new LinkConsumerConfiguration(
-                _reconveryInterval,
+                _recoveryInterval,
                 _prefetchCount,
                 _autoAck,
                 _priority,
@@ -147,7 +147,7 @@ namespace RabbitLink.Builders
         {
             if(value == 0)
                 throw new ArgumentOutOfRangeException(nameof(value), "Must be greater than 0");
-            
+
             return new LinkConsumerBuilder(this, prefetchCount: value);
         }
 
@@ -273,7 +273,7 @@ namespace RabbitLink.Builders
         {
             var builder = new LinkTypeNameMapBuilder(_typeNameMapping);
             map?.Invoke(builder);
-            
+
             return new LinkConsumerBuilder(this, typeNameMapping: builder.Build());
         }
     }

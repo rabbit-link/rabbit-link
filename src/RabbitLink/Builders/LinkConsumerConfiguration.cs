@@ -1,4 +1,4 @@
-﻿#region Usings
+#region Usings
 
 using System;
 using RabbitLink.Consumer;
@@ -9,7 +9,7 @@ using RabbitLink.Topology;
 
 namespace RabbitLink.Builders
 {
-    internal struct LinkConsumerConfiguration
+    internal readonly struct LinkConsumerConfiguration
     {
         public LinkConsumerConfiguration(
             TimeSpan recoveryInterval,

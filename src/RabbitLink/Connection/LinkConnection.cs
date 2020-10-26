@@ -1,4 +1,4 @@
-﻿#region Usings
+#region Usings
 
 using System;
 using System.IO;
@@ -202,7 +202,7 @@ namespace RabbitLink.Connection
                             newState = LinkConnectionState.Reopening;
                             break;
                         default:
-                            throw new NotImplementedException($"Handler for state ${State} not implemeted");
+                            throw new NotImplementedException($"Handler for state ${State} not implemented");
                     }
                 }
                 catch (Exception ex)
@@ -256,7 +256,7 @@ namespace RabbitLink.Connection
                     }
                 }
 
-                // start long-running task for syncronyous connect
+                // start long-running task for synchronous connect
                 if (await AsyncHelper.RunAsync(Connect)
                     .ConfigureAwait(false))
                 {
@@ -379,7 +379,7 @@ namespace RabbitLink.Connection
 
         private void ConnectionOnConnectionShutdown(object sender, ShutdownEventArgs e)
         {
-            _logger.Info($"Diconnected, Initiator: {e.Initiator}, Code: {e.ReplyCode}, Message: {e.ReplyText}");
+            _logger.Info($"Disconnected, Initiator: {e.Initiator}, Code: {e.ReplyCode}, Message: {e.ReplyText}");
 
             // if initialized by application, exit
             if (e.Initiator == ShutdownInitiator.Application) return;

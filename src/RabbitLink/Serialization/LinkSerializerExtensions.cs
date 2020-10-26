@@ -1,12 +1,16 @@
-﻿using System;
+#region Usings
+
+using System;
 using System.Linq.Expressions;
 using System.Reflection;
 using RabbitLink.Messaging;
 
+#endregion
+
 namespace RabbitLink.Serialization
 {
     /// <summary>
-    /// Helper for <see cref="ILinkSerializer"/>
+    ///     Helper for <see cref="ILinkSerializer" />
     /// </summary>
     internal static class LinkSerializerExtensions
     {
@@ -15,7 +19,7 @@ namespace RabbitLink.Serialization
         static LinkSerializerExtensions()
         {
             Expression<Action<ILinkSerializer>> expr = x =>
-                x.Deserialize<object>(default(byte[]), default(LinkMessageProperties));
+                x.Deserialize<object>(default, default);
 
             DeserializeMethod = ((MethodCallExpression) expr.Body)
                 .Method
@@ -23,7 +27,7 @@ namespace RabbitLink.Serialization
         }
 
         /// <summary>
-        ///     Deserialize messsage and set properties
+        ///     Deserialize message and set properties
         /// </summary>
         public static object Deserialize(this ILinkSerializer @this, Type bodyType,
             byte[] body, LinkMessageProperties properties)

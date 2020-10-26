@@ -1,4 +1,4 @@
-﻿namespace RabbitLink.Messaging
+namespace RabbitLink.Messaging
 {
     /// <summary>
     /// Message delivery mode
@@ -11,7 +11,7 @@
         Default = 0,
 
         /// <summary>
-        /// Transiend
+        /// Transient
         /// </summary>
         Transient = 1,
 

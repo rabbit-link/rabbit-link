@@ -1,10 +1,14 @@
-﻿using System.Threading.Tasks;
+#region Usings
+
+using System.Threading.Tasks;
 using RabbitLink.Producer;
+
+#endregion
 
 namespace RabbitLink.Topology
 {
     /// <summary>
-    /// Topology config delegate for <see cref="ILinkProducer"/>
+    ///     Topology config delegate for <see cref="ILinkProducer" />
     /// </summary>
-    public delegate Task<ILinkExchage> LinkProducerTopologyConfigDelegate(ILinkTopologyConfig config);
+    public delegate Task<ILinkExchange> LinkProducerTopologyConfigDelegate(ILinkTopologyConfig config);
 }

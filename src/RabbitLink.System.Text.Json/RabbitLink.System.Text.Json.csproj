@@ -4,6 +4,10 @@
         <TargetFramework>netstandard2.0</TargetFramework>
         <RootNamespace>RabbitLink.Serialization</RootNamespace>
         <LangVersion>8</LangVersion>
+        <LibraryPrefix>ms-json-v</LibraryPrefix>
+        <CommitTagVersion Condition="$([System.Text.RegularExpressions.Regex]::Match($(CI_COMMIT_TAG), `^$(LibraryPrefix)([0-9]+)(\.([0-9]+)){1,2}.*$`).Success)">$([System.Text.RegularExpressions.Regex]::Replace($(CI_COMMIT_TAG), $(LibraryPrefix), ``))</CommitTagVersion>
+        <Version Condition="'$(CommitTagVersion)' != ''">$(CommitTagVersion)</Version>
+        <Version Condition="'$(CommitTagVersion)' == ''">0.0.1</Version>
     </PropertyGroup>
 
     <ItemGroup>

@@ -1,11 +1,11 @@
-﻿using RabbitLink.Builders;
+using RabbitLink.Builders;
 
 namespace RabbitLink
 {
     /// <summary>
     /// Builder for <see cref="ILink"/>
     /// </summary>
-    public sealed class LinkBuilder
+    public static class LinkBuilder
     {
         /// <summary>
         /// Gets new <see cref="ILinkBuilder"/>

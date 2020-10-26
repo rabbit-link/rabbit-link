@@ -1,4 +1,4 @@
-﻿#region Usings
+#region Usings
 
 using System;
 using System.Collections.Generic;
@@ -57,14 +57,14 @@ namespace RabbitLink.Consumer
                     .CreateLinkedTokenSource(_disposedCancellation, msg.Cancellation))
                 {
                     LinkedListNode<QueueItem> node;
-                    var qitem = new QueueItem(msg, completion);
+                    var qItem = new QueueItem(msg, completion);
 
                     using (_sync.Lock(compositeCancellation.Token))
                     {
-                        node = _queue.AddLast(qitem);
+                        node = _queue.AddLast(qItem);
                     }
 
-                    qitem.EnableCancellation(() =>
+                    qItem.EnableCancellation(() =>
                     {
                         using (_sync.Lock(CancellationToken.None))
                         {

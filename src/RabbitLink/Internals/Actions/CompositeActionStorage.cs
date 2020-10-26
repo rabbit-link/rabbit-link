@@ -20,7 +20,7 @@ namespace RabbitLink.Internals.Actions
             if (action == null)
                 throw new ArgumentNullException(nameof(action));
 
-            var item = new ActionItem<TActor>(actor => action(actor), cancellation);
+            var item = new ActionItem<TActor>(actor => action(actor)!, cancellation);
 
             await _channel.PutAsync(item)
                 .ConfigureAwait(false);
@@ -34,7 +34,7 @@ namespace RabbitLink.Internals.Actions
             => PutAsync<object>(actor =>
             {
                 action(actor);
-                return null;
+                return null!;
             }, cancellation);
 
         public ActionItem<TActor> Wait(CancellationToken cancellation)

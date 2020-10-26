@@ -1,4 +1,4 @@
-﻿#region Usings
+#region Usings
 
 using System;
 using System.Collections.Generic;
@@ -8,7 +8,7 @@ using System.Collections.Generic;
 namespace RabbitLink.Messaging
 {
     /// <summary>
-    /// Represend message properties
+    /// Represents message properties
     /// </summary>
     public sealed class LinkMessageProperties
     {
@@ -64,7 +64,7 @@ namespace RabbitLink.Messaging
         }
 
         /// <summary>
-        /// Request corellation id
+        /// Request correlation id
         /// </summary>
         public string CorrelationId
         {
@@ -87,7 +87,7 @@ namespace RabbitLink.Messaging
         }
 
         /// <summary>
-        /// Message expiratiom (TTL)
+        /// Message expiration (TTL)
         /// </summary>
         public TimeSpan? Expiration
         {
@@ -163,7 +163,7 @@ namespace RabbitLink.Messaging
             if (string.IsNullOrWhiteSpace(input))
                 return null;
 
-            return input.Trim();
+            return input!.Trim();
         }
 
         #endregion

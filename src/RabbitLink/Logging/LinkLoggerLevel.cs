@@ -1,27 +1,27 @@
-﻿namespace RabbitLink.Logging
+namespace RabbitLink.Logging
 {
     /// <summary>
-    /// Logger levels
+    ///     Logger levels
     /// </summary>
     public enum LinkLoggerLevel
     {
         /// <summary>
-        /// Error message
+        ///     Error message
         /// </summary>
         Error,
 
         /// <summary>
-        /// Warning message
+        ///     Warning message
         /// </summary>
         Warning,
 
         /// <summary>
-        /// Informational message
+        ///     Informational message
         /// </summary>
         Info,
 
         /// <summary>
-        /// Debug message
+        ///     Debug message
         /// </summary>
         Debug
     }

@@ -1,4 +1,4 @@
-﻿namespace RabbitLink.Connection
+namespace RabbitLink.Connection
 {
     /// <summary>
     /// Operational state of connection
@@ -26,7 +26,7 @@
         Active,
 
         /// <summary>
-        /// Stoping
+        /// Stopping
         /// </summary>
         Stopping,
 

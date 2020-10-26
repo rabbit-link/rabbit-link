@@ -1,4 +1,4 @@
-﻿#region Usings
+#region Usings
 
 using System;
 using System.Threading;
@@ -48,7 +48,7 @@ namespace RabbitLink.Producer
         /// </summary>
         /// <param name="message">message</param>
         /// <param name="cancellation">cancellation token, if null <see cref="Timeout" /> will be used</param>
-        /// <returns><see cref="Task" /> which completed when message acked by brocker</returns>
+        /// <returns><see cref="Task" /> which completed when message ACKed by broker</returns>
         Task PublishAsync(
             ILinkPublishMessage<byte[]> message,
             CancellationToken? cancellation = null
@@ -59,7 +59,7 @@ namespace RabbitLink.Producer
         /// </summary>
         /// <param name="message">message</param>
         /// <param name="cancellation">cancellation token, if null <see cref="Timeout" /> will be used</param>
-        /// <returns><see cref="Task" /> which completed when message acked by brocker</returns>
+        /// <returns><see cref="Task" /> which completed when message ACKed by broker</returns>
         Task PublishAsync<TBody>(
             ILinkPublishMessage<TBody> message,
             CancellationToken? cancellation = null

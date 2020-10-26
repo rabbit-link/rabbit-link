@@ -1,4 +1,4 @@
-﻿#region Usings
+#region Usings
 
 using System.Threading;
 
@@ -7,16 +7,16 @@ using System.Threading;
 namespace RabbitLink.Messaging
 {
     /// <summary>
-    ///     Represents RabbitMQ message recieved from broker
+    ///     Represents RabbitMQ message received from broker
     /// </summary>
     public interface ILinkConsumedMessage<out TBody> : ILinkMessage<TBody> where TBody : class
     {
         #region Properties
 
         /// <summary>
-        ///     Recieve properties
+        ///     Receive properties
         /// </summary>
-        LinkRecieveProperties RecieveProperties { get; }
+        LinkReceiveProperties ReceiveProperties { get; }
 
         /// <summary>
         ///     Message cancellation

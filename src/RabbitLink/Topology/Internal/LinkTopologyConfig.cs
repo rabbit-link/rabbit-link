@@ -1,4 +1,4 @@
-﻿#region Usings
+#region Usings
 
 using System;
 using System.Collections.Generic;
@@ -25,7 +25,7 @@ namespace RabbitLink.Topology.Internal
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
-        public async Task Bind(ILinkExchage destination, ILinkExchage source, string routingKey = null,
+        public async Task Bind(ILinkExchange destination, ILinkExchange source, string routingKey = null,
             IDictionary<string, object> arguments = null)
         {
             if (source == null)
@@ -48,7 +48,7 @@ namespace RabbitLink.Topology.Internal
                 $"Bound destination exchange {destination.Name} to source exchange {source.Name} with routing key {routingKey} and arguments: {string.Join(", ", arguments.Select(x => $"{x.Key} = {x.Value}"))}");
         }
 
-        public async Task Bind(ILinkQueue queue, ILinkExchage exchange, string routingKey = null,
+        public async Task Bind(ILinkQueue queue, ILinkExchange exchange, string routingKey = null,
             IDictionary<string, object> arguments = null)
         {
             if (exchange == null)
@@ -73,7 +73,7 @@ namespace RabbitLink.Topology.Internal
 
         #region Exchange
 
-        public async Task<ILinkExchage> ExchangeDeclare(
+        public async Task<ILinkExchange> ExchangeDeclare(
             string name,
             LinkExchangeType type,
             bool durable = true,
@@ -108,7 +108,7 @@ namespace RabbitLink.Topology.Internal
 
             if (!string.IsNullOrWhiteSpace(alternateExchange))
             {
-                arguments.Add("alternate-exchange", alternateExchange);
+                arguments.Add("alternate-exchange", alternateExchange!);
             }
 
             if (delayed)
@@ -124,10 +124,10 @@ namespace RabbitLink.Topology.Internal
             _logger.Debug(
                 $"Declared exchange \"{name}\", type: {exchangeType}, durable: {durable}, autoDelete: {autoDelete}, arguments: {string.Join(", ", arguments.Select(x => $"{x.Key} = {x.Value}"))}");
 
-            return new LinkExchage(name);
+            return new LinkExchange(name);
         }
 
-        public async Task<ILinkExchage> ExchangeDeclarePassive(string name)
+        public async Task<ILinkExchange> ExchangeDeclarePassive(string name)
         {
             if (string.IsNullOrWhiteSpace(name))
                 throw new ArgumentNullException(nameof(name));
@@ -138,17 +138,17 @@ namespace RabbitLink.Topology.Internal
 
             _logger.Debug($"Declared exchange passive: \"{name}\"");
 
-            return new LinkExchage(name);
+            return new LinkExchange(name);
         }
 
-        public Task<ILinkExchage> ExchangeDeclareDefault()
+        public Task<ILinkExchange> ExchangeDeclareDefault()
         {
             _logger.Debug("Declared default exchange");
 
-            return Task.FromResult((ILinkExchage) new LinkExchage(""));
+            return Task.FromResult((ILinkExchange) new LinkExchange(""));
         }
 
-        public async Task ExchangeDelete(ILinkExchage exchange, bool ifUnused = false)
+        public async Task ExchangeDelete(ILinkExchange exchange, bool ifUnused = false)
         {
             if (exchange == null)
                 throw new ArgumentNullException(nameof(exchange));

@@ -1,17 +1,21 @@
-﻿using System;
+#region Usings
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using RabbitMQ.Client;
 
+#endregion
+
 namespace RabbitLink.Messaging
 {
     /// <summary>
-    /// Extension methods for <see cref="LinkMessageProperties"/>
+    ///     Extension methods for <see cref="LinkMessageProperties" />
     /// </summary>
     public static class LinkMessagePropertiesExtensions
     {
         /// <summary>
-        /// Extend instance with other instances, returns instance.
+        ///     Extend instance with other instances, returns instance.
         /// </summary>
         public static LinkMessageProperties Extend(this LinkMessageProperties @this,
             params LinkMessageProperties[] others)
@@ -54,13 +58,13 @@ namespace RabbitLink.Messaging
         }
 
         /// <summary>
-        /// Makes clone of instance
+        ///     Makes clone of instance
         /// </summary>
         public static LinkMessageProperties Clone(this LinkMessageProperties @this)
             => new LinkMessageProperties().Extend(@this);
 
         /// <summary>
-        /// Extends instance with <see cref="IBasicProperties"/> instances, return instance
+        ///     Extends instance with <see cref="IBasicProperties" /> instances, return instance
         /// </summary>
         internal static LinkMessageProperties Extend(this LinkMessageProperties @this, params IBasicProperties[] others)
         {
@@ -103,7 +107,7 @@ namespace RabbitLink.Messaging
         }
 
         /// <summary>
-        /// Extend instance with <see cref="LinkMessageProperties"/>. Returns instance.
+        ///     Extend instance with <see cref="LinkMessageProperties" />. Returns instance.
         /// </summary>
         internal static IBasicProperties Extend(this IBasicProperties @this, params LinkMessageProperties[] others)
         {

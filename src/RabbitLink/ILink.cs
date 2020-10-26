@@ -1,10 +1,14 @@
-﻿using System;
+#region Usings
+
+using System;
 using RabbitLink.Builders;
+
+#endregion
 
 namespace RabbitLink
 {
     /// <summary>
-    /// RabbitMQ connection
+    ///     RabbitMQ connection
     /// </summary>
     public interface ILink : IDisposable
     {
@@ -14,17 +18,17 @@ namespace RabbitLink
         bool IsConnected { get; }
 
         /// <summary>
-        /// Gets new producer builder
+        ///     Gets new producer builder
         /// </summary>
         ILinkProducerBuilder Producer { get; }
 
         /// <summary>
-        /// Gets new topology builder
+        ///     Gets new topology builder
         /// </summary>
         ILinkTopologyBuilder Topology { get; }
 
         /// <summary>
-        /// Gets new consumer builder
+        ///     Gets new consumer builder
         /// </summary>
         ILinkConsumerBuilder Consumer { get; }
 
@@ -39,7 +43,7 @@ namespace RabbitLink
         event EventHandler Disconnected;
 
         /// <summary>
-        /// Initializes connection
+        ///     Initializes connection
         /// </summary>
         void Initialize();
     }

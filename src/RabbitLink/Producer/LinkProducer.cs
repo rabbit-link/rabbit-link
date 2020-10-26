@@ -1,4 +1,4 @@
-﻿#region Usings
+#region Usings
 
 using System;
 using System.Collections.Generic;
@@ -23,7 +23,7 @@ using RabbitMQ.Client.Events;
 
 namespace RabbitLink.Producer
 {
-    internal class LinkProducer : AsyncStateMachine<LinkProducerState>, ILinkProducerIntenal, ILinkChannelHandler
+    internal class LinkProducer : AsyncStateMachine<LinkProducerState>, ILinkProducerInternal, ILinkChannelHandler
     {
         #region Static fields
 
@@ -46,9 +46,9 @@ namespace RabbitLink.Producer
 
         private readonly object _sync = new object();
 
-        private readonly LinkTopologyRunner<ILinkExchage> _topologyRunner;
+        private readonly LinkTopologyRunner<ILinkExchange> _topologyRunner;
 
-        private ILinkExchage _exchage;
+        private ILinkExchange _exchange;
 
         private volatile TaskCompletionSource<object> _readyCompletion =
             new TaskCompletionSource<object>();
@@ -71,7 +71,7 @@ namespace RabbitLink.Producer
                       ?? throw new InvalidOperationException("Cannot create logger");
 
             _topologyRunner =
-                new LinkTopologyRunner<ILinkExchage>(_logger, _configuration.TopologyHandler.Configure);
+                new LinkTopologyRunner<ILinkExchange>(_logger, _configuration.TopologyHandler.Configure);
 
             _appId = _channel.Connection.Configuration.AppId;
 
@@ -165,7 +165,7 @@ namespace RabbitLink.Producer
         {
             if(cancellation.IsCancellationRequested)
                 return;
-            
+
             try
             {
                 await _messageQueue.YieldAsync(cancellation)
@@ -214,7 +214,7 @@ namespace RabbitLink.Producer
 
         #endregion
 
-        #region ILinkProducerIntenal Members
+        #region ILinkProducerInternal Members
 
         public event EventHandler Disposed;
         public ILinkChannel Channel => _channel;
@@ -372,7 +372,7 @@ namespace RabbitLink.Producer
                 {
                     if (cancellation.IsCancellationRequested)
                         continue;
-                    
+
                     _logger.Error($"Cannot read message from queue: {ex}");
                     return;
                 }
@@ -394,7 +394,7 @@ namespace RabbitLink.Producer
                 try
                 {
                     model.BasicPublish(
-                        _exchage.Name,
+                        _exchange.Name,
                         message.PublishProperties.RoutingKey ?? "",
                         message.PublishProperties.Mandatory ?? false,
                         properties,
@@ -444,7 +444,7 @@ namespace RabbitLink.Producer
 
             try
             {
-                _exchage = await _topologyRunner
+                _exchange = await _topologyRunner
                     .RunAsync(model, cancellation)
                     .ConfigureAwait(false);
             }

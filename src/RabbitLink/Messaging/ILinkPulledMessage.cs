@@ -1,8 +1,8 @@
-﻿namespace RabbitLink.Messaging
+namespace RabbitLink.Messaging
 {
     /// <inheritdoc />
     /// <summary>
-    ///     Represents RabbitMQ message recieved from broker by <see cref="T:RabbitLink.Consumer.ILinkPullConsumer" />
+    ///     Represents RabbitMQ message received from broker by <see cref="T:RabbitLink.Consumer.ILinkPullConsumer" />
     /// </summary>
     public interface ILinkPulledMessage<out TBody> : ILinkConsumedMessage<TBody> where TBody : class
     {

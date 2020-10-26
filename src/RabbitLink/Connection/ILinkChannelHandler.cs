@@ -25,7 +25,7 @@ namespace RabbitLink.Connection
         /// <summary>
         ///     Raises when <see cref="ILinkChannel" /> enters Connecting state
         /// </summary>
-        /// <param name="cancellation">Cancellation to stop proccessing</param>
+        /// <param name="cancellation">Cancellation to stop processing</param>
         /// <returns></returns>
         Task OnConnecting(CancellationToken cancellation);
 

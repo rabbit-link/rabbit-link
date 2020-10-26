@@ -1,9 +1,9 @@
-﻿using System;
+using System;
 using RabbitLink.Topology;
 
 namespace RabbitLink.Builders
 {
-    internal struct LinkTopologyConfiguration
+    internal readonly struct LinkTopologyConfiguration
     {
         public LinkTopologyConfiguration(
             TimeSpan recoveryInterval,
