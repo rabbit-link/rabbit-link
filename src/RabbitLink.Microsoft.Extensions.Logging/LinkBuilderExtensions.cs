@@ -3,6 +3,9 @@ using Microsoft.Extensions.Logging;
 
 namespace RabbitLink.Logging
 {
+    /// <summary>
+    /// Extension methods for <see cref="ILinkBuilder"/>
+    /// </summary>
     public static class LinkBuilderExtensions
     {
         /// <summary>
