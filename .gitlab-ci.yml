@@ -5,7 +5,7 @@ stages:
 build:
   tags:
   - docker
-  image: microsoft/dotnet:2.1-sdk
+  image: mcr.microsoft.com/dotnet/sdk:5.0
   stage: build
   script:
   - dotnet build ./src/RabbitLink -c Release
@@ -16,7 +16,7 @@ build:
 nuget-main:
   tags:
   - docker
-  image: microsoft/dotnet:2.1-sdk
+  image: mcr.microsoft.com/dotnet/sdk:5.0
   stage: nuget
   only:
   - /^v([0-9]+)(\.([0-9]+)){1,2}.*$/
@@ -33,7 +33,7 @@ nuget-main:
 nuget-json:
   tags:
   - docker
-  image: microsoft/dotnet:2.1-sdk
+  image: mcr.microsoft.com/dotnet/sdk:5.0
   stage: nuget
   only:
   - /^json-v([0-9]+)(\.([0-9]+)){1,2}.*$/
@@ -50,7 +50,7 @@ nuget-json:
 nuget-ms-json:
   tags:
   - docker
-  image: microsoft/dotnet:2.1-sdk
+  image: mcr.microsoft.com/dotnet/sdk:5.0
   stage: nuget
   only:
   - /^ms-json-v([0-9]+)(\.([0-9]+)){1,2}.*$/
@@ -67,7 +67,7 @@ nuget-ms-json:
 nuget-ms-log:
   tags:
   - docker
-  image: microsoft/dotnet:2.1-sdk
+  image: mcr.microsoft.com/dotnet/sdk:5.0
   stage: nuget
   only:
   - /^ms-log-v([0-9]+)(\.([0-9]+)){1,2}.*$/
