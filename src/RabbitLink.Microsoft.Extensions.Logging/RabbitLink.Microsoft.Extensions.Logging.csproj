@@ -6,7 +6,7 @@
         <Copyright>Artur Kraev, Ivan Simongauz 2015-2020</Copyright>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
         <PackageProjectUrl>https://github.com/rabbit-link/rabbit-link</PackageProjectUrl>
-        <PackageTags>RabbitMQ Messaging AMQP Logging</PackageTags>
+        <PackageTags>RabbitMQ, Messaging, AMQP, Logging</PackageTags>
         <PackageReleaseNotes>
         </PackageReleaseNotes>
 

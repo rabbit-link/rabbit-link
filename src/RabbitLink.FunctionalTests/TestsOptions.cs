@@ -21,7 +21,7 @@ namespace RabbitLink.FunctionalTests
             {
                 Uri = new Uri(ConnectionString),
                 AutomaticRecoveryEnabled = false,
-                RequestedConnectionTimeout = (int) TimeSpan.FromSeconds(10).TotalMilliseconds
+                RequestedConnectionTimeout = TimeSpan.FromSeconds(10)
             };
 
             return factory.CreateConnection();

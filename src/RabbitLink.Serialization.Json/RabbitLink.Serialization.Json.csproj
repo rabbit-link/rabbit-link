@@ -5,7 +5,7 @@
         <Copyright>Artur Kraev, Ivan Simongauz 2015-2020</Copyright>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
         <PackageProjectUrl>https://github.com/rabbit-link/rabbit-link</PackageProjectUrl>
-        <PackageTags>RabbitMQ Messaging AMQP Serialization Json</PackageTags>
+        <PackageTags>RabbitMQ, Messaging, AMQP, Serialization, Json</PackageTags>
         <PackageReleaseNotes>
             Update to 6.X
         </PackageReleaseNotes>

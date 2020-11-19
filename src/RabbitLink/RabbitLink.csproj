@@ -5,9 +5,9 @@
         <Copyright>Artur Kraev, Ivan Simongauz 2015-2020</Copyright>
         <PackageProjectUrl>https://github.com/rabbit-link/rabbit-link</PackageProjectUrl>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
-        <PackageTags>RabbitMQ Messaging AMQP</PackageTags>
+        <PackageTags>RabbitMQ, Messaging, AMQP</PackageTags>
         <PackageReleaseNotes>
-            Update client to 6.X
+            Update client to 6.2.1
         </PackageReleaseNotes>
 
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
@@ -19,6 +19,6 @@
         <Version Condition="'$(CommitTagVersion)' == ''">0.0.1</Version>
     </PropertyGroup>
     <ItemGroup>
-        <PackageReference Include="RabbitMQ.Client" Version="5.1.0" />
+        <PackageReference Include="RabbitMQ.Client" Version="6.2.1" />
     </ItemGroup>
 </Project>

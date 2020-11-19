@@ -44,7 +44,7 @@ namespace RabbitLink.Connection
                 TopologyRecoveryEnabled = false,
                 AutomaticRecoveryEnabled = false,
                 UseBackgroundThreadsForIO = useBackgroundThreads,
-                RequestedConnectionTimeout = (int) timeout.TotalMilliseconds,
+                RequestedConnectionTimeout = timeout,
                 ClientProperties =
                 {
                     ["product"] = "RabbitLink",

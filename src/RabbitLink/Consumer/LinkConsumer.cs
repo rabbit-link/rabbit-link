@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using RabbitLink.Builders;
@@ -178,6 +179,7 @@ namespace RabbitLink.Consumer
                             ChangeState(LinkConsumerState.Init);
                             return;
                         }
+
                         newState = LinkConsumerState.Reconfiguring;
                         break;
 
@@ -343,7 +345,7 @@ namespace RabbitLink.Consumer
         }
 
         private void ConsumerOnRegistered(object sender, ConsumerEventArgs e)
-            => _logger.Debug($"Consuming: {e.ConsumerTag}");
+            => _logger.Debug($"Consuming: {string.Join(", ", e.ConsumerTags)}");
 
 
         private void ConsumerOnReceived(object sender, BasicDeliverEventArgs e)
@@ -358,7 +360,7 @@ namespace RabbitLink.Consumer
 
                 var token = _consumerCancellationTokenSource.Token;
 
-                var msg = new LinkConsumedMessage<byte[]>(e.Body, props, receiveProps, token);
+                var msg = new LinkConsumedMessage<byte[]>(e.Body.ToArray(), props, receiveProps, token);
 
                 HandleMessageAsync(msg, e.DeliveryTag);
             }
@@ -433,6 +435,7 @@ namespace RabbitLink.Consumer
                             action = new LinkConsumerMessageAction(deliveryTag, LinkConsumerAckStrategy.Nack,
                                 cancellation);
                         }
+
                         break;
                     case TaskStatus.Canceled:
                         try
@@ -448,6 +451,7 @@ namespace RabbitLink.Consumer
                             action = new LinkConsumerMessageAction(deliveryTag, LinkConsumerAckStrategy.Nack,
                                 cancellation);
                         }
+
                         break;
                     default:
                         return;
@@ -464,7 +468,7 @@ namespace RabbitLink.Consumer
 
         private void ConsumerOnConsumerCancelled(object sender, ConsumerEventArgs e)
         {
-            _logger.Debug($"Cancelled: {e.ConsumerTag}");
+            _logger.Debug($"Cancelled: {string.Join(", ", e.ConsumerTags)}");
             _consumerCancellationTokenSource?.Cancel();
             _consumerCancellationTokenSource?.Dispose();
         }
@@ -477,7 +481,7 @@ namespace RabbitLink.Consumer
                 {
                     if (_consumer.IsRunning)
                     {
-                        model.BasicCancel(_consumer.ConsumerTag);
+                        model.BasicCancel(_consumer.ConsumerTags.First());
                     }
                 }
                 catch
