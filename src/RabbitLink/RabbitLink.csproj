@@ -1,22 +1,22 @@
 <Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
-        <Authors>Artur Kraev</Authors>
+        <Authors>Artur Kraev, Ivan Simongauz</Authors>
         <Description>Advanced .Net API for RabbitMQ</Description>
-        <Copyright>Artur Kraev 2015-2018</Copyright>
+        <Copyright>Artur Kraev, Ivan Simongauz 2015-2020</Copyright>
         <PackageProjectUrl>https://github.com/rabbit-link/rabbit-link</PackageProjectUrl>
-        <PackageLicenseUrl>https://raw.githubusercontent.com/rabbit-link/rabbit-link/master/LICENSE</PackageLicenseUrl>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
         <PackageTags>RabbitMQ Messaging AMQP</PackageTags>
-        <LibraryPrefix>v</LibraryPrefix>
-        <CommitTagVersion Condition="$([System.Text.RegularExpressions.Regex]::Match($(CI_COMMIT_TAG), `^$(LibraryPrefix)([0-9]+)(\.([0-9]+)){1,2}.*$`).Success)">$([System.Text.RegularExpressions.Regex]::Replace($(CI_COMMIT_TAG), $(LibraryPrefix), ``))</CommitTagVersion>
-        <Version Condition="'$(CommitTagVersion)' != ''">$(CommitTagVersion)</Version>
-        <Version Condition="'$(CommitTagVersion)' == ''">0.0.1</Version>
-
         <PackageReleaseNotes>
             Update client to 6.X
         </PackageReleaseNotes>
-        <LangVersion>8</LangVersion>
+
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
-        <TargetFramework>netstandard2.0</TargetFramework>
+        <TargetFrameworks>netstandard2.0</TargetFrameworks>
+        <LibraryPrefix>v</LibraryPrefix>
+
+        <CommitTagVersion Condition="$([System.Text.RegularExpressions.Regex]::Match($(CI_COMMIT_TAG), `^$(LibraryPrefix)([0-9]+)(\.([0-9]+)){1,2}.*$`).Success)">$([System.Text.RegularExpressions.Regex]::Replace($(CI_COMMIT_TAG), $(LibraryPrefix), ``))</CommitTagVersion>
+        <Version Condition="'$(CommitTagVersion)' != ''">$(CommitTagVersion)</Version>
+        <Version Condition="'$(CommitTagVersion)' == ''">0.0.1</Version>
     </PropertyGroup>
     <ItemGroup>
         <PackageReference Include="RabbitMQ.Client" Version="5.1.0" />
