@@ -8,6 +8,7 @@
         <PackageProjectUrl>https://github.com/rabbit-link/rabbit-link</PackageProjectUrl>
         <PackageTags>RabbitMQ, Messaging, AMQP, Logging</PackageTags>
         <PackageReleaseNotes>
+            Upgrade Microsoft.Extensions.Logging.Abstractions to 5.0.0
         </PackageReleaseNotes>
 
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
@@ -25,7 +26,7 @@
     </ItemGroup>
 
     <ItemGroup>
-      <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="3.1.8" />
+      <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="5.0.0" />
     </ItemGroup>
 
 </Project>
