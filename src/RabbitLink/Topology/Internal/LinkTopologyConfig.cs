@@ -243,11 +243,11 @@ namespace RabbitLink.Topology.Internal
 
             if (messageTtl != null)
             {
-                if (messageTtl.Value.TotalMilliseconds < 0 || messageTtl.Value.TotalMilliseconds > int.MaxValue)
+                if (messageTtl.Value.TotalMilliseconds < 0 || messageTtl.Value.TotalMilliseconds > long.MaxValue)
                     throw new ArgumentOutOfRangeException(nameof(messageTtl),
-                        "Must be greater or equal 0 and less than Int32.MaxValue");
+                        "Must be greater or equal 0 and less than Int64.MaxValue");
 
-                arguments.Add("x-message-ttl", (int) messageTtl.Value.TotalMilliseconds);
+                arguments.Add("x-message-ttl", (long) messageTtl.Value.TotalMilliseconds);
             }
 
             if (expires != null)
