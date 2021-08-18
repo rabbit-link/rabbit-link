@@ -162,6 +162,17 @@ namespace RabbitLink.Topology
             IDictionary<string, object> arguments = null);
 
         /// <summary>
+        /// Unbind one exchange from another
+        /// </summary>
+        /// <param name="destination">destination exchange (consumer)</param>
+        /// <param name="source">source exchange (producer)</param>
+        /// <param name="routingKey">routing key</param>
+        /// <param name="arguments">additional arguments</param>
+        /// <returns></returns>
+        Task Unbind(ILinkExchange destination, ILinkExchange source, string routingKey = null,
+            IDictionary<string, object> arguments = null);
+
+        /// <summary>
         /// Binds queue to exchange
         /// </summary>
         /// <param name="queue">queue (consumer)</param>
@@ -170,6 +181,18 @@ namespace RabbitLink.Topology
         /// <param name="arguments">additional arguments</param>
         /// <returns></returns>
         Task Bind(ILinkQueue queue, ILinkExchange exchange, string routingKey = null,
+            IDictionary<string, object> arguments = null);
+
+
+        /// <summary>
+        /// Unbind queue from exchange
+        /// </summary>
+        /// <param name="queue">queue (consumer)</param>
+        /// <param name="exchange">exchange (producer)</param>
+        /// <param name="routingKey">routing key</param>
+        /// <param name="arguments">additional arguments</param>
+        /// <returns></returns>
+        Task Unbind(ILinkQueue queue, ILinkExchange exchange, string routingKey = null,
             IDictionary<string, object> arguments = null);
     }
 }

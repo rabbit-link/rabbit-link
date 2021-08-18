@@ -48,6 +48,29 @@ namespace RabbitLink.Topology.Internal
                 $"Bound destination exchange {destination.Name} to source exchange {source.Name} with routing key {routingKey} and arguments: {string.Join(", ", arguments.Select(x => $"{x.Key} = {x.Value}"))}");
         }
 
+        public async Task Unbind(ILinkExchange destination, ILinkExchange source, string routingKey = null,
+            IDictionary<string, object> arguments = null)
+        {
+            if (source == null)
+                throw new ArgumentNullException(nameof(source));
+
+            if (destination == null)
+                throw new ArgumentNullException(nameof(destination));
+
+            if (routingKey == null)
+                routingKey = string.Empty;
+
+            if (arguments == null)
+                arguments = new Dictionary<string, object>();
+
+            await _invoker
+                .InvokeAsync(model => model.ExchangeUnbind(destination.Name, source.Name, routingKey, arguments))
+                .ConfigureAwait(false);
+
+            _logger.Debug(
+                $"Unbound destination exchange {destination.Name} to source exchange {source.Name} with routing key {routingKey} and arguments: {string.Join(", ", arguments.Select(x => $"{x.Key} = {x.Value}"))}");
+        }
+
         public async Task Bind(ILinkQueue queue, ILinkExchange exchange, string routingKey = null,
             IDictionary<string, object> arguments = null)
         {
@@ -68,7 +91,30 @@ namespace RabbitLink.Topology.Internal
                 .ConfigureAwait(false);
 
             _logger.Debug(
-                $"Bound queue {queue.Name} to exchange {exchange.Name} with routing key {routingKey} and arguments: {string.Join(", ", arguments.Select(x => $"{x.Key} = {x.Value}"))}");
+                $"Bound queue {queue.Name} from exchange {exchange.Name} with routing key {routingKey} and arguments: {string.Join(", ", arguments.Select(x => $"{x.Key} = {x.Value}"))}");
+        }
+
+        public async Task Unbind(ILinkQueue queue, ILinkExchange exchange, string routingKey = null,
+            IDictionary<string, object> arguments = null)
+        {
+            if (exchange == null)
+                throw new ArgumentNullException(nameof(exchange));
+
+            if (queue == null)
+                throw new ArgumentNullException(nameof(queue));
+
+            if (routingKey == null)
+                routingKey = string.Empty;
+
+            if (arguments == null)
+                arguments = new Dictionary<string, object>();
+
+            await _invoker
+                .InvokeAsync(model => model.QueueUnbind(queue.Name, exchange.Name, routingKey, arguments))
+                .ConfigureAwait(false);
+
+            _logger.Debug(
+                $"Unbound queue {queue.Name} from exchange {exchange.Name} with routing key {routingKey} and arguments: {string.Join(", ", arguments.Select(x => $"{x.Key} = {x.Value}"))}");
         }
 
         #region Exchange
