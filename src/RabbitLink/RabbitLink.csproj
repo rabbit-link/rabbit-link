@@ -6,9 +6,6 @@
         <PackageProjectUrl>https://github.com/rabbit-link/rabbit-link</PackageProjectUrl>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
         <PackageTags>RabbitMQ, Messaging, AMQP</PackageTags>
-        <PackageReleaseNotes>
-            Update client to 6.2.1
-        </PackageReleaseNotes>
 
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
         <TargetFrameworks>netstandard2.0</TargetFrameworks>
