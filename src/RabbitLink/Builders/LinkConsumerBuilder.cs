@@ -30,6 +30,7 @@ namespace RabbitLink.Builders
         private readonly LinkStateHandler<LinkChannelState> _channelStateHandler;
         private readonly ILinkSerializer _serializer;
         private readonly LinkTypeNameMapping _typeNameMapping;
+        private readonly ConsumerTagProviderDelegate _consumerTagProvider;
 
         public LinkConsumerBuilder(
             Link link,
@@ -45,7 +46,8 @@ namespace RabbitLink.Builders
             ILinkConsumerTopologyHandler topologyHandler = null,
             LinkStateHandler<LinkConsumerState> stateHandler = null,
             LinkStateHandler<LinkChannelState> channelStateHandler = null,
-            LinkTypeNameMapping typeNameMapping = null
+            LinkTypeNameMapping typeNameMapping = null,
+            ConsumerTagProviderDelegate consumerTagProvider = null
         )
         {
             _link = link ?? throw new ArgumentNullException(nameof(link));
@@ -63,6 +65,7 @@ namespace RabbitLink.Builders
             _channelStateHandler = channelStateHandler ?? ((old, @new) => { });
             _serializer = serializer;
             _typeNameMapping = typeNameMapping ?? new LinkTypeNameMapping();
+            _consumerTagProvider = consumerTagProvider;
         }
 
         private LinkConsumerBuilder(
@@ -79,24 +82,26 @@ namespace RabbitLink.Builders
             LinkStateHandler<LinkConsumerState> stateHandler = null,
             LinkStateHandler<LinkChannelState> channelStateHandler = null,
             ILinkSerializer serializer = null,
-            LinkTypeNameMapping typeNameMapping = null
+            LinkTypeNameMapping typeNameMapping = null,
+            ConsumerTagProviderDelegate consumerTagProvider = null
         ) : this
-            (
-                prev._link,
-                recoveryInterval ?? prev._recoveryInterval,
-                serializer ?? prev._serializer,
-                prefetchCount ?? prev._prefetchCount,
-                autoAck ?? prev._autoAck,
-                priority ?? prev._priority,
-                cancelOnHaFailover ?? prev._cancelOnHaFailover,
-                exclusive ?? prev._exclusive,
-                errorStrategy ?? prev._errorStrategy,
-                messageHandlerBuilder ?? prev._messageHandlerBuilder,
-                topologyHandler ?? prev._topologyHandler,
-                stateHandler ?? prev._stateHandler,
-                channelStateHandler ?? prev._channelStateHandler,
-                typeNameMapping ?? prev._typeNameMapping
-            )
+        (
+            prev._link,
+            recoveryInterval ?? prev._recoveryInterval,
+            serializer ?? prev._serializer,
+            prefetchCount ?? prev._prefetchCount,
+            autoAck ?? prev._autoAck,
+            priority ?? prev._priority,
+            cancelOnHaFailover ?? prev._cancelOnHaFailover,
+            exclusive ?? prev._exclusive,
+            errorStrategy ?? prev._errorStrategy,
+            messageHandlerBuilder ?? prev._messageHandlerBuilder,
+            topologyHandler ?? prev._topologyHandler,
+            stateHandler ?? prev._stateHandler,
+            channelStateHandler ?? prev._channelStateHandler,
+            typeNameMapping ?? prev._typeNameMapping,
+            consumerTagProvider ?? prev._consumerTagProvider
+        )
         {
         }
 
@@ -115,7 +120,7 @@ namespace RabbitLink.Builders
             if (_messageHandlerBuilder.Serializer && _serializer == null)
                 throw new InvalidOperationException("Serializer needed by message handler not set");
 
-            if(_messageHandlerBuilder.Mapping && _typeNameMapping.IsEmpty)
+            if (_messageHandlerBuilder.Mapping && _typeNameMapping.IsEmpty)
                 throw new InvalidOperationException("Type name mapping required by handler");
 
             var config = new LinkConsumerConfiguration(
@@ -129,7 +134,8 @@ namespace RabbitLink.Builders
                 _stateHandler, // state handler
                 _errorStrategy,
                 _messageHandlerBuilder.Factory(_serializer, _typeNameMapping),
-                _serializer
+                _serializer,
+                _consumerTagProvider
             );
 
             return new LinkConsumer(config, _link.CreateChannel(_channelStateHandler, config.RecoveryInterval));
@@ -145,7 +151,7 @@ namespace RabbitLink.Builders
 
         public ILinkConsumerBuilder PrefetchCount(ushort value)
         {
-            if(value == 0)
+            if (value == 0)
                 throw new ArgumentOutOfRangeException(nameof(value), "Must be greater than 0");
 
             return new LinkConsumerBuilder(this, prefetchCount: value);
@@ -275,6 +281,14 @@ namespace RabbitLink.Builders
             map?.Invoke(builder);
 
             return new LinkConsumerBuilder(this, typeNameMapping: builder.Build());
+        }
+
+        public ILinkConsumerBuilder ConsumerTag(ConsumerTagProviderDelegate tagProviderDelegate)
+        {
+            if (tagProviderDelegate == null)
+                throw new ArgumentNullException(nameof(tagProviderDelegate));
+
+            return new LinkConsumerBuilder(this, consumerTagProvider: tagProviderDelegate);
         }
     }
 }

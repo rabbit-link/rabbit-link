@@ -22,13 +22,14 @@ namespace RabbitLink.Builders
             LinkStateHandler<LinkConsumerState> stateHandler,
             ILinkConsumerErrorStrategy errorStrategy,
             LinkConsumerMessageHandlerDelegate<byte[]> messageHandler,
-            ILinkSerializer serializer
+            ILinkSerializer serializer,
+            ConsumerTagProviderDelegate consumerTagProvider
         )
         {
             if (recoveryInterval < TimeSpan.Zero)
                 throw new ArgumentOutOfRangeException(nameof(recoveryInterval), "Must be greater than TimeSpan.Zero");
-            
-            if(prefetchCount == 0)
+
+            if (prefetchCount == 0)
                 throw new ArgumentOutOfRangeException(nameof(prefetchCount), "Must be greater than 0");
 
             RecoveryInterval = recoveryInterval;
@@ -42,6 +43,7 @@ namespace RabbitLink.Builders
             TopologyHandler = topologyHandler ?? throw new ArgumentNullException(nameof(topologyHandler));
             StateHandler = stateHandler ?? throw new ArgumentNullException(nameof(stateHandler));
             Serializer = serializer;
+            ConsumerTagProvider = consumerTagProvider;
         }
 
         public TimeSpan RecoveryInterval { get; }
@@ -55,5 +57,6 @@ namespace RabbitLink.Builders
         public ILinkConsumerTopologyHandler TopologyHandler { get; }
         public LinkStateHandler<LinkConsumerState> StateHandler { get; }
         public ILinkSerializer Serializer { get; }
+        public ConsumerTagProviderDelegate ConsumerTagProvider { get; }
     }
 }
