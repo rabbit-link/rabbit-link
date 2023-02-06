@@ -27,6 +27,7 @@ namespace RabbitLink.Consumer
 
         private readonly object _sync = new object();
 
+        private readonly ConsumerTagProviderDelegate _consumerTagProvider;
         private readonly LinkTopologyRunner<ILinkQueue> _topologyRunner;
         private ILinkQueue _queue;
 
@@ -55,6 +56,8 @@ namespace RabbitLink.Consumer
 
             _topologyRunner = new LinkTopologyRunner<ILinkQueue>(_logger, configuration.TopologyHandler.Configure);
             _appId = _channel.Connection.Configuration.AppId;
+
+            _consumerTagProvider = configuration.ConsumerTagProvider;
 
             _channel.Disposed += ChannelOnDisposed;
 
@@ -341,7 +344,10 @@ namespace RabbitLink.Consumer
             if (CancelOnHaFailover)
                 options["x-cancel-on-ha-failover"] = CancelOnHaFailover;
 
-            model.BasicConsume(_queue.Name, AutoAck, Id.ToString("D"), false, Exclusive, options, _consumer);
+            var consumerTag = _consumerTagProvider == null
+                ? Id.ToString("D")
+                : _consumerTagProvider(Id);
+            model.BasicConsume(_queue.Name, AutoAck, consumerTag, false, Exclusive, options, _consumer);
         }
 
         private void ConsumerOnRegistered(object sender, ConsumerEventArgs e)

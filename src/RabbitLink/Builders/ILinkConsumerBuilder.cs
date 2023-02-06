@@ -21,7 +21,7 @@ namespace RabbitLink.Builders
         /// All properties except handler will be inherited.
         /// </summary>
         ILinkPullConsumerBuilder Pull { get; }
-        
+
         /// <summary>
         /// Builds instance of <see cref="ILinkConsumer"/>
         /// </summary>
@@ -116,7 +116,7 @@ namespace RabbitLink.Builders
         /// By default value of <see cref="ILinkBuilder.Serializer"/>
         /// </summary>
         ILinkConsumerBuilder Serializer(ILinkSerializer value);
-        
+
         /// <summary>
         /// Assign type-name mappings for (de)serialization
         /// </summary>
@@ -126,5 +126,10 @@ namespace RabbitLink.Builders
         /// Assigns type-name mappings for (de)serialization with builder
         /// </summary>
         ILinkConsumerBuilder TypeNameMap(Action<ILinkTypeNameMapBuilder> map);
+
+        /// <summary>
+        /// Assigns delegate that provides consumer tag.
+        /// </summary>
+        ILinkConsumerBuilder ConsumerTag(ConsumerTagProviderDelegate tagProviderDelegate);
     }
 }
