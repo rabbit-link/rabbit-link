@@ -85,23 +85,23 @@ namespace RabbitLink.Builders
             LinkTypeNameMapping typeNameMapping = null,
             ConsumerTagProviderDelegate consumerTagProvider = null
         ) : this
-        (
-            prev._link,
-            recoveryInterval ?? prev._recoveryInterval,
-            serializer ?? prev._serializer,
-            prefetchCount ?? prev._prefetchCount,
-            autoAck ?? prev._autoAck,
-            priority ?? prev._priority,
-            cancelOnHaFailover ?? prev._cancelOnHaFailover,
-            exclusive ?? prev._exclusive,
-            errorStrategy ?? prev._errorStrategy,
-            messageHandlerBuilder ?? prev._messageHandlerBuilder,
-            topologyHandler ?? prev._topologyHandler,
-            stateHandler ?? prev._stateHandler,
-            channelStateHandler ?? prev._channelStateHandler,
-            typeNameMapping ?? prev._typeNameMapping,
-            consumerTagProvider ?? prev._consumerTagProvider
-        )
+            (
+                prev._link,
+                recoveryInterval ?? prev._recoveryInterval,
+                serializer ?? prev._serializer,
+                prefetchCount ?? prev._prefetchCount,
+                autoAck ?? prev._autoAck,
+                priority ?? prev._priority,
+                cancelOnHaFailover ?? prev._cancelOnHaFailover,
+                exclusive ?? prev._exclusive,
+                errorStrategy ?? prev._errorStrategy,
+                messageHandlerBuilder ?? prev._messageHandlerBuilder,
+                topologyHandler ?? prev._topologyHandler,
+                stateHandler ?? prev._stateHandler,
+                channelStateHandler ?? prev._channelStateHandler,
+                typeNameMapping ?? prev._typeNameMapping,
+                consumerTagProvider ?? prev._consumerTagProvider
+            )
         {
         }
 
