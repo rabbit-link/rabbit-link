@@ -18,6 +18,9 @@ end_of_line = crlf
 [*.cake]
 end_of_line = crlf
 
+[Makefile]
+indent_style = tab
+
 # SQL
 [*.sql]
 end_of_line = crlf
