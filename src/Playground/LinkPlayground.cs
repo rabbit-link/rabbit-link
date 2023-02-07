@@ -1,4 +1,4 @@
-﻿#region Usings
+#region Usings
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -66,6 +66,7 @@ namespace Playground
                 .PrefetchCount(5)
                 .Serializer(new LinkJsonSerializer())
                 .TypeNameMap(map => map.Set<Msg>("msg").Set<MsgInt>("msg_int").Set<MsgGuid>("msg_guid"))
+                .ConsumerTag(id => $"PlaygroundApp:{Environment.MachineName}:{id}")
                 .Handler(msg =>
                 {
                     Console.WriteLine(
