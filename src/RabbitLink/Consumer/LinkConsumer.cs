@@ -25,17 +25,16 @@ namespace RabbitLink.Consumer
         private readonly ILinkChannel _channel;
         private readonly ILinkLogger _logger;
 
-        private readonly object _sync = new object();
+        private readonly object _sync = new();
 
         private readonly ConsumerTagProviderDelegate _consumerTagProvider;
         private readonly LinkTopologyRunner<ILinkQueue> _topologyRunner;
         private ILinkQueue _queue;
 
-        private volatile TaskCompletionSource<object> _readyCompletion =
-            new TaskCompletionSource<object>();
+        private volatile TaskCompletionSource<object> _readyCompletion = new();
 
         private readonly CompositeChannel<LinkConsumerMessageAction> _actionQueue =
-            new CompositeChannel<LinkConsumerMessageAction>(new LensChannel<LinkConsumerMessageAction>());
+            new(new LensChannel<LinkConsumerMessageAction>());
 
         private volatile EventingBasicConsumer _consumer;
         private volatile CancellationTokenSource _consumerCancellationTokenSource;

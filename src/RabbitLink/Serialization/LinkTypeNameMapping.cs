@@ -57,7 +57,7 @@ namespace RabbitLink.Serialization
                 throw new ArgumentException("Byte[] not supported, it used to handle raw messages");
 
             if (type == typeof(object))
-                throw new ArgumentException("Object not supported, please use concrete type");
+                throw new ArgumentException("Object not supported, please use certain type");
 
             if (!type.GetTypeInfo().IsClass)
                 throw new ArgumentException("Type must be a class", nameof(type));

@@ -61,8 +61,8 @@ namespace RabbitLink.Builders
             _errorStrategy = errorStrategy ?? new LinkConsumerDefaultErrorStrategy();
             _messageHandlerBuilder = messageHandlerBuilder;
             _topologyHandler = topologyHandler;
-            _stateHandler = stateHandler ?? ((old, @new) => { });
-            _channelStateHandler = channelStateHandler ?? ((old, @new) => { });
+            _stateHandler = stateHandler ?? ((_, _) => { });
+            _channelStateHandler = channelStateHandler ?? ((_, _) => { });
             _serializer = serializer;
             _typeNameMapping = typeNameMapping ?? new LinkTypeNameMapping();
             _consumerTagProvider = consumerTagProvider;
@@ -158,24 +158,16 @@ namespace RabbitLink.Builders
         }
 
         public ILinkConsumerBuilder AutoAck(bool value)
-        {
-            return new LinkConsumerBuilder(this, autoAck: value);
-        }
+            => new LinkConsumerBuilder(this, autoAck: value);
 
         public ILinkConsumerBuilder Priority(int value)
-        {
-            return new LinkConsumerBuilder(this, priority: value);
-        }
+            => new LinkConsumerBuilder(this, priority: value);
 
         public ILinkConsumerBuilder CancelOnHaFailover(bool value)
-        {
-            return new LinkConsumerBuilder(this, cancelOnHaFailover: value);
-        }
+            => new LinkConsumerBuilder(this, cancelOnHaFailover: value);
 
         public ILinkConsumerBuilder Exclusive(bool value)
-        {
-            return new LinkConsumerBuilder(this, exclusive: value);
-        }
+            => new LinkConsumerBuilder(this, exclusive: value);
 
         public ILinkConsumerBuilder ErrorStrategy(ILinkConsumerErrorStrategy value)
         {
@@ -242,7 +234,7 @@ namespace RabbitLink.Builders
 
         public ILinkConsumerBuilder Queue(LinkConsumerTopologyConfigDelegate config)
         {
-            return Queue(config, ex => Task.CompletedTask);
+            return Queue(config, _ => Task.CompletedTask);
         }
 
         public ILinkConsumerBuilder Queue(LinkConsumerTopologyConfigDelegate config, LinkTopologyErrorDelegate error)

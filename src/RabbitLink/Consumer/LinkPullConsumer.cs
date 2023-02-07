@@ -120,10 +120,10 @@ namespace RabbitLink.Consumer
                         throw new LinkPullConsumerDeserializationException(msg, bodyType, ex);
                     }
 
-                    var concreteMsg = LinkMessageFactory
+                    var typedMsg = LinkMessageFactory
                         .ConstructPulledMessage(bodyType, msg, body, props);
 
-                    return (ILinkPulledMessage<TBody>) concreteMsg;
+                    return (ILinkPulledMessage<TBody>) typedMsg;
                 }
                 catch (Exception ex)
                 {
@@ -134,23 +134,23 @@ namespace RabbitLink.Consumer
 
         private async Task<LinkPulledMessage<byte[]>> GetRawMessageAsync(CancellationToken? cancellation = null)
         {
-            if (cancellation == null)
+            if (cancellation != null)
             {
-                if (GetMessageTimeout == TimeSpan.Zero || GetMessageTimeout == Timeout.InfiniteTimeSpan)
-                {
-                    return await _queue.TakeAsync(CancellationToken.None)
-                        .ConfigureAwait(false);
-                }
-
-                using (var cs = new CancellationTokenSource(GetMessageTimeout))
-                {
-                    return await _queue.TakeAsync(cs.Token)
-                        .ConfigureAwait(false);
-                }
+                return await _queue.TakeAsync(cancellation.Value)
+                    .ConfigureAwait(false);
             }
 
-            return await _queue.TakeAsync(cancellation.Value)
-                .ConfigureAwait(false);
+            if (GetMessageTimeout == TimeSpan.Zero || GetMessageTimeout == Timeout.InfiniteTimeSpan)
+            {
+                return await _queue.TakeAsync(CancellationToken.None)
+                    .ConfigureAwait(false);
+            }
+
+            using (var cs = new CancellationTokenSource(GetMessageTimeout))
+            {
+                return await _queue.TakeAsync(cs.Token)
+                    .ConfigureAwait(false);
+            }
         }
 
         #endregion
@@ -158,9 +158,7 @@ namespace RabbitLink.Consumer
         private void OnStateChanged(LinkConsumerState oldState, LinkConsumerState newsState)
         {
             if (newsState == LinkConsumerState.Disposed)
-            {
                 OnDispose();
-            }
         }
 
         private Task<LinkConsumerAckStrategy> OnMessageReceived(ILinkConsumedMessage<byte[]> message)

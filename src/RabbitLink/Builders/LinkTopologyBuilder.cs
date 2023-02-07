@@ -31,8 +31,8 @@ namespace RabbitLink.Builders
             _link = link ?? throw new ArgumentNullException(nameof(link));
 
             _recoveryInterval = recoveryInterval;
-            _stateHandler = stateHandler ?? ((old, @new) => { });
-            _channelStateHandler = channelStateHandler ?? ((old, @new) => { });
+            _stateHandler = stateHandler ?? ((_, _) => { });
+            _channelStateHandler = channelStateHandler ?? ((_, _) => { });
             _topologyHandler = topologyHandler;
         }
 
@@ -92,7 +92,7 @@ namespace RabbitLink.Builders
 
         public ILinkTopologyBuilder Handler(LinkTopologyConfigDelegate config, LinkTopologyReadyDelegate ready)
         {
-            return Handler(config, ready, ex => Task.CompletedTask);
+            return Handler(config, ready, _ => Task.CompletedTask);
         }
 
         public ILinkTopologyBuilder Handler(
