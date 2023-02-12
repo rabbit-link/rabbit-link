@@ -106,5 +106,10 @@ namespace RabbitLink.Builders
         ///     Assigns type-name mappings for (de)serialization with builder
         /// </summary>
         ILinkPullConsumerBuilder TypeNameMap(Action<ILinkTypeNameMapBuilder> map);
+
+        /// <summary>
+        /// Assigns delegate that provides consumer tag.
+        /// </summary>
+        ILinkPullConsumerBuilder ConsumerTag(ConsumerTagProviderDelegate tagProviderDelegate);
     }
 }
