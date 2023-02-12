@@ -13,10 +13,10 @@ namespace RabbitLink.Producer
     {
         #region Fields
 
-        private readonly Dictionary<string, Item> _correlationItems = new Dictionary<string, Item>();
-        private readonly Dictionary<ulong, Item> _seqItems = new Dictionary<ulong, Item>();
+        private readonly Dictionary<string, Item> _correlationItems = new();
+        private readonly Dictionary<ulong, Item> _seqItems = new();
 
-        private readonly object _sync = new object();
+        private readonly object _sync = new();
         private ulong _minSeq;
 
         #endregion
@@ -29,11 +29,16 @@ namespace RabbitLink.Producer
             lock (_sync)
             {
                 if (seq < _minSeq)
-                    throw new ArgumentException("Seq less than minimum seq, do you forget to reset queue?",
-                        nameof(seq));
+                    throw new ArgumentException(
+                        "Seq less than minimum seq, do you forget to reset queue?",
+                        nameof(seq)
+                    );
 
                 if (_seqItems.ContainsKey(seq))
-                    throw new ArgumentException("Queue already contains message with specified seq", nameof(seq));
+                    throw new ArgumentException(
+                        "Queue already contains message with specified seq",
+                        nameof(seq)
+                    );
 
                 var correlationId = Guid.NewGuid().ToString("D");
                 while (_correlationItems.ContainsKey(correlationId))
@@ -47,9 +52,7 @@ namespace RabbitLink.Producer
                 _correlationItems[item.CorrelationId] = item;
 
                 if (_minSeq > item.Seq)
-                {
                     _minSeq = item.Seq;
-                }
 
                 return item.CorrelationId;
             }
@@ -133,11 +136,10 @@ namespace RabbitLink.Producer
                 {
                     var item = TakeItem(seq);
                     if (item != null)
-                    {
                         items.Enqueue(item);
-                    }
                 }
             }
+
             return items;
         }
 
@@ -171,7 +173,7 @@ namespace RabbitLink.Producer
 
         #region Item
 
-        private class Item
+        private record Item
         {
             #region Ctor
 
