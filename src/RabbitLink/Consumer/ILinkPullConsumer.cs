@@ -26,7 +26,7 @@ namespace RabbitLink.Consumer
         /// <typeparam name="TBody">
         ///     Byte[] for get raw message.
         ///     Object to use type name mapping, if mapping not found then Byte[] will be returned.
-        ///     Concrete type to deserialize all messages to it.
+        ///     Certain type to deserialize all messages to it.
         /// </typeparam>
         /// <param name="cancellation">operation cancellation</param>
         Task<ILinkPulledMessage<TBody>> GetMessageAsync<TBody>(CancellationToken? cancellation = null)

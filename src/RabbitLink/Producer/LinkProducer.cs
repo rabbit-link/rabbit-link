@@ -140,7 +140,7 @@ namespace RabbitLink.Producer
                         newState = LinkProducerState.Reconfiguring;
                         break;
                     default:
-                        throw new NotImplementedException($"Handler for state ${State} not implemeted");
+                        throw new NotImplementedException($"Handler for state ${State} not implemented");
                 }
             }
         }
@@ -197,9 +197,13 @@ namespace RabbitLink.Producer
             {
                 try
                 {
-                    var correlationId = correlationValue is string
-                        ? (string) correlationValue
-                        : Encoding.UTF8.GetString(correlationValue as byte[]);
+                    var correlationId = correlationValue switch
+                    {
+                        string value => value,
+                        byte[] value => Encoding.UTF8.GetString(value),
+                        _ => null
+                    };
+
                     if (correlationId != null)
                     {
                         _ackQueue.Return(correlationId, info.ReplyText);
@@ -334,9 +338,8 @@ namespace RabbitLink.Producer
             var messages = _ackQueue.Reset();
 
             if (messages.Count > 0)
-            {
                 _logger.Warning($"Requeuing {messages.Count} not ACKed or NACKed messages");
-            }
+
 
             _messageQueue.PutRetry(messages, CancellationToken.None);
         }
@@ -386,9 +389,7 @@ namespace RabbitLink.Producer
                 if (_configuration.SetUserId)
                     properties.UserId = _channel.Connection.UserId;
 
-                if (properties.Headers == null)
-                    properties.Headers = new Dictionary<string, object>();
-
+                properties.Headers ??= new Dictionary<string, object>();
                 properties.Headers[CorrelationHeader] = Encoding.UTF8.GetBytes(corellationId);
 
                 try
@@ -408,18 +409,14 @@ namespace RabbitLink.Producer
                 }
 
                 if (!ConfirmsMode)
-                {
                     _ackQueue.Ack(seq, false);
-                }
             }
         }
 
         private Task SetConfirmsModeAsync(IModel model)
         {
             if (ConfirmsMode)
-            {
                 return AsyncHelper.RunAsync(model.ConfirmSelect);
-            }
 
             return Task.CompletedTask;
         }
@@ -487,9 +484,7 @@ namespace RabbitLink.Producer
 
                 _channel.Disposed -= ChannelOnDisposed;
                 if (!byChannel)
-                {
                     _channel.Dispose();
-                }
 
                 var ex = new ObjectDisposedException(GetType().Name);
                 _messageQueue.Dispose();

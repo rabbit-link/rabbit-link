@@ -59,8 +59,8 @@ namespace RabbitLink.Builders
             _publishProperties = publishProperties ?? new LinkPublishProperties();
             _messageProperties = messageProperties ?? new LinkMessageProperties();
             _topologyHandler = topologyHandler;
-            _stateHandler = stateHandler ?? ((old, @new) => { });
-            _channelStateHandler = channelStateHandler ?? ((old, @new) => { });
+            _stateHandler = stateHandler ?? ((_, _) => { });
+            _channelStateHandler = channelStateHandler ?? ((_, _) => { });
             _serializer = serializer;
             _typeNameMapping = typeNameMapping ?? new LinkTypeNameMapping();
         }
@@ -152,7 +152,7 @@ namespace RabbitLink.Builders
 
         public ILinkProducerBuilder Exchange(LinkProducerTopologyConfigDelegate config)
         {
-            return Exchange(config, ex => Task.CompletedTask);
+            return Exchange(config, _ => Task.CompletedTask);
         }
 
         public ILinkProducerBuilder Exchange(LinkProducerTopologyConfigDelegate config, LinkTopologyErrorDelegate error)

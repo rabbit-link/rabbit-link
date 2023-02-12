@@ -26,7 +26,7 @@ namespace RabbitLink.Connection
         Active,
 
         /// <summary>
-        /// Stoping
+        /// Stopping
         /// </summary>
         Stopping,
 

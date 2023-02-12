@@ -1,5 +1,6 @@
 ﻿#region Usings
 
+using System;
 using System.Threading;
 using RabbitLink.Internals.Channels;
 using RabbitLink.Messaging;
@@ -18,7 +19,7 @@ namespace RabbitLink.Producer
             PublishProperties = publishProperties;
         }
 
-        public byte[] Body { get; }
+        public ReadOnlyMemory<byte> Body { get; }
         public LinkMessageProperties Properties { get; }
         public LinkPublishProperties PublishProperties { get; }
     }

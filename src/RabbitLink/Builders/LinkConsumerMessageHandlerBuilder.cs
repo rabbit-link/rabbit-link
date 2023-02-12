@@ -37,8 +37,8 @@ namespace RabbitLink.Builders
         public static LinkConsumerMessageHandlerBuilder Create(
             LinkConsumerMessageHandlerDelegate<byte[]> onMessage
         )
-            => new LinkConsumerMessageHandlerBuilder(
-                (serializer, mapping) => onMessage,
+            => new(
+                (_, _) => onMessage,
                 false,
                 false
             );
@@ -48,10 +48,10 @@ namespace RabbitLink.Builders
         ) where TBody : class
         {
             if (typeof(TBody) == typeof(byte[]) || typeof(TBody) == typeof(object))
-                throw new ArgumentException("Type of TBody must be concrete and not equal byte[]");
+                throw new ArgumentException("Type of TBody must be set and not equal byte[]");
 
             return new LinkConsumerMessageHandlerBuilder(
-                (serializer, mapping) => msg =>
+                (serializer, _) => msg =>
                 {
                     TBody body;
                     var props = msg.Properties.Clone();
@@ -66,14 +66,14 @@ namespace RabbitLink.Builders
                         return Task.FromException<LinkConsumerAckStrategy>(sException);
                     }
 
-                    var concreteMsg = new LinkConsumedMessage<TBody>(
+                    var typedMsg = new LinkConsumedMessage<TBody>(
                         body,
                         props,
                         msg.ReceiveProperties,
                         msg.Cancellation
                     );
 
-                    return onMessage(concreteMsg);
+                    return onMessage(typedMsg);
                 },
                 true,
                 false
@@ -83,7 +83,7 @@ namespace RabbitLink.Builders
         public static LinkConsumerMessageHandlerBuilder Create(
             LinkConsumerMessageHandlerDelegate<object> onMessage
         )
-            => new LinkConsumerMessageHandlerBuilder(
+            => new(
                 (serializer, mapping) => msg =>
                 {
                     object body;
@@ -99,7 +99,8 @@ namespace RabbitLink.Builders
 
                     if (bodyType == null)
                         return Task.FromException<LinkConsumerAckStrategy>(
-                            new LinkConsumerTypeNameMappingException(typeName));
+                            new LinkConsumerTypeNameMappingException(typeName)
+                            );
 
                     try
                     {
@@ -111,10 +112,10 @@ namespace RabbitLink.Builders
                         return Task.FromException<LinkConsumerAckStrategy>(sException);
                     }
 
-                    var concreteMsg = LinkMessageFactory
+                    var typedMsg = LinkMessageFactory
                         .ConstructConsumedMessage(bodyType, body, props, msg.ReceiveProperties, msg.Cancellation);
 
-                    return onMessage(concreteMsg);
+                    return onMessage(typedMsg);
                 },
                 true,
                 true

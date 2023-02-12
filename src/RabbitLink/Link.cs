@@ -15,7 +15,7 @@ namespace RabbitLink
 
         private readonly LinkConfiguration _configuration;
         private readonly ILinkConnection _connection;
-        private readonly object _sync = new object();
+        private readonly object _sync = new();
         private bool _disposed;
 
         #endregion

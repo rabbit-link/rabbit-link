@@ -10,7 +10,7 @@ namespace RabbitLink.Builders
 {
     internal class LinkTypeNameMapBuilder : ILinkTypeNameMapBuilder
     {
-        private LinkTypeNameMapping _map = new LinkTypeNameMapping();
+        private LinkTypeNameMapping _map = new();
 
         public LinkTypeNameMapBuilder(LinkTypeNameMapping mapping = null)
         {

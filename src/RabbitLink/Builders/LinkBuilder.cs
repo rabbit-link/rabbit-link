@@ -42,7 +42,7 @@ namespace RabbitLink.Builders
             _recoveryInterval = recoveryInterval;
             _loggerFactory = loggerFactory ?? new LinkNullLoggingFactory();
             _appId = appId ?? Guid.NewGuid().ToString("D");
-            _stateHandler = stateHandler ?? ((old, @new) => { });
+            _stateHandler = stateHandler ?? ((_, _) => { });
             _useBackgroundThreadsForConnection = useBackgroundThreadsForConnection ?? false;
             _serializer = serializer;
         }

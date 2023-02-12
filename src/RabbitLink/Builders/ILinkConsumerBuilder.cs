@@ -17,7 +17,7 @@ namespace RabbitLink.Builders
     public interface ILinkConsumerBuilder
     {
         /// <summary>
-        /// Gets new pull consumer builder. 
+        /// Gets new pull consumer builder.
         /// All properties except handler will be inherited.
         /// </summary>
         ILinkPullConsumerBuilder Pull { get; }
@@ -70,7 +70,7 @@ namespace RabbitLink.Builders
         ILinkConsumerBuilder ErrorStrategy(ILinkConsumerErrorStrategy value);
 
         /// <summary>
-        /// Message handler for concrete type
+        /// Message handler for certain type
         /// </summary>
         ILinkConsumerBuilder Handler<TBody>(LinkConsumerMessageHandlerDelegate<TBody> value)
             where TBody : class;

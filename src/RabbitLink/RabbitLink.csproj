@@ -2,10 +2,11 @@
     <PropertyGroup>
         <Authors>Artur Kraev, Ivan Simongauz</Authors>
         <Description>Advanced .Net API for RabbitMQ</Description>
-        <Copyright>Artur Kraev, Ivan Simongauz 2015-2020</Copyright>
+        <Copyright>Artur Kraev, Ivan Simongauz 2015-2023</Copyright>
         <PackageProjectUrl>https://github.com/rabbit-link/rabbit-link</PackageProjectUrl>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
         <PackageTags>RabbitMQ, Messaging, AMQP</PackageTags>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
 
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
         <TargetFrameworks>netstandard2.0</TargetFrameworks>
@@ -15,6 +16,9 @@
         <Version Condition="'$(CommitTagVersion)' != ''">$(CommitTagVersion)</Version>
         <Version Condition="'$(CommitTagVersion)' == ''">0.0.1</Version>
     </PropertyGroup>
+    <ItemGroup>
+        <None Include="../../README.md" Pack="true" PackagePath="\"/>
+    </ItemGroup>
     <ItemGroup>
         <PackageReference Include="RabbitMQ.Client" Version="6.4.0" />
     </ItemGroup>
