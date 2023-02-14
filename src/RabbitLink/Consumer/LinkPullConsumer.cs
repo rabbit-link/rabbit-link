@@ -48,15 +48,14 @@ namespace RabbitLink.Consumer
             _serializer = serializer;
 
             var builder = consumerBuilder
-                          .ErrorStrategy(new LinkConsumerDefaultErrorStrategy())
-                          .Handler(OnMessageReceived)
-                          .OnStateChange(OnStateChanged);
+                .ErrorStrategy(new LinkConsumerDefaultErrorStrategy())
+                .Handler(OnMessageReceived)
+                .OnStateChange(OnStateChanged);
             if (consumerTagProvider != null)
             {
-                builder.ConsumerTag(consumerTagProvider);
+                builder = builder.ConsumerTag(consumerTagProvider);
             }
-
-            _consumer = builder
+            _consumer =builder
                 .Build();
         }
 
@@ -95,7 +94,7 @@ namespace RabbitLink.Consumer
                     .ConfigureAwait(false);
 
                 if (typeof(TBody) == typeof(byte[]))
-                    return (ILinkPulledMessage<TBody>)msg;
+                    return (ILinkPulledMessage<TBody>) msg;
 
                 try
                 {
@@ -120,7 +119,7 @@ namespace RabbitLink.Consumer
 
                     try
                     {
-                        body = (TBody)_serializer.Deserialize(bodyType, msg.Body, props);
+                        body = (TBody) _serializer.Deserialize(bodyType, msg.Body, props);
                     }
                     catch (Exception ex)
                     {
@@ -143,21 +142,21 @@ namespace RabbitLink.Consumer
         {
             if (cancellation != null)
             {
-                if (GetMessageTimeout == TimeSpan.Zero || GetMessageTimeout == Timeout.InfiniteTimeSpan)
-                {
-                    return await _queue.TakeAsync(CancellationToken.None)
-                        .ConfigureAwait(false);
-                }
-
-                using (var cs = new CancellationTokenSource(GetMessageTimeout))
-                {
-                    return await _queue.TakeAsync(cs.Token)
-                        .ConfigureAwait(false);
-                }
+                return await _queue.TakeAsync(cancellation.Value)
+                    .ConfigureAwait(false);
             }
 
-            return await _queue.TakeAsync(cancellation.Value)
-                .ConfigureAwait(false);
+            if (GetMessageTimeout == TimeSpan.Zero || GetMessageTimeout == Timeout.InfiniteTimeSpan)
+            {
+                return await _queue.TakeAsync(CancellationToken.None)
+                    .ConfigureAwait(false);
+            }
+
+            using (var cs = new CancellationTokenSource(GetMessageTimeout))
+            {
+                return await _queue.TakeAsync(cs.Token)
+                    .ConfigureAwait(false);
+            }
         }
 
         #endregion

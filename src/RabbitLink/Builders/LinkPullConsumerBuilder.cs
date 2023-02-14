@@ -20,6 +20,7 @@ namespace RabbitLink.Builders
         private readonly TimeSpan _getMessageTimeout;
         private readonly LinkTypeNameMapping _typeNameMapping;
         private readonly ILinkSerializer _serializer;
+        private readonly ConsumerTagProviderDelegate _consumerTagProvider;
 
         #endregion
 
@@ -29,7 +30,8 @@ namespace RabbitLink.Builders
             ILinkConsumerBuilder consumerBuilder,
             LinkTypeNameMapping typeNameMapping,
             ILinkSerializer serializer,
-            TimeSpan? getMessageTimeout = null
+            TimeSpan? getMessageTimeout = null,
+            ConsumerTagProviderDelegate consumerTagProvider = null
         )
         {
             _serializer = serializer;
@@ -37,6 +39,7 @@ namespace RabbitLink.Builders
             _getMessageTimeout = getMessageTimeout ?? Timeout.InfiniteTimeSpan;
             _typeNameMapping = typeNameMapping ?? throw new ArgumentNullException(nameof(typeNameMapping));
             _serializer = serializer;
+            _consumerTagProvider = consumerTagProvider;
         }
 
         private LinkPullConsumerBuilder(
@@ -44,12 +47,14 @@ namespace RabbitLink.Builders
             ILinkConsumerBuilder consumerBuilder = null,
             LinkTypeNameMapping typeNameMapping = null,
             ILinkSerializer serializer = null,
-            TimeSpan? getMessageTimeout = null
+            TimeSpan? getMessageTimeout = null,
+            ConsumerTagProviderDelegate consumerTagProvider = null
         ) : this(
             consumerBuilder ?? prev._consumerBuilder,
             typeNameMapping ?? prev._typeNameMapping,
             serializer ?? prev._serializer,
-            getMessageTimeout ?? prev._getMessageTimeout
+            getMessageTimeout ?? prev._getMessageTimeout,
+            consumerTagProvider ?? prev._consumerTagProvider
         )
         {
         }
@@ -60,7 +65,7 @@ namespace RabbitLink.Builders
 
         public ILinkPullConsumer Build()
         {
-            return new LinkPullConsumer(_consumerBuilder, _getMessageTimeout, _typeNameMapping, _serializer, );
+            return new LinkPullConsumer(_consumerBuilder, _getMessageTimeout, _typeNameMapping, _serializer, _consumerTagProvider);
         }
 
         public ILinkPullConsumerBuilder RecoveryInterval(TimeSpan value)
@@ -108,8 +113,10 @@ namespace RabbitLink.Builders
             return new LinkPullConsumerBuilder(this, consumerBuilder: _consumerBuilder.Queue(config));
         }
 
-        public ILinkPullConsumerBuilder Queue(LinkConsumerTopologyConfigDelegate config,
-            LinkTopologyErrorDelegate error)
+        public ILinkPullConsumerBuilder Queue(
+            LinkConsumerTopologyConfigDelegate config,
+            LinkTopologyErrorDelegate error
+        )
         {
             return new LinkPullConsumerBuilder(this, consumerBuilder: _consumerBuilder.Queue(config, error));
         }
@@ -145,6 +152,15 @@ namespace RabbitLink.Builders
             map?.Invoke(builder);
 
             return new LinkPullConsumerBuilder(this, typeNameMapping: builder.Build());
+        }
+
+
+        public ILinkPullConsumerBuilder ConsumerTag(ConsumerTagProviderDelegate tagProviderDelegate)
+        {
+            if (tagProviderDelegate == null)
+                throw new ArgumentNullException(nameof(tagProviderDelegate));
+
+            return new LinkPullConsumerBuilder(this, consumerTagProvider: tagProviderDelegate);
         }
 
         #endregion
