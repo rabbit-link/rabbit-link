@@ -32,7 +32,8 @@ namespace RabbitLink.Consumer
             ILinkConsumerBuilder consumerBuilder,
             TimeSpan getMessageTimeout,
             LinkTypeNameMapping typeNameMapping,
-            ILinkSerializer serializer
+            ILinkSerializer serializer,
+            ConsumerTagProviderDelegate consumerTagProvider
         )
         {
             if (consumerBuilder == null)
@@ -46,10 +47,16 @@ namespace RabbitLink.Consumer
             _typeNameMapping = typeNameMapping ?? throw new ArgumentNullException(nameof(typeNameMapping));
             _serializer = serializer;
 
-            _consumer = consumerBuilder
-                .ErrorStrategy(new LinkConsumerDefaultErrorStrategy())
-                .Handler(OnMessageReceived)
-                .OnStateChange(OnStateChanged)
+            var builder = consumerBuilder
+                          .ErrorStrategy(new LinkConsumerDefaultErrorStrategy())
+                          .Handler(OnMessageReceived)
+                          .OnStateChange(OnStateChanged);
+            if (consumerTagProvider != null)
+            {
+                builder.ConsumerTag(consumerTagProvider);
+            }
+
+            _consumer = builder
                 .Build();
         }
 
@@ -88,7 +95,7 @@ namespace RabbitLink.Consumer
                     .ConfigureAwait(false);
 
                 if (typeof(TBody) == typeof(byte[]))
-                    return (ILinkPulledMessage<TBody>) msg;
+                    return (ILinkPulledMessage<TBody>)msg;
 
                 try
                 {
@@ -113,7 +120,7 @@ namespace RabbitLink.Consumer
 
                     try
                     {
-                        body = (TBody) _serializer.Deserialize(bodyType, msg.Body, props);
+                        body = (TBody)_serializer.Deserialize(bodyType, msg.Body, props);
                     }
                     catch (Exception ex)
                     {
@@ -136,21 +143,21 @@ namespace RabbitLink.Consumer
         {
             if (cancellation != null)
             {
-                return await _queue.TakeAsync(cancellation.Value)
-                    .ConfigureAwait(false);
+                if (GetMessageTimeout == TimeSpan.Zero || GetMessageTimeout == Timeout.InfiniteTimeSpan)
+                {
+                    return await _queue.TakeAsync(CancellationToken.None)
+                        .ConfigureAwait(false);
+                }
+
+                using (var cs = new CancellationTokenSource(GetMessageTimeout))
+                {
+                    return await _queue.TakeAsync(cs.Token)
+                        .ConfigureAwait(false);
+                }
             }
 
-            if (GetMessageTimeout == TimeSpan.Zero || GetMessageTimeout == Timeout.InfiniteTimeSpan)
-            {
-                return await _queue.TakeAsync(CancellationToken.None)
-                    .ConfigureAwait(false);
-            }
-
-            using (var cs = new CancellationTokenSource(GetMessageTimeout))
-            {
-                return await _queue.TakeAsync(cs.Token)
-                    .ConfigureAwait(false);
-            }
+            return await _queue.TakeAsync(cancellation.Value)
+                .ConfigureAwait(false);
         }
 
         #endregion

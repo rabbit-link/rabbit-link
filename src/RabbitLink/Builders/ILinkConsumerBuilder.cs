@@ -4,6 +4,7 @@ using RabbitLink.Consumer;
 using System;
 using System.Collections.Generic;
 using RabbitLink.Connection;
+using RabbitLink.Messaging;
 using RabbitLink.Serialization;
 using RabbitLink.Topology;
 
@@ -85,6 +86,11 @@ namespace RabbitLink.Builders
         /// </summary>
         /// <param name="value">Handler delegate</param>
         ILinkConsumerBuilder Handler(LinkConsumerMessageHandlerDelegate<object> value);
+
+        /// <summary>
+        /// 
+        /// </summary>
+        ILinkConsumerBuilder WithInterception(DeliveryInterceptDelegate value);
 
         /// <summary>
         /// Sets handler for state changes

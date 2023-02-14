@@ -1,4 +1,4 @@
-﻿#region Usings
+#region Usings
 
 using System;
 using System.Collections.Generic;
@@ -60,7 +60,7 @@ namespace RabbitLink.Builders
 
         public ILinkPullConsumer Build()
         {
-            return new LinkPullConsumer(_consumerBuilder, _getMessageTimeout, _typeNameMapping, _serializer);
+            return new LinkPullConsumer(_consumerBuilder, _getMessageTimeout, _typeNameMapping, _serializer, );
         }
 
         public ILinkPullConsumerBuilder RecoveryInterval(TimeSpan value)
