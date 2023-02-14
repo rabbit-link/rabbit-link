@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Threading;
 using RabbitLink.Connection;
 using RabbitLink.Consumer;
+using RabbitLink.Interceptors;
 using RabbitLink.Serialization;
 using RabbitLink.Topology;
 
@@ -111,5 +112,10 @@ namespace RabbitLink.Builders
         /// Assigns delegate that provides consumer tag.
         /// </summary>
         ILinkPullConsumerBuilder ConsumerTag(ConsumerTagProviderDelegate tagProviderDelegate);
+
+        /// <summary>
+        /// Sets interception delegate on message delivery.
+        /// </summary>
+        ILinkPullConsumerBuilder WithInterception(IDeliveryInterceptor value);
     }
 }

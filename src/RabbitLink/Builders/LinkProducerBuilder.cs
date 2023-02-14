@@ -1,10 +1,12 @@
-﻿#region Usings
+#region Usings
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using RabbitLink.Connection;
+using RabbitLink.Interceptors;
 using RabbitLink.Messaging;
 using RabbitLink.Producer;
 using RabbitLink.Serialization;
@@ -31,6 +33,7 @@ namespace RabbitLink.Builders
         private readonly LinkStateHandler<LinkChannelState> _channelStateHandler;
         private readonly ILinkSerializer _serializer;
         private readonly LinkTypeNameMapping _typeNameMapping;
+        private readonly IReadOnlyCollection<IPublishInterceptor> _publishInterceptors;
 
         public LinkProducerBuilder
         (
@@ -46,9 +49,10 @@ namespace RabbitLink.Builders
             ILinkProducerTopologyHandler topologyHandler = null,
             LinkStateHandler<LinkProducerState> stateHandler = null,
             LinkStateHandler<LinkChannelState> channelStateHandler = null,
-            LinkTypeNameMapping typeNameMapping = null
+            LinkTypeNameMapping typeNameMapping = null,
+            IReadOnlyCollection<IPublishInterceptor> publishInterceptors = null
         )
-        {
+            {
             _link = link ?? throw new ArgumentNullException(nameof(link));
 
             _confirmsMode = confirmsMode ?? false;
@@ -59,6 +63,7 @@ namespace RabbitLink.Builders
             _publishProperties = publishProperties ?? new LinkPublishProperties();
             _messageProperties = messageProperties ?? new LinkMessageProperties();
             _topologyHandler = topologyHandler;
+            _publishInterceptors = publishInterceptors;
             _stateHandler = stateHandler ?? ((_, _) => { });
             _channelStateHandler = channelStateHandler ?? ((_, _) => { });
             _serializer = serializer;
@@ -79,7 +84,8 @@ namespace RabbitLink.Builders
             LinkStateHandler<LinkProducerState> stateHandler = null,
             LinkStateHandler<LinkChannelState> channelStateHandler = null,
             ILinkSerializer serializer = null,
-            LinkTypeNameMapping typeNameMapping = null
+            LinkTypeNameMapping typeNameMapping = null,
+            IPublishInterceptor[] publishInterceptors = null
         ) : this
             (
                 prev._link,
@@ -94,7 +100,8 @@ namespace RabbitLink.Builders
                 topologyHandler ?? prev._topologyHandler,
                 stateHandler ?? prev._stateHandler,
                 channelStateHandler ?? prev._channelStateHandler,
-                typeNameMapping ?? prev._typeNameMapping
+                typeNameMapping ?? prev._typeNameMapping,
+                publishInterceptors ?? prev._publishInterceptors
             )
         {
         }
@@ -209,6 +216,20 @@ namespace RabbitLink.Builders
             return new LinkProducerBuilder(this, typeNameMapping: builder.Build());
         }
 
+        /// <inheritdoc />
+        public ILinkProducerBuilder WithInterception(IPublishInterceptor value)
+        {
+            if (value == null)
+                throw new ArgumentNullException(nameof(value));
+            if (_publishInterceptors == null)
+            {
+                return new LinkProducerBuilder(this, publishInterceptors: new[] { value });
+            }
+
+            var newInterceptors = _publishInterceptors.Concat(new[] { value })
+                                                    .ToArray();
+            return new LinkProducerBuilder(this, publishInterceptors: newInterceptors);
+        }
 
         public ILinkProducer Build()
         {

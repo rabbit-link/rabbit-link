@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using RabbitLink.Connection;
+using RabbitLink.Interceptors;
 using RabbitLink.Messaging;
 using RabbitLink.Producer;
 using RabbitLink.Serialization;
@@ -104,5 +105,10 @@ namespace RabbitLink.Builders
         /// Assigns type-name mappings for (de)serialization with builder
         /// </summary>
         ILinkProducerBuilder TypeNameMap(Action<ILinkTypeNameMapBuilder> map);
+
+        /// <summary>
+        /// Sets interception delegate on message publish.
+        /// </summary>
+        ILinkProducerBuilder WithInterception(IPublishInterceptor interceptor);
     }
 }

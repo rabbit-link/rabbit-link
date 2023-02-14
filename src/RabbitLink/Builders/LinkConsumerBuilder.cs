@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using RabbitLink.Connection;
 using RabbitLink.Consumer;
+using RabbitLink.Interceptors;
 using RabbitLink.Messaging;
 using RabbitLink.Serialization;
 using RabbitLink.Topology;
@@ -36,7 +37,7 @@ namespace RabbitLink.Builders
         private readonly ILinkSerializer _serializer;
         private readonly LinkTypeNameMapping _typeNameMapping;
         private readonly ConsumerTagProviderDelegate _consumerTagProvider;
-        private readonly IReadOnlyCollection<DeliveryInterceptDelegate> _deliveryInterceptors;
+        private readonly IReadOnlyCollection<IDeliveryInterceptor> _deliveryInterceptors;
 
         public LinkConsumerBuilder(
             Link link,
@@ -54,7 +55,7 @@ namespace RabbitLink.Builders
             LinkStateHandler<LinkChannelState> channelStateHandler = null,
             LinkTypeNameMapping typeNameMapping = null,
             ConsumerTagProviderDelegate consumerTagProvider = null,
-            IReadOnlyCollection<DeliveryInterceptDelegate> deliveryInterceptors = null
+            IReadOnlyCollection<IDeliveryInterceptor> deliveryInterceptors = null
         )
         {
             _link = link ?? throw new ArgumentNullException(nameof(link));
@@ -92,7 +93,7 @@ namespace RabbitLink.Builders
             ILinkSerializer serializer = null,
             LinkTypeNameMapping typeNameMapping = null,
             ConsumerTagProviderDelegate consumerTagProvider = null,
-            IReadOnlyCollection<DeliveryInterceptDelegate> deliveryInterceptors = null
+            IReadOnlyCollection<IDeliveryInterceptor> deliveryInterceptors = null
         ) : this
         (
             prev._link,
@@ -143,9 +144,10 @@ namespace RabbitLink.Builders
                 _topologyHandler,
                 _stateHandler, // state handler
                 _errorStrategy,
-                _messageHandlerBuilder.Factory(_serializer, _typeNameMapping, _deliveryInterceptors),
+                _messageHandlerBuilder.Factory(_serializer, _typeNameMapping),
                 _serializer,
-                _consumerTagProvider
+                _consumerTagProvider,
+                _deliveryInterceptors
             );
 
             return new LinkConsumer(config, _link.CreateChannel(_channelStateHandler, config.RecoveryInterval));
@@ -227,7 +229,7 @@ namespace RabbitLink.Builders
         }
 
         /// <inheritdoc />
-        public ILinkConsumerBuilder WithInterception(DeliveryInterceptDelegate value)
+        public ILinkConsumerBuilder WithInterception(IDeliveryInterceptor value)
         {
             if(value == null)
                 throw new ArgumentNullException(nameof(value));

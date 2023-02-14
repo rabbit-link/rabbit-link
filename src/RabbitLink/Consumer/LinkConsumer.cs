@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using RabbitLink.Builders;
 using RabbitLink.Connection;
+using RabbitLink.Interceptors;
 using RabbitLink.Internals;
 using RabbitLink.Internals.Async;
 using RabbitLink.Internals.Channels;
@@ -28,6 +29,7 @@ namespace RabbitLink.Consumer
         private readonly object _sync = new();
 
         private readonly ConsumerTagProviderDelegate _consumerTagProvider;
+        private readonly IReadOnlyCollection<IDeliveryInterceptor> _interceptors;
         private readonly LinkTopologyRunner<ILinkQueue> _topologyRunner;
         private ILinkQueue _queue;
 
@@ -57,6 +59,7 @@ namespace RabbitLink.Consumer
             _appId = _channel.Connection.Configuration.AppId;
 
             _consumerTagProvider = configuration.ConsumerTagProvider;
+            _interceptors = configuration.DeliveryInterceptors;
 
             _channel.Disposed += ChannelOnDisposed;
 
@@ -421,8 +424,6 @@ namespace RabbitLink.Consumer
             );
         }
 
-        private List<Func<ILinkConsumedMessage<byte[]>, CancellationToken, Task<ILinkConsumedMessage<byte[]>>>> _interceptors = new();
-
         private async Task<ILinkConsumedMessage<byte[]>> ExecuteInterceptors(
             ILinkConsumedMessage<byte[]> msg,
             CancellationToken msgCancellation
@@ -433,7 +434,7 @@ namespace RabbitLink.Consumer
 
             foreach (var interceptor in _interceptors)
             {
-                msg = await interceptor(msg, msgCancellation);
+                msg = await interceptor.Intercept(msg, msgCancellation);
             }
 
             return msg;
