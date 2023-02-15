@@ -37,7 +37,7 @@ namespace RabbitLink.Consumer
             LinkTypeNameMapping typeNameMapping,
             ILinkSerializer serializer,
             ConsumerTagProviderDelegate consumerTagProvider,
-            IReadOnlyList<IDeliveryInterceptor> deliveryInterceptDelegates
+            IReadOnlyList<IDeliveryInterceptor> deliveryInterceptors
         )
         {
             if (consumerBuilder == null)
@@ -55,9 +55,9 @@ namespace RabbitLink.Consumer
                 .ErrorStrategy(new LinkConsumerDefaultErrorStrategy())
                 .Handler(OnMessageReceived)
                 .OnStateChange(OnStateChanged);
-            if (deliveryInterceptDelegates?.Count > 0)
+            if (deliveryInterceptors?.Count > 0)
             {
-                builder = deliveryInterceptDelegates.Aggregate(
+                builder = deliveryInterceptors.Aggregate(
                     builder,
                     (current, interceptDelegate) => current.WithInterception(interceptDelegate)
                 );
