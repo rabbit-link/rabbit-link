@@ -29,7 +29,7 @@ namespace RabbitLink.Consumer
         private readonly object _sync = new();
 
         private readonly ConsumerTagProviderDelegate _consumerTagProvider;
-        private readonly IReadOnlyCollection<IDeliveryInterceptor> _interceptors;
+        private readonly IReadOnlyList<IDeliveryInterceptor> _interceptors;
         private readonly LinkTopologyRunner<ILinkQueue> _topologyRunner;
         private ILinkQueue _queue;
 
@@ -370,17 +370,7 @@ namespace RabbitLink.Consumer
 
                 var msg = new LinkConsumedMessage<byte[]>(e.Body.ToArray(), props, receiveProps, token);
 
-                if (_interceptors?.Count > 0)
-                {
-                    ExecuteInterceptors(msg, msg.Cancellation).ContinueWith(async msgFinal =>
-                    {
-                        HandleMessageAsync(await msgFinal, e.DeliveryTag);
-                    }, msg.Cancellation, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Current);
-                }
-                else
-                {
-                    HandleMessageAsync(msg, e.DeliveryTag);
-                }
+                HandleMessageAsync(msg, e.DeliveryTag);
             }
             catch (Exception ex)
             {
@@ -401,7 +391,7 @@ namespace RabbitLink.Consumer
             }
         }
 
-        private void HandleMessageAsync(ILinkConsumedMessage<byte[]> msg, ulong deliveryTag)
+        private Task HandleMessageAsync(ILinkConsumedMessage<byte[]> msg, ulong deliveryTag)
         {
             var cancellation = msg.Cancellation;
 
@@ -409,35 +399,26 @@ namespace RabbitLink.Consumer
 
             try
             {
-                task = _configuration.MessageHandler(msg);
+
+                var invocation = new DeliveryInvocation(null);
+                for (int i = 0; i < _interceptors.Count; i++)
+                {
+                    invocation = new DeliveryInvocation(_interceptors[i]);
+                }
+
+                task = invocation.Intercept(msg, cancellation, (message, ct) => _configuration.MessageHandler(message));
             }
             catch (Exception ex)
             {
                 task = Task.FromException<LinkConsumerAckStrategy>(ex);
             }
 
-            task.ContinueWith(
+            return task.ContinueWith(
                 t => OnMessageHandledAsync(t, deliveryTag, cancellation),
                 cancellation,
                 TaskContinuationOptions.ExecuteSynchronously,
                 TaskScheduler.Current
             );
-        }
-
-        private async Task<ILinkConsumedMessage<byte[]>> ExecuteInterceptors(
-            ILinkConsumedMessage<byte[]> msg,
-            CancellationToken msgCancellation
-        )
-        {
-            if (!(_interceptors?.Count > 0))
-                return msg;
-
-            foreach (var interceptor in _interceptors)
-            {
-                msg = await interceptor.Intercept(msg, msgCancellation);
-            }
-
-            return msg;
         }
 
         private async Task OnMessageHandledAsync(
@@ -565,6 +546,27 @@ namespace RabbitLink.Consumer
         public void MessageReturn(BasicReturnEventArgs info)
         {
             // no-op
+        }
+
+        private class DeliveryInvocation
+        {
+            public DeliveryInvocation(IDeliveryInterceptor nextInvocation)
+            {
+                NextInvocation = nextInvocation;
+            }
+
+            private IDeliveryInterceptor NextInvocation { get; }
+
+
+            public Task<LinkConsumerAckStrategy> Intercept(ILinkConsumedMessage<byte[]> msg, CancellationToken ct, HandleDeliveryDelegate executeCore)
+            {
+                if (NextInvocation == null)
+                {
+                    return executeCore(msg, ct);
+                }
+
+                return NextInvocation.Intercept(msg, ct, executeCore);
+            }
         }
     }
 }

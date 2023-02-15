@@ -17,8 +17,6 @@ using RabbitLink.Topology.Internal;
 
 namespace RabbitLink.Builders
 {
-    public delegate ILinkConsumedMessage<byte[]> DeliveryInterceptDelegate(ILinkConsumedMessage<byte[]> msg, CancellationToken ct);
-
     internal class LinkConsumerBuilder :
         ILinkConsumerBuilder
     {
@@ -37,7 +35,7 @@ namespace RabbitLink.Builders
         private readonly ILinkSerializer _serializer;
         private readonly LinkTypeNameMapping _typeNameMapping;
         private readonly ConsumerTagProviderDelegate _consumerTagProvider;
-        private readonly IReadOnlyCollection<IDeliveryInterceptor> _deliveryInterceptors;
+        private readonly IReadOnlyList<IDeliveryInterceptor> _deliveryInterceptors;
 
         public LinkConsumerBuilder(
             Link link,
@@ -55,7 +53,7 @@ namespace RabbitLink.Builders
             LinkStateHandler<LinkChannelState> channelStateHandler = null,
             LinkTypeNameMapping typeNameMapping = null,
             ConsumerTagProviderDelegate consumerTagProvider = null,
-            IReadOnlyCollection<IDeliveryInterceptor> deliveryInterceptors = null
+            IReadOnlyList<IDeliveryInterceptor> deliveryInterceptors = null
         )
         {
             _link = link ?? throw new ArgumentNullException(nameof(link));
@@ -93,7 +91,7 @@ namespace RabbitLink.Builders
             ILinkSerializer serializer = null,
             LinkTypeNameMapping typeNameMapping = null,
             ConsumerTagProviderDelegate consumerTagProvider = null,
-            IReadOnlyCollection<IDeliveryInterceptor> deliveryInterceptors = null
+            IReadOnlyList<IDeliveryInterceptor> deliveryInterceptors = null
         ) : this
         (
             prev._link,

@@ -317,60 +317,28 @@ namespace RabbitLink.Producer
                 publishProperties.Clone()
             );
 
-
-            if (_interceptors?.Count > 0)
+            var invocation = new PublishInvocation(null);
+            for (int i = 0; i < _interceptors.Count; i++)
             {
-                var task = UseInterceptors(message, cancellation.Value)
-                    .ContinueWith(
-                        x => ContinuationAction(x, cancellation.Value),
-                        cancellation.Value,
-                        TaskContinuationOptions.ExecuteSynchronously,
-                        TaskScheduler.Current
-                    );
-                return task;
+                invocation = new PublishInvocation(_interceptors[i]);
             }
 
-            var msg = PutForPublish(body, msgProperties, publishProperties, cancellation);
-
-            return msg.Completion;
-        }
-
-        private LinkProducerMessage PutForPublish(
-            byte[] body,
-            LinkMessageProperties msgProperties,
-            LinkPublishProperties publishProperties,
-            CancellationToken? cancellation
-        )
-        {
-            var msg = new LinkProducerMessage(body, msgProperties, publishProperties, cancellation.Value);
-
-            try
+            return invocation.Intercept(message, cancellation.Value, (publishMessage, token) =>
             {
-                _messageQueue.Put(msg);
-            }
-            catch
-            {
-                throw new ObjectDisposedException(GetType().Name);
-            }
+                //todo - get properties from arguments
+                var msg = new LinkProducerMessage(body, msgProperties, publishProperties, cancellation.Value);
 
-            return msg;
-        }
+                try
+                {
+                    _messageQueue.Put(msg);
+                }
+                catch
+                {
+                    throw new ObjectDisposedException(GetType().Name);
+                }
 
-        private async Task ContinuationAction(Task<ILinkPublishMessage<byte[]>> obj, CancellationToken cancellationToken)
-        {
-            var msg = await obj;
-            var publishResult = PutForPublish(msg.Body, msg.Properties, msg.PublishProperties, cancellationToken);
-            await publishResult.Completion;
-        }
-
-        private async Task<ILinkPublishMessage<byte[]>> UseInterceptors(ILinkPublishMessage<byte[]> msg, CancellationToken cancellation)
-        {
-            foreach (var publishInterceptor in _interceptors)
-            {
-                msg = await publishInterceptor.Intercept(msg, cancellation);
-            }
-
-            return msg;
+                return msg.Completion;
+            });
         }
 
         public Guid Id { get; } = Guid.NewGuid();
@@ -543,6 +511,26 @@ namespace RabbitLink.Producer
                 _logger.Dispose();
 
                 Disposed?.Invoke(this, EventArgs.Empty);
+            }
+        }
+
+        private class PublishInvocation
+        {
+            public PublishInvocation(IPublishInterceptor nextInterceptor)
+            {
+                NextInterceptor = nextInterceptor;
+            }
+
+            private IPublishInterceptor NextInterceptor { get; }
+
+            public Task Intercept(ILinkPublishMessage<byte[]> msg, CancellationToken ct, HandlePublishDelegate executeCore)
+            {
+                if (NextInterceptor == null)
+                {
+                    return executeCore(msg, ct);
+                }
+
+                return NextInterceptor.Intercept(msg, ct, executeCore);
             }
         }
     }

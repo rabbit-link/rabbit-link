@@ -26,7 +26,7 @@ namespace RabbitLink.Builders
             LinkConsumerMessageHandlerDelegate<byte[]> messageHandler,
             ILinkSerializer serializer,
             ConsumerTagProviderDelegate consumerTagProvider,
-            IReadOnlyCollection<IDeliveryInterceptor> deliveryInterceptors
+            IReadOnlyList<IDeliveryInterceptor> deliveryInterceptors
         )
         {
             if (recoveryInterval < TimeSpan.Zero)
@@ -62,6 +62,6 @@ namespace RabbitLink.Builders
         public LinkStateHandler<LinkConsumerState> StateHandler { get; }
         public ILinkSerializer Serializer { get; }
         public ConsumerTagProviderDelegate ConsumerTagProvider { get; }
-        public IReadOnlyCollection<IDeliveryInterceptor> DeliveryInterceptors { get; }
+        public IReadOnlyList<IDeliveryInterceptor> DeliveryInterceptors { get; }
     }
 }

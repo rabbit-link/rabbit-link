@@ -2,6 +2,7 @@ using System.IO;
 using System.IO.Compression;
 using System.Threading;
 using System.Threading.Tasks;
+using RabbitLink.Consumer;
 using RabbitLink.Messaging;
 using RabbitLink.Messaging.Internals;
 
@@ -23,7 +24,7 @@ namespace RabbitLink.Interceptors
         }
 
         /// <inheritdoc />
-        public async Task<ILinkConsumedMessage<byte[]>> Intercept(ILinkConsumedMessage<byte[]> msg, CancellationToken ct)
+        public async Task<LinkConsumerAckStrategy> Intercept(ILinkConsumedMessage<byte[]> msg, CancellationToken ct, HandleDeliveryDelegate executeCore)
         {
             using var byteStream = new MemoryStream(msg.Body);
 
@@ -31,11 +32,12 @@ namespace RabbitLink.Interceptors
             using var compressor = new GZipStream(byteStream, _level);
             await compressor.CopyToAsync(newStream);
             newStream.Position = 0;
-            return new LinkConsumedMessage<byte[]>(newStream.ToArray(), msg.Properties, msg.ReceiveProperties, msg.Cancellation);
+            var result = new LinkConsumedMessage<byte[]>(newStream.ToArray(), msg.Properties, msg.ReceiveProperties, msg.Cancellation);
+            return await executeCore(result, ct);
         }
 
         /// <inheritdoc />
-        public async Task<ILinkPublishMessage<byte[]>> Intercept(ILinkPublishMessage<byte[]> msg, CancellationToken cancellation)
+        public async Task Intercept(ILinkPublishMessage<byte[]> msg, CancellationToken ct, HandlePublishDelegate executeCore)
         {
             using var byteStream = new MemoryStream(msg.Body);
 
@@ -43,7 +45,8 @@ namespace RabbitLink.Interceptors
             using var compressor = new GZipStream(new MemoryStream(), _level);
             await byteStream.CopyToAsync(compressor);
             newStream.Position = 0;
-            return new LinkPublishMessage<byte[]>(newStream.ToArray(), msg.Properties, msg.PublishProperties);
+            var result = new LinkPublishMessage<byte[]>(newStream.ToArray(), msg.Properties, msg.PublishProperties);
+            await executeCore(result, ct);
         }
     }
 
@@ -53,11 +56,15 @@ namespace RabbitLink.Interceptors
 
     public interface IPublishInterceptor
     {
-        Task<ILinkPublishMessage<byte[]>> Intercept(ILinkPublishMessage<byte[]> msg, CancellationToken cancellation);
+        Task Intercept(ILinkPublishMessage<byte[]> msg, CancellationToken ct, HandlePublishDelegate executeCore);
     }
 
     public interface IDeliveryInterceptor
     {
-        Task<ILinkConsumedMessage<byte[]>> Intercept(ILinkConsumedMessage<byte[]> msg, CancellationToken ct);
+        Task<LinkConsumerAckStrategy> Intercept(ILinkConsumedMessage<byte[]> msg, CancellationToken ct, HandleDeliveryDelegate executeCore);
     }
+
+    public delegate Task<LinkConsumerAckStrategy> HandleDeliveryDelegate(ILinkConsumedMessage<byte[]> msg, CancellationToken ct    );
+
+    public delegate Task HandlePublishDelegate(ILinkPublishMessage<byte[]> msg, CancellationToken cancellation);
 }
