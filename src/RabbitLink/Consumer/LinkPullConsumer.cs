@@ -68,7 +68,7 @@ namespace RabbitLink.Consumer
                 builder = builder.ConsumerTag(consumerTagProvider);
             }
 
-            _consumer =builder
+            _consumer = builder
                 .Build();
         }
 
