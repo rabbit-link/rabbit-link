@@ -26,26 +26,34 @@ namespace RabbitLink.Interceptors
         /// <inheritdoc />
         public async Task<LinkConsumerAckStrategy> Intercept(ILinkConsumedMessage<byte[]> msg, CancellationToken ct, HandleDeliveryDelegate executeCore)
         {
-            using var byteStream = new MemoryStream(msg.Body);
+            byte[] decompressedBytes;
+            using (var byteStream = new MemoryStream(msg.Body))
+            {
+                using var newStream = new MemoryStream();
+                using var compressor = new GZipStream(byteStream, _level);
+                await compressor.CopyToAsync(newStream);
+                newStream.Position = 0;
+                decompressedBytes = newStream.ToArray();
+            }
 
-            using var newStream = new MemoryStream();
-            using var compressor = new GZipStream(byteStream, _level);
-            await compressor.CopyToAsync(newStream);
-            newStream.Position = 0;
-            var result = new LinkConsumedMessage<byte[]>(newStream.ToArray(), msg.Properties, msg.ReceiveProperties, msg.Cancellation);
+            var result = new LinkConsumedMessage<byte[]>(decompressedBytes, msg.Properties, msg.ReceiveProperties, msg.Cancellation);
             return await executeCore(result, ct);
         }
 
         /// <inheritdoc />
         public async Task Intercept(ILinkPublishMessage<byte[]> msg, CancellationToken ct, HandlePublishDelegate executeCore)
         {
-            using var byteStream = new MemoryStream(msg.Body);
+            byte[] compressedBytes;
+            using (var byteStream = new MemoryStream(msg.Body))
+            {
+                using var newStream = new MemoryStream();
+                using var compressor = new GZipStream(newStream, _level);
+                await byteStream.CopyToAsync(compressor);
+                newStream.Position = 0;
+                compressedBytes = newStream.ToArray();
+            }
 
-            using var newStream = new MemoryStream();
-            using var compressor = new GZipStream(new MemoryStream(), _level);
-            await byteStream.CopyToAsync(compressor);
-            newStream.Position = 0;
-            var result = new LinkPublishMessage<byte[]>(newStream.ToArray(), msg.Properties, msg.PublishProperties);
+            var result = new LinkPublishMessage<byte[]>(compressedBytes, msg.Properties, msg.PublishProperties);
             await executeCore(result, ct);
         }
     }

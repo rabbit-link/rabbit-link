@@ -399,11 +399,10 @@ namespace RabbitLink.Consumer
 
             try
             {
-
-                var invocation = new DeliveryInvocation(null);
+                var invocation = new DeliveryInvocation();
                 for (int i = 0; i < _interceptors.Count; i++)
                 {
-                    invocation = new DeliveryInvocation(_interceptors[i]);
+                    invocation = new DeliveryInvocation(invocation, _interceptors[i]);
                 }
 
                 task = invocation.Intercept(msg, cancellation, (message, ct) => _configuration.MessageHandler(message));
@@ -550,22 +549,29 @@ namespace RabbitLink.Consumer
 
         private class DeliveryInvocation
         {
-            public DeliveryInvocation(IDeliveryInterceptor nextInvocation)
+            public DeliveryInvocation()
             {
-                NextInvocation = nextInvocation;
+
             }
 
-            private IDeliveryInterceptor NextInvocation { get; }
+            public DeliveryInvocation(DeliveryInvocation next, IDeliveryInterceptor interceptor)
+            {
+                Next = next;
+                Interceptor = interceptor;
+            }
+
+            public DeliveryInvocation Next { get; }
+            public IDeliveryInterceptor Interceptor { get; }
 
 
             public Task<LinkConsumerAckStrategy> Intercept(ILinkConsumedMessage<byte[]> msg, CancellationToken ct, HandleDeliveryDelegate executeCore)
             {
-                if (NextInvocation == null)
+                if (Interceptor == null)
                 {
                     return executeCore(msg, ct);
                 }
 
-                return NextInvocation.Intercept(msg, ct, executeCore);
+                return Interceptor.Intercept(msg, ct, (message, innerCt) => Next.Intercept(message, innerCt, executeCore));
             }
         }
     }

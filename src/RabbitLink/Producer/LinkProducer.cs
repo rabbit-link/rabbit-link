@@ -317,10 +317,10 @@ namespace RabbitLink.Producer
                 publishProperties.Clone()
             );
 
-            var invocation = new PublishInvocation(null);
+            var invocation = new PublishInvocation();
             for (int i = 0; i < _interceptors.Count; i++)
             {
-                invocation = new PublishInvocation(_interceptors[i]);
+                invocation = new PublishInvocation(invocation, _interceptors[i]);
             }
 
             return invocation.Intercept(message, cancellation.Value, (publishMessage, token) =>
@@ -516,21 +516,27 @@ namespace RabbitLink.Producer
 
         private class PublishInvocation
         {
-            public PublishInvocation(IPublishInterceptor nextInterceptor)
+            public PublishInvocation()
             {
-                NextInterceptor = nextInterceptor;
             }
 
-            private IPublishInterceptor NextInterceptor { get; }
+            public PublishInvocation(PublishInvocation next, IPublishInterceptor interceptor)
+            {
+                Next = next;
+                Interceptor = interceptor;
+            }
+
+            public PublishInvocation Next { get; }
+            public IPublishInterceptor Interceptor { get; }
 
             public Task Intercept(ILinkPublishMessage<byte[]> msg, CancellationToken ct, HandlePublishDelegate executeCore)
             {
-                if (NextInterceptor == null)
+                if (Next == null)
                 {
                     return executeCore(msg, ct);
                 }
 
-                return NextInterceptor.Intercept(msg, ct, executeCore);
+                return Next.Intercept(msg, ct, (message, cancellation) => Next.Intercept(message, cancellation, executeCore));
             }
         }
     }
