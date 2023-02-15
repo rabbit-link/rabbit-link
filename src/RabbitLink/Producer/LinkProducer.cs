@@ -55,7 +55,7 @@ namespace RabbitLink.Producer
             new TaskCompletionSource<object>();
 
         private readonly string _appId;
-        private IList<IPublishInterceptor> _interceptors;
+        private readonly PublishInvocation _decoratorsInvocation;
 
         #endregion
 
@@ -82,6 +82,18 @@ namespace RabbitLink.Producer
             _logger.Debug($"Created(channelId: {_channel.Id})");
 
             _channel.Initialize(this);
+
+            var interceptors = configuration.PublishInterceptors;
+            if (interceptors.Count > 0)
+            {
+                var invocation = new PublishInvocation();
+                for (int i = interceptors.Count - 1; i >= 0; i--)
+                {
+                    invocation = new PublishInvocation(invocation, interceptors[i]);
+                }
+
+                _decoratorsInvocation = invocation;
+            }
         }
 
         #endregion
@@ -304,6 +316,19 @@ namespace RabbitLink.Producer
                 }
             }
 
+            return _decoratorsInvocation != null
+                ? _decoratorsInvocation.Execute(
+                    message,
+                    cancellation.Value,
+                    (publishMessage, ct) => PublishInternalAsync(publishMessage, ct)
+                ) : PublishInternalAsync(message, cancellation);
+        }
+
+        private Task PublishInternalAsync(
+            ILinkPublishMessage<byte[]> message,
+            CancellationToken? cancellation
+        )
+        {
             var msgProperties = _configuration.MessageProperties.Extend(message.Properties);
             msgProperties.AppId = _appId;
 
@@ -316,29 +341,18 @@ namespace RabbitLink.Producer
                 msgProperties,
                 publishProperties.Clone()
             );
+            var msg = new LinkProducerMessage(body, msgProperties, publishProperties, cancellation.Value);
 
-            var invocation = new PublishInvocation();
-            for (int i = 0; i < _interceptors.Count; i++)
+            try
             {
-                invocation = new PublishInvocation(invocation, _interceptors[i]);
+                _messageQueue.Put(msg);
+            }
+            catch
+            {
+                throw new ObjectDisposedException(GetType().Name);
             }
 
-            return invocation.Intercept(message, cancellation.Value, (publishMessage, token) =>
-            {
-                //todo - get properties from arguments
-                var msg = new LinkProducerMessage(body, msgProperties, publishProperties, cancellation.Value);
-
-                try
-                {
-                    _messageQueue.Put(msg);
-                }
-                catch
-                {
-                    throw new ObjectDisposedException(GetType().Name);
-                }
-
-                return msg.Completion;
-            });
+            return msg.Completion;
         }
 
         public Guid Id { get; } = Guid.NewGuid();
@@ -514,29 +528,37 @@ namespace RabbitLink.Producer
             }
         }
 
+        /// <summary>
+        /// Container for nesting interception calls into each other.
+        /// </summary>
         private class PublishInvocation
         {
+            private readonly PublishInvocation _next;
+            private readonly IPublishInterceptor _interceptor;
+
+            /// <summary>
+            /// Creates container that will execute core logic on InterceptCall
+            /// </summary>
             public PublishInvocation()
             {
             }
 
+            /// <summary>
+            /// Creates container that will execute passed interceptor (<see cref="interceptor"/>)
+            /// and then delegate execution to next invocation (<see cref="next"/>).
+            /// </summary>
             public PublishInvocation(PublishInvocation next, IPublishInterceptor interceptor)
             {
-                Next = next;
-                Interceptor = interceptor;
+                _next = next;
+                _interceptor = interceptor;
             }
 
-            public PublishInvocation Next { get; }
-            public IPublishInterceptor Interceptor { get; }
-
-            public Task Intercept(ILinkPublishMessage<byte[]> msg, CancellationToken ct, HandlePublishDelegate executeCore)
+            public Task Execute(ILinkPublishMessage<byte[]> msg, CancellationToken ct, HandlePublishDelegate executeCore)
             {
-                if (Next == null)
-                {
+                if (_next == null)
                     return executeCore(msg, ct);
-                }
 
-                return Next.Intercept(msg, ct, (message, cancellation) => Next.Intercept(message, cancellation, executeCore));
+                return _interceptor.Intercept(msg, ct, (message, cancellation) => _next.Execute(message, cancellation, executeCore));
             }
         }
     }

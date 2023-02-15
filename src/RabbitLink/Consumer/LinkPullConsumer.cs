@@ -37,7 +37,7 @@ namespace RabbitLink.Consumer
             LinkTypeNameMapping typeNameMapping,
             ILinkSerializer serializer,
             ConsumerTagProviderDelegate consumerTagProvider,
-            IReadOnlyCollection<IDeliveryInterceptor> deliveryInterceptDelegates
+            IReadOnlyList<IDeliveryInterceptor> deliveryInterceptDelegates
         )
         {
             if (consumerBuilder == null)

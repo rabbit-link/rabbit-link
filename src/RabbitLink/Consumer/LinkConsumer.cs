@@ -29,7 +29,6 @@ namespace RabbitLink.Consumer
         private readonly object _sync = new();
 
         private readonly ConsumerTagProviderDelegate _consumerTagProvider;
-        private readonly IReadOnlyList<IDeliveryInterceptor> _interceptors;
         private readonly LinkTopologyRunner<ILinkQueue> _topologyRunner;
         private ILinkQueue _queue;
 
@@ -37,6 +36,8 @@ namespace RabbitLink.Consumer
 
         private readonly CompositeChannel<LinkConsumerMessageAction> _actionQueue =
             new(new LensChannel<LinkConsumerMessageAction>());
+
+        private readonly DeliveryInvocation _decoratorsInvocation;
 
         private volatile EventingBasicConsumer _consumer;
         private volatile CancellationTokenSource _consumerCancellationTokenSource;
@@ -59,11 +60,21 @@ namespace RabbitLink.Consumer
             _appId = _channel.Connection.Configuration.AppId;
 
             _consumerTagProvider = configuration.ConsumerTagProvider;
-            _interceptors = configuration.DeliveryInterceptors;
 
             _channel.Disposed += ChannelOnDisposed;
 
             _channel.Initialize(this);
+
+            var interceptors = configuration.DeliveryInterceptors;
+            if (interceptors.Count > 0)
+            {
+                var invocation = new DeliveryInvocation();
+                for (int i = interceptors.Count - 1; i >= 0; i--)
+                {
+                    invocation = new DeliveryInvocation(invocation, interceptors[i]);
+                }
+                _decoratorsInvocation = invocation;
+            }
         }
 
         public Guid Id { get; } = Guid.NewGuid();
@@ -399,13 +410,9 @@ namespace RabbitLink.Consumer
 
             try
             {
-                var invocation = new DeliveryInvocation();
-                for (int i = 0; i < _interceptors.Count; i++)
-                {
-                    invocation = new DeliveryInvocation(invocation, _interceptors[i]);
-                }
-
-                task = invocation.Intercept(msg, cancellation, (message, ct) => _configuration.MessageHandler(message));
+                task = _decoratorsInvocation != null
+                    ? _decoratorsInvocation.Execute(msg, cancellation, (message, ct) => _configuration.MessageHandler(message))
+                    : _configuration.MessageHandler(msg);
             }
             catch (Exception ex)
             {
@@ -547,31 +554,38 @@ namespace RabbitLink.Consumer
             // no-op
         }
 
+        /// <summary>
+        /// Container for nesting interception calls into each other.
+        /// </summary>
         private class DeliveryInvocation
         {
+            private readonly DeliveryInvocation _next;
+            private readonly IDeliveryInterceptor _interceptor;
+
+            /// <summary>
+            /// Creates container that will execute core logic on InterceptCall
+            /// </summary>
             public DeliveryInvocation()
             {
 
             }
 
+            /// <summary>
+            /// Creates container that will execute passed interceptor (<see cref="interceptor"/>)
+            /// and then delegate execution to next invocation (<see cref="next"/>).
+            /// </summary>
             public DeliveryInvocation(DeliveryInvocation next, IDeliveryInterceptor interceptor)
             {
-                Next = next;
-                Interceptor = interceptor;
+                _next = next;
+                _interceptor = interceptor;
             }
 
-            public DeliveryInvocation Next { get; }
-            public IDeliveryInterceptor Interceptor { get; }
-
-
-            public Task<LinkConsumerAckStrategy> Intercept(ILinkConsumedMessage<byte[]> msg, CancellationToken ct, HandleDeliveryDelegate executeCore)
+            public Task<LinkConsumerAckStrategy> Execute(ILinkConsumedMessage<byte[]> msg, CancellationToken ct, HandleDeliveryDelegate executeCore)
             {
-                if (Interceptor == null)
-                {
+                if (_interceptor == null)
                     return executeCore(msg, ct);
-                }
 
-                return Interceptor.Intercept(msg, ct, (message, innerCt) => Next.Intercept(message, innerCt, executeCore));
+                return _interceptor.Intercept(msg, ct, (message, innerCt) => _next.Execute(message, innerCt, executeCore));
             }
         }
     }

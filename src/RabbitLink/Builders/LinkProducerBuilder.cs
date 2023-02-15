@@ -33,7 +33,7 @@ namespace RabbitLink.Builders
         private readonly LinkStateHandler<LinkChannelState> _channelStateHandler;
         private readonly ILinkSerializer _serializer;
         private readonly LinkTypeNameMapping _typeNameMapping;
-        private readonly IReadOnlyCollection<IPublishInterceptor> _publishInterceptors;
+        private readonly IReadOnlyList<IPublishInterceptor> _publishInterceptors;
 
         public LinkProducerBuilder
         (
@@ -50,9 +50,9 @@ namespace RabbitLink.Builders
             LinkStateHandler<LinkProducerState> stateHandler = null,
             LinkStateHandler<LinkChannelState> channelStateHandler = null,
             LinkTypeNameMapping typeNameMapping = null,
-            IReadOnlyCollection<IPublishInterceptor> publishInterceptors = null
+            IReadOnlyList<IPublishInterceptor> publishInterceptors = null
         )
-            {
+        {
             _link = link ?? throw new ArgumentNullException(nameof(link));
 
             _confirmsMode = confirmsMode ?? false;
@@ -222,9 +222,7 @@ namespace RabbitLink.Builders
             if (value == null)
                 throw new ArgumentNullException(nameof(value));
             if (_publishInterceptors == null)
-            {
                 return new LinkProducerBuilder(this, publishInterceptors: new[] { value });
-            }
 
             var newInterceptors = _publishInterceptors.Concat(new[] { value })
                                                     .ToArray();
@@ -247,7 +245,8 @@ namespace RabbitLink.Builders
                 _topologyHandler,
                 _stateHandler,
                 _serializer,
-                _typeNameMapping
+                _typeNameMapping,
+                _publishInterceptors
             );
 
             return new LinkProducer(config, _link.CreateChannel(_channelStateHandler, config.RecoveryInterval));

@@ -47,7 +47,7 @@ namespace RabbitLink.Builders
             StateHandler = stateHandler ?? throw new ArgumentNullException(nameof(stateHandler));
             Serializer = serializer;
             ConsumerTagProvider = consumerTagProvider;
-            DeliveryInterceptors = deliveryInterceptors;
+            DeliveryInterceptors = deliveryInterceptors ?? Array.Empty<IDeliveryInterceptor>();
         }
 
         public TimeSpan RecoveryInterval { get; }

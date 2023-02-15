@@ -231,10 +231,9 @@ namespace RabbitLink.Builders
         {
             if(value == null)
                 throw new ArgumentNullException(nameof(value));
+
             if (_deliveryInterceptors == null)
-            {
                 return new LinkConsumerBuilder(this, deliveryInterceptors: new[] { value });
-            }
 
             var newInterceptors = _deliveryInterceptors.Concat(new[] { value })
                                                        .ToArray();

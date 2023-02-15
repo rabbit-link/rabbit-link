@@ -19,7 +19,6 @@ namespace RabbitLink.Builders
             LinkTypeNameMapping mapping
         );
 
-
         private LinkConsumerMessageHandlerBuilder(
             HandlerFactory factory,
             bool serializer,
@@ -66,7 +65,8 @@ namespace RabbitLink.Builders
                         var sException = new LinkDeserializationException(msg, typeof(TBody), ex);
                         return Task.FromException<LinkConsumerAckStrategy>(sException);
                     }
-                    ILinkConsumedMessage<TBody> typedMsg = new LinkConsumedMessage<TBody>(
+
+                    var typedMsg = new LinkConsumedMessage<TBody>(
                         body,
                         props,
                         msg.ReceiveProperties,
@@ -100,7 +100,7 @@ namespace RabbitLink.Builders
                     if (bodyType == null)
                         return Task.FromException<LinkConsumerAckStrategy>(
                             new LinkConsumerTypeNameMappingException(typeName)
-                        );
+                            );
 
                     try
                     {

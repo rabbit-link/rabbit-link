@@ -23,7 +23,7 @@ namespace RabbitLink.Builders
         private readonly LinkTypeNameMapping _typeNameMapping;
         private readonly ILinkSerializer _serializer;
         private readonly ConsumerTagProviderDelegate _consumerTagProvider;
-        private readonly IReadOnlyCollection<IDeliveryInterceptor> _deliveryInterceptors;
+        private readonly IReadOnlyList<IDeliveryInterceptor> _deliveryInterceptors;
 
         #endregion
 
@@ -35,7 +35,7 @@ namespace RabbitLink.Builders
             ILinkSerializer serializer,
             TimeSpan? getMessageTimeout = null,
             ConsumerTagProviderDelegate consumerTagProvider = null,
-            IReadOnlyCollection<IDeliveryInterceptor> deliveryInterceptors = null
+            IReadOnlyList<IDeliveryInterceptor> deliveryInterceptors = null
         )
         {
             _serializer = serializer;
@@ -54,7 +54,7 @@ namespace RabbitLink.Builders
             ILinkSerializer serializer = null,
             TimeSpan? getMessageTimeout = null,
             ConsumerTagProviderDelegate consumerTagProvider = null,
-            IReadOnlyCollection<IDeliveryInterceptor> deliveryInterceptors = null
+            IReadOnlyList<IDeliveryInterceptor> deliveryInterceptors = null
         ) : this(
             consumerBuilder ?? prev._consumerBuilder,
             typeNameMapping ?? prev._typeNameMapping,
@@ -168,7 +168,7 @@ namespace RabbitLink.Builders
             return new LinkPullConsumerBuilder(this, typeNameMapping: builder.Build());
         }
 
-
+        /// <inheritdoc />
         public ILinkPullConsumerBuilder ConsumerTag(ConsumerTagProviderDelegate tagProviderDelegate)
         {
             if (tagProviderDelegate == null)
@@ -184,9 +184,7 @@ namespace RabbitLink.Builders
                 throw new ArgumentNullException(nameof(value));
 
             if (_deliveryInterceptors == null)
-            {
                 return new LinkPullConsumerBuilder(this, deliveryInterceptors: new[] { value });
-            }
 
             var newInterceptors = _deliveryInterceptors.Concat(new[] { value })
                                                        .ToArray();
