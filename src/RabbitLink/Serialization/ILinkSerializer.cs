@@ -24,6 +24,6 @@ namespace RabbitLink.Serialization
         /// </summary>
         /// <typeparam name="TBody">Message body <see cref="Type" /></typeparam>
         /// <returns>Deserialized message</returns>
-        TBody Deserialize<TBody>(byte[] body, LinkMessageProperties properties) where TBody : class;
+        TBody Deserialize<TBody>(ReadOnlyMemory<byte> body, LinkMessageProperties properties) where TBody : class;
     }
 }

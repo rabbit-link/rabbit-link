@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Text.Json;
 using RabbitLink.Builders;
@@ -30,7 +30,7 @@ namespace RabbitLink.Serialization
         }
 
         /// <inheritdoc/>
-        public TBody Deserialize<TBody>(byte[] body, LinkMessageProperties properties) where TBody : class
-            => JsonSerializer.Deserialize<TBody>(body.AsSpan(), _options);
+        public TBody Deserialize<TBody>(ReadOnlyMemory<byte> body, LinkMessageProperties properties) where TBody : class
+            => JsonSerializer.Deserialize<TBody>(body.Span, _options);
     }
 }

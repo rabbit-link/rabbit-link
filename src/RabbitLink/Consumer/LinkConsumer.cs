@@ -38,6 +38,7 @@ namespace RabbitLink.Consumer
             new(new LensChannel<LinkConsumerMessageAction>());
 
         private readonly DeliveryInvocation _decoratorsInvocation;
+        private readonly HandleDeliveryDelegate _coreExecuteDelegate;
 
         private volatile EventingBasicConsumer _consumer;
         private volatile CancellationTokenSource _consumerCancellationTokenSource;
@@ -75,6 +76,8 @@ namespace RabbitLink.Consumer
                 }
                 _decoratorsInvocation = invocation;
             }
+
+            _coreExecuteDelegate = (message, _) => _configuration.MessageHandler(message);
         }
 
         public Guid Id { get; } = Guid.NewGuid();
@@ -379,7 +382,7 @@ namespace RabbitLink.Consumer
 
                 var token = _consumerCancellationTokenSource.Token;
 
-                var msg = new LinkConsumedMessage<byte[]>(e.Body.ToArray(), props, receiveProps, token);
+                var msg = new LinkConsumedMessage<ReadOnlyMemory<byte>>(e.Body, props, receiveProps, token);
 
                 HandleMessageAsync(msg, e.DeliveryTag);
             }
@@ -402,7 +405,7 @@ namespace RabbitLink.Consumer
             }
         }
 
-        private Task HandleMessageAsync(ILinkConsumedMessage<byte[]> msg, ulong deliveryTag)
+        private Task HandleMessageAsync(ILinkConsumedMessage<ReadOnlyMemory<byte>> msg, ulong deliveryTag)
         {
             var cancellation = msg.Cancellation;
 
@@ -411,7 +414,7 @@ namespace RabbitLink.Consumer
             try
             {
                 task = _decoratorsInvocation != null
-                    ? _decoratorsInvocation.Execute(msg, cancellation, (message, ct) => _configuration.MessageHandler(message))
+                    ? _decoratorsInvocation.Execute(msg, cancellation, _coreExecuteDelegate)
                     : _configuration.MessageHandler(msg);
             }
             catch (Exception ex)
@@ -580,7 +583,7 @@ namespace RabbitLink.Consumer
                 _interceptor = interceptor;
             }
 
-            public Task<LinkConsumerAckStrategy> Execute(ILinkConsumedMessage<byte[]> msg, CancellationToken ct, HandleDeliveryDelegate executeCore)
+            public Task<LinkConsumerAckStrategy> Execute(ILinkConsumedMessage<ReadOnlyMemory<byte>> msg, CancellationToken ct, HandleDeliveryDelegate executeCore)
             {
                 if (_interceptor == null)
                     return executeCore(msg, ct);

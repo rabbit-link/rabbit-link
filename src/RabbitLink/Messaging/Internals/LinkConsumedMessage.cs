@@ -10,7 +10,7 @@ namespace RabbitLink.Messaging.Internals
     /// <summary>
     ///     Represents RabbitMQ message received from broker
     /// </summary>
-    internal class LinkConsumedMessage<TBody> : LinkMessage<TBody>, ILinkConsumedMessage<TBody> where TBody : class
+    internal class LinkConsumedMessage<TBody> : LinkMessage<TBody>, ILinkConsumedMessage<TBody> 
     {
         /// <summary>
         ///     Creates instance

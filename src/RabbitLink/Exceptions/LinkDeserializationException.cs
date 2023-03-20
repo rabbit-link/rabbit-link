@@ -15,7 +15,7 @@ namespace RabbitLink.Exceptions
         /// <summary>
         ///     Constructs instance
         /// </summary>
-        public LinkDeserializationException(ILinkConsumedMessage<byte[]> rawMessage, Type targetBodyType,
+        public LinkDeserializationException(ILinkConsumedMessage<ReadOnlyMemory<byte>> rawMessage, Type targetBodyType,
             Exception innerException)
             : base("Cannot deserialize message, see InnerException for details", innerException)
         {
@@ -26,7 +26,7 @@ namespace RabbitLink.Exceptions
         /// <summary>
         ///     Raw message
         /// </summary>
-        public ILinkConsumedMessage<byte[]> RawMessage { get; }
+        public ILinkConsumedMessage<ReadOnlyMemory<byte>> RawMessage { get; }
 
         /// <summary>
         ///     Target body type

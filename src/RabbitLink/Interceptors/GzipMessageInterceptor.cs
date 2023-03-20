@@ -1,7 +1,11 @@
+using System;
 using System.IO;
 using System.IO.Compression;
 using System.Threading;
 using System.Threading.Tasks;
+#if NETSTANDARD2_1
+using CommunityToolkit.HighPerformance;
+#endif
 using RabbitLink.Consumer;
 using RabbitLink.Messaging;
 using RabbitLink.Messaging.Internals;
@@ -24,27 +28,40 @@ public class GzipMessageInterceptor : IMessageInterceptor
     }
 
     /// <inheritdoc />
-    public async Task<LinkConsumerAckStrategy> Intercept(ILinkConsumedMessage<byte[]> msg, CancellationToken ct, HandleDeliveryDelegate executeCore)
+    public async Task<LinkConsumerAckStrategy> Intercept(ILinkConsumedMessage<ReadOnlyMemory<byte>> msg, CancellationToken ct, HandleDeliveryDelegate executeCore)
     {
         byte[] decompressedBytes;
-        using (var byteStream = new MemoryStream(msg.Body))
+#if NETSTANDARD2_1
+        await using (var byteStream = msg.Body.AsStream())
+#else
+        using (var byteStream = new MemoryStream(msg.Body.ToArray()))
+#endif
         {
             using var newStream = new MemoryStream();
             using var compressor = new GZipStream(byteStream, _level);
+#if NETSTANDARD2_1
+            await compressor.CopyToAsync(newStream, ct);
+#else
             await compressor.CopyToAsync(newStream);
+#endif
             newStream.Position = 0;
             decompressedBytes = newStream.ToArray();
         }
 
-        var result = new LinkConsumedMessage<byte[]>(decompressedBytes, msg.Properties, msg.ReceiveProperties, msg.Cancellation);
+        var result = new LinkConsumedMessage<ReadOnlyMemory<byte>>(decompressedBytes, msg.Properties, msg.ReceiveProperties, msg.Cancellation);
         return await executeCore(result, ct);
     }
 
     /// <inheritdoc />
-    public async Task Intercept(ILinkPublishMessage<byte[]> msg, CancellationToken ct, HandlePublishDelegate executeCore)
+    public async Task Intercept(ILinkPublishMessage<ReadOnlyMemory<byte>> msg, CancellationToken ct, HandlePublishDelegate executeCore)
     {
         byte[] compressedBytes;
-        using (var byteStream = new MemoryStream(msg.Body))
+
+#if NETSTANDARD2_1
+        await using (var byteStream = msg.Body.AsStream())
+#else
+        using (var byteStream = new MemoryStream(msg.Body.ToArray()))
+#endif
         {
             using var newStream = new MemoryStream();
             using var compressor = new GZipStream(newStream, _level);
@@ -53,7 +70,7 @@ public class GzipMessageInterceptor : IMessageInterceptor
             compressedBytes = newStream.ToArray();
         }
 
-        var result = new LinkPublishMessage<byte[]>(compressedBytes, msg.Properties, msg.PublishProperties);
+        var result = new LinkPublishMessage<ReadOnlyMemory<byte>>(compressedBytes, msg.Properties, msg.PublishProperties);
         await executeCore(result, ct);
     }
 }

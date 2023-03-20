@@ -1,3 +1,4 @@
+using System;
 using System.Threading;
 using System.Threading.Tasks;
 using RabbitLink.Messaging;
@@ -19,5 +20,5 @@ public interface IPublishInterceptor
     /// can be missed due to invalid state of message or exceptions in interceptors.
     /// </param>
     /// <returns>Promise of publish completion.</returns>
-    Task Intercept(ILinkPublishMessage<byte[]> msg, CancellationToken ct, HandlePublishDelegate executeCore);
+    Task Intercept(ILinkPublishMessage<ReadOnlyMemory<byte>> msg, CancellationToken ct, HandlePublishDelegate executeCore);
 }

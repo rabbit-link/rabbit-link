@@ -1,4 +1,6 @@
-﻿namespace RabbitLink.Messaging
+using System;
+
+namespace RabbitLink.Messaging
 {
     /// <summary>
     /// MessageId generator
@@ -8,6 +10,6 @@
         /// <summary>
         /// Set message id
         /// </summary>                
-        void SetMessageId(byte[] body, LinkMessageProperties properties, LinkPublishProperties publishProperties);
+        void SetMessageId(ReadOnlyMemory<byte> body, LinkMessageProperties properties, LinkPublishProperties publishProperties);
     }
 }
