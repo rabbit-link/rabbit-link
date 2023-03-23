@@ -32,7 +32,8 @@ namespace RabbitLink.Consumer
             ILinkConsumerBuilder consumerBuilder,
             TimeSpan getMessageTimeout,
             LinkTypeNameMapping typeNameMapping,
-            ILinkSerializer serializer
+            ILinkSerializer serializer,
+            ConsumerTagProviderDelegate consumerTagProvider
         )
         {
             if (consumerBuilder == null)
@@ -46,10 +47,15 @@ namespace RabbitLink.Consumer
             _typeNameMapping = typeNameMapping ?? throw new ArgumentNullException(nameof(typeNameMapping));
             _serializer = serializer;
 
-            _consumer = consumerBuilder
+            var builder = consumerBuilder
                 .ErrorStrategy(new LinkConsumerDefaultErrorStrategy())
                 .Handler(OnMessageReceived)
-                .OnStateChange(OnStateChanged)
+                .OnStateChange(OnStateChanged);
+            if (consumerTagProvider != null)
+            {
+                builder = builder.ConsumerTag(consumerTagProvider);
+            }
+            _consumer =builder
                 .Build();
         }
 
