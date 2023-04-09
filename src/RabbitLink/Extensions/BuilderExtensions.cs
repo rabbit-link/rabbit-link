@@ -5,16 +5,16 @@ using RabbitLink.Interceptors;
 namespace RabbitLink.Extensions;
 
 /// <summary>
-/// Extension methods for <see cref="ILinkConsumerBuilder"/>.
+/// Extension methods for <see cref="ILinkConsumerBuilder"/> / <see cref="ILinkProducerBuilder"/>.
 /// </summary>
 public static class BuilderExtensions
 {
     /// <summary>
     /// Adds Gzip de-compression to consumer pipeline.
     /// </summary>
-    public static ILinkConsumerBuilder WithGzip(this ILinkConsumerBuilder builder, CompressionLevel level = CompressionLevel.Optimal)
+    public static ILinkConsumerBuilder WithGzip(this ILinkConsumerBuilder builder)
     {
-        return builder.WithInterception(new GzipMessageInterceptor(level));
+        return builder.WithInterception(new GzipMessageInterceptor(CompressionLevel.Optimal));
     }
 
     /// <summary>
