@@ -31,9 +31,10 @@ public class GzipMessageInterceptor : IDeliveryInterceptor, IPublishInterceptor
         using (var sourceStream = new MemoryStream(msg.Body))
         {
             using var decompressedStream = new MemoryStream();
-            using var compressor = new GZipStream(sourceStream, CompressionMode.Decompress);
-            compressor.CopyTo(decompressedStream);
-            compressor.Close();
+            using (var compressor = new GZipStream(sourceStream, CompressionMode.Decompress))
+            {
+                compressor.CopyTo(decompressedStream);
+            }
             decompressedBytes = decompressedStream.ToArray();
         }
 
@@ -49,9 +50,11 @@ public class GzipMessageInterceptor : IDeliveryInterceptor, IPublishInterceptor
         using (var incomingStream = new MemoryStream(msg.Body))
         {
             using var resultStream = new MemoryStream();
-            using var compressor = new GZipStream(resultStream, _level);
-            incomingStream.CopyTo(compressor);
-            compressor.Close();
+            using (var compressor = new GZipStream(resultStream, _level))
+            {
+                incomingStream.CopyTo(compressor);
+            }
+
             compressedBytes = resultStream.ToArray();
         }
 
