@@ -265,7 +265,7 @@ namespace RabbitLink.Producer
                 throw new ArgumentNullException(nameof(message));
 
             var props = message.Properties.Clone();
-            byte[] body;
+            ReadOnlyMemory<byte> body;
 
             try
             {
@@ -289,7 +289,7 @@ namespace RabbitLink.Producer
                 throw new LinkProducerTypeNameMappingException(typeof(TBody));
             }
 
-            return PublishAsync(new LinkPublishMessage<byte[]>(body, props, message.PublishProperties), cancellation);
+            return PublishAsync(new LinkPublishMessage<ReadOnlyMemory<byte>>(body, props, message.PublishProperties), cancellation);
         }
 
         public Task PublishAsync(

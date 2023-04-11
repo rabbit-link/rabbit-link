@@ -15,7 +15,7 @@ namespace RabbitLink.Interceptors;
 /// <summary>
 /// Compressing and de-compressing interceptor for publish and consume of rabbit-mq messages.
 /// </summary>
-public class GzipMessageInterceptor : IMessageInterceptor
+public class GzipMessageInterceptor : IDeliveryInterceptor, IPublishInterceptor
 {
     private readonly CompressionLevel _level;
 
@@ -28,49 +28,49 @@ public class GzipMessageInterceptor : IMessageInterceptor
     }
 
     /// <inheritdoc />
-    public async Task<LinkConsumerAckStrategy> Intercept(ILinkConsumedMessage<ReadOnlyMemory<byte>> msg, CancellationToken ct, HandleDeliveryDelegate executeCore)
+    /// <remarks> Async overload is not used due to lack of io-dependent logic. </remarks>
+    public Task<LinkConsumerAckStrategy> Intercept(ILinkConsumedMessage<ReadOnlyMemory<byte>> msg, CancellationToken ct, HandleDeliveryDelegate executeCore)
     {
         byte[] decompressedBytes;
 #if NETSTANDARD2_1
-        await using (var byteStream = msg.Body.AsStream())
+        using (var byteStream = msg.Body.AsStream())
 #else
         using (var byteStream = new MemoryStream(msg.Body.ToArray()))
 #endif
         {
-            using var newStream = new MemoryStream();
+            using var decompressedStream = new MemoryStream();
             using var compressor = new GZipStream(byteStream, _level);
 #if NETSTANDARD2_1
-            await compressor.CopyToAsync(newStream, ct);
+            compressor.CopyTo(decompressedStream);
 #else
-            await compressor.CopyToAsync(newStream);
+            compressor.CopyTo(decompressedStream);
 #endif
-            newStream.Position = 0;
-            decompressedBytes = newStream.ToArray();
+            decompressedBytes = decompressedStream.ToArray();
         }
 
         var result = new LinkConsumedMessage<ReadOnlyMemory<byte>>(decompressedBytes, msg.Properties, msg.ReceiveProperties, msg.Cancellation);
-        return await executeCore(result, ct);
+        return executeCore(result, ct);
     }
 
     /// <inheritdoc />
-    public async Task Intercept(ILinkPublishMessage<ReadOnlyMemory<byte>> msg, CancellationToken ct, HandlePublishDelegate executeCore)
+    /// <remarks> Async overload is not used due to lack of io-dependent logic. </remarks>
+    public Task Intercept(ILinkPublishMessage<ReadOnlyMemory<byte>> msg, CancellationToken ct, HandlePublishDelegate executeCore)
     {
         byte[] compressedBytes;
 
 #if NETSTANDARD2_1
-        await using (var byteStream = msg.Body.AsStream())
+        using (var byteStream = msg.Body.AsStream())
 #else
         using (var byteStream = new MemoryStream(msg.Body.ToArray()))
 #endif
         {
             using var newStream = new MemoryStream();
             using var compressor = new GZipStream(newStream, _level);
-            await byteStream.CopyToAsync(compressor);
-            newStream.Position = 0;
+            byteStream.CopyTo(compressor);
             compressedBytes = newStream.ToArray();
         }
 
         var result = new LinkPublishMessage<ReadOnlyMemory<byte>>(compressedBytes, msg.Properties, msg.PublishProperties);
-        await executeCore(result, ct);
+        return executeCore(result, ct);
     }
 }
