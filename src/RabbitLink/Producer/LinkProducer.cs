@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using RabbitLink.Builders;
 using RabbitLink.Connection;
 using RabbitLink.Exceptions;
+using RabbitLink.Interceptors;
 using RabbitLink.Internals;
 using RabbitLink.Internals.Async;
 using RabbitLink.Internals.Channels;
@@ -54,6 +55,7 @@ namespace RabbitLink.Producer
             new TaskCompletionSource<object>();
 
         private readonly string _appId;
+        private readonly PublishInvocation _decoratorsInvocation;
 
         #endregion
 
@@ -80,6 +82,18 @@ namespace RabbitLink.Producer
             _logger.Debug($"Created(channelId: {_channel.Id})");
 
             _channel.Initialize(this);
+
+            var interceptors = configuration.PublishInterceptors;
+            if (interceptors.Count > 0)
+            {
+                var invocation = new PublishInvocation();
+                for (int i = interceptors.Count - 1; i >= 0; i--)
+                {
+                    invocation = new PublishInvocation(invocation, interceptors[i]);
+                }
+
+                _decoratorsInvocation = invocation;
+            }
         }
 
         #endregion
@@ -127,16 +141,18 @@ namespace RabbitLink.Producer
                             if (_readyCompletion.Task.IsCompleted)
                                 _readyCompletion = new TaskCompletionSource<object>();
                         }
+
                         break;
                     case LinkProducerState.Stopping:
                         await AsyncHelper.RunAsync(Stop)
-                            .ConfigureAwait(false);
+                                         .ConfigureAwait(false);
 
                         if (cancellation.IsCancellationRequested)
                         {
                             ChangeState(LinkProducerState.Init);
                             return;
                         }
+
                         newState = LinkProducerState.Reconfiguring;
                         break;
                     default:
@@ -163,13 +179,13 @@ namespace RabbitLink.Producer
 
         public async Task OnConnecting(CancellationToken cancellation)
         {
-            if(cancellation.IsCancellationRequested)
+            if (cancellation.IsCancellationRequested)
                 return;
 
             try
             {
                 await _messageQueue.YieldAsync(cancellation)
-                    .ConfigureAwait(false);
+                                   .ConfigureAwait(false);
             }
             catch (TaskCanceledException)
             {
@@ -231,12 +247,12 @@ namespace RabbitLink.Producer
         public Task WaitReadyAsync(CancellationToken? cancellation = null)
         {
             return _readyCompletion.Task
-                .ContinueWith(
-                    t => t.Result,
-                    cancellation ?? CancellationToken.None,
-                    TaskContinuationOptions.RunContinuationsAsynchronously,
-                    TaskScheduler.Current
-                );
+                                   .ContinueWith(
+                                       t => t.Result,
+                                       cancellation ?? CancellationToken.None,
+                                       TaskContinuationOptions.RunContinuationsAsynchronously,
+                                       TaskScheduler.Current
+                                   );
         }
 
         public Task PublishAsync<TBody>(ILinkPublishMessage<TBody> message, CancellationToken? cancellation = null)
@@ -300,6 +316,19 @@ namespace RabbitLink.Producer
                 }
             }
 
+            return _decoratorsInvocation != null
+                ? _decoratorsInvocation.Execute(
+                    message,
+                    cancellation.Value,
+                    (publishMessage, ct) => PublishInternalAsync(publishMessage, ct)
+                ) : PublishInternalAsync(message, cancellation);
+        }
+
+        private Task PublishInternalAsync(
+            ILinkPublishMessage<byte[]> message,
+            CancellationToken? cancellation
+        )
+        {
             var msgProperties = _configuration.MessageProperties.Extend(message.Properties);
             msgProperties.AppId = _appId;
 
@@ -312,7 +341,6 @@ namespace RabbitLink.Producer
                 msgProperties,
                 publishProperties.Clone()
             );
-
             var msg = new LinkProducerMessage(body, msgProperties, publishProperties, cancellation.Value);
 
             try
@@ -359,7 +387,7 @@ namespace RabbitLink.Producer
 
             _readyCompletion.TrySetResult(null);
             await AsyncHelper.RunAsync(() => ProcessQueue(model, cancellation))
-                .ConfigureAwait(false);
+                             .ConfigureAwait(false);
         }
 
         private void ProcessQueue(IModel model, CancellationToken cancellation)
@@ -429,7 +457,7 @@ namespace RabbitLink.Producer
                 {
                     _logger.Debug($"Retrying in {_configuration.RecoveryInterval.TotalSeconds:0.###}s");
                     await Task.Delay(_configuration.RecoveryInterval, cancellation)
-                        .ConfigureAwait(false);
+                              .ConfigureAwait(false);
                 }
                 catch
                 {
@@ -442,8 +470,8 @@ namespace RabbitLink.Producer
             try
             {
                 _exchange = await _topologyRunner
-                    .RunAsync(model, cancellation)
-                    .ConfigureAwait(false);
+                                  .RunAsync(model, cancellation)
+                                  .ConfigureAwait(false);
             }
             catch (Exception ex)
             {
@@ -452,7 +480,7 @@ namespace RabbitLink.Producer
                 try
                 {
                     await _configuration.TopologyHandler.ConfigurationError(ex)
-                        .ConfigureAwait(false);
+                                        .ConfigureAwait(false);
                 }
                 catch (Exception handlerException)
                 {
@@ -497,6 +525,40 @@ namespace RabbitLink.Producer
                 _logger.Dispose();
 
                 Disposed?.Invoke(this, EventArgs.Empty);
+            }
+        }
+
+        /// <summary>
+        /// Container for nesting interception calls into each other.
+        /// </summary>
+        private class PublishInvocation
+        {
+            private readonly PublishInvocation _next;
+            private readonly IPublishInterceptor _interceptor;
+
+            /// <summary>
+            /// Creates container that will execute core logic on InterceptCall
+            /// </summary>
+            public PublishInvocation()
+            {
+            }
+
+            /// <summary>
+            /// Creates container that will execute passed interceptor (<see cref="interceptor"/>)
+            /// and then delegate execution to next invocation (<see cref="next"/>).
+            /// </summary>
+            public PublishInvocation(PublishInvocation next, IPublishInterceptor interceptor)
+            {
+                _next = next;
+                _interceptor = interceptor;
+            }
+
+            public Task Execute(ILinkPublishMessage<byte[]> msg, CancellationToken ct, HandlePublishDelegate executeCore)
+            {
+                if (_next == null)
+                    return executeCore(msg, ct);
+
+                return _interceptor.Intercept(msg, ct, (message, cancellation) => _next.Execute(message, cancellation, executeCore));
             }
         }
     }

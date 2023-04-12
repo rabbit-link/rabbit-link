@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using RabbitLink.Builders;
 using RabbitLink.Connection;
+using RabbitLink.Interceptors;
 using RabbitLink.Internals;
 using RabbitLink.Internals.Async;
 using RabbitLink.Internals.Channels;
@@ -36,6 +37,8 @@ namespace RabbitLink.Consumer
         private readonly CompositeChannel<LinkConsumerMessageAction> _actionQueue =
             new(new LensChannel<LinkConsumerMessageAction>());
 
+        private readonly DeliveryInvocation _decoratorsInvocation;
+
         private volatile EventingBasicConsumer _consumer;
         private volatile CancellationTokenSource _consumerCancellationTokenSource;
 
@@ -61,6 +64,17 @@ namespace RabbitLink.Consumer
             _channel.Disposed += ChannelOnDisposed;
 
             _channel.Initialize(this);
+
+            var interceptors = configuration.DeliveryInterceptors;
+            if (interceptors.Count > 0)
+            {
+                var invocation = new DeliveryInvocation();
+                for (int i = interceptors.Count - 1; i >= 0; i--)
+                {
+                    invocation = new DeliveryInvocation(invocation, interceptors[i]);
+                }
+                _decoratorsInvocation = invocation;
+            }
         }
 
         public Guid Id { get; } = Guid.NewGuid();
@@ -73,12 +87,12 @@ namespace RabbitLink.Consumer
         public Task WaitReadyAsync(CancellationToken? cancellation = null)
         {
             return _readyCompletion.Task
-                .ContinueWith(
-                    t => t.Result,
-                    cancellation ?? CancellationToken.None,
-                    TaskContinuationOptions.RunContinuationsAsynchronously,
-                    TaskScheduler.Current
-                );
+                                   .ContinueWith(
+                                       t => t.Result,
+                                       cancellation ?? CancellationToken.None,
+                                       TaskContinuationOptions.RunContinuationsAsynchronously,
+                                       TaskScheduler.Current
+                                   );
         }
 
         public event EventHandler Disposed;
@@ -174,7 +188,7 @@ namespace RabbitLink.Consumer
                         break;
                     case LinkConsumerState.Stopping:
                         await AsyncHelper.RunAsync(() => Stop(model))
-                            .ConfigureAwait(false);
+                                         .ConfigureAwait(false);
 
                         if (cancellation.IsCancellationRequested)
                         {
@@ -199,7 +213,7 @@ namespace RabbitLink.Consumer
                 {
                     _logger.Debug($"Retrying in {_configuration.RecoveryInterval.TotalSeconds:0.###}s");
                     await Task.Delay(_configuration.RecoveryInterval, cancellation)
-                        .ConfigureAwait(false);
+                              .ConfigureAwait(false);
                 }
                 catch
                 {
@@ -212,8 +226,8 @@ namespace RabbitLink.Consumer
             try
             {
                 _queue = await _topologyRunner
-                    .RunAsync(model, cancellation)
-                    .ConfigureAwait(false);
+                               .RunAsync(model, cancellation)
+                               .ConfigureAwait(false);
             }
             catch (Exception ex)
             {
@@ -222,7 +236,7 @@ namespace RabbitLink.Consumer
                 try
                 {
                     await _configuration.TopologyHandler.ConfigurationError(ex)
-                        .ConfigureAwait(false);
+                                        .ConfigureAwait(false);
                 }
                 catch (Exception handlerException)
                 {
@@ -242,7 +256,7 @@ namespace RabbitLink.Consumer
             try
             {
                 await AsyncHelper.RunAsync(() => InitializeConsumer(model, cancellation))
-                    .ConfigureAwait(false);
+                                 .ConfigureAwait(false);
             }
             catch (OperationCanceledException)
             {
@@ -263,7 +277,7 @@ namespace RabbitLink.Consumer
                 _readyCompletion.TrySetResult(null);
 
                 await AsyncHelper.RunAsync(() => ProcessActionQueue(model, token))
-                    .ConfigureAwait(false);
+                                 .ConfigureAwait(false);
             }
             catch
             {
@@ -388,7 +402,7 @@ namespace RabbitLink.Consumer
             }
         }
 
-        private void HandleMessageAsync(LinkConsumedMessage<byte[]> msg, ulong deliveryTag)
+        private Task HandleMessageAsync(ILinkConsumedMessage<byte[]> msg, ulong deliveryTag)
         {
             var cancellation = msg.Cancellation;
 
@@ -396,14 +410,16 @@ namespace RabbitLink.Consumer
 
             try
             {
-                task = _configuration.MessageHandler(msg);
+                task = _decoratorsInvocation != null
+                    ? _decoratorsInvocation.Execute(msg, cancellation, (message, ct) => _configuration.MessageHandler(message))
+                    : _configuration.MessageHandler(msg);
             }
             catch (Exception ex)
             {
                 task = Task.FromException<LinkConsumerAckStrategy>(ex);
             }
 
-            task.ContinueWith(
+            return task.ContinueWith(
                 t => OnMessageHandledAsync(t, deliveryTag, cancellation),
                 cancellation,
                 TaskContinuationOptions.ExecuteSynchronously,
@@ -411,8 +427,11 @@ namespace RabbitLink.Consumer
             );
         }
 
-        private async Task OnMessageHandledAsync(Task<LinkConsumerAckStrategy> task, ulong deliveryTag,
-            CancellationToken cancellation)
+        private async Task OnMessageHandledAsync(
+            Task<LinkConsumerAckStrategy> task,
+            ulong deliveryTag,
+            CancellationToken cancellation
+        )
         {
             if (AutoAck) return;
 
@@ -463,7 +482,7 @@ namespace RabbitLink.Consumer
                 }
 
                 await _actionQueue.PutAsync(action)
-                    .ConfigureAwait(false);
+                                  .ConfigureAwait(false);
             }
             catch
             {
@@ -508,7 +527,7 @@ namespace RabbitLink.Consumer
             try
             {
                 await _actionQueue.YieldAsync(cancellation)
-                    .ConfigureAwait(false);
+                                  .ConfigureAwait(false);
             }
             catch (TaskCanceledException)
             {
@@ -533,6 +552,41 @@ namespace RabbitLink.Consumer
         public void MessageReturn(BasicReturnEventArgs info)
         {
             // no-op
+        }
+
+        /// <summary>
+        /// Container for nesting interception calls into each other.
+        /// </summary>
+        private class DeliveryInvocation
+        {
+            private readonly DeliveryInvocation _next;
+            private readonly IDeliveryInterceptor _interceptor;
+
+            /// <summary>
+            /// Creates container that will execute core logic on InterceptCall
+            /// </summary>
+            public DeliveryInvocation()
+            {
+
+            }
+
+            /// <summary>
+            /// Creates container that will execute passed interceptor (<see cref="interceptor"/>)
+            /// and then delegate execution to next invocation (<see cref="next"/>).
+            /// </summary>
+            public DeliveryInvocation(DeliveryInvocation next, IDeliveryInterceptor interceptor)
+            {
+                _next = next;
+                _interceptor = interceptor;
+            }
+
+            public Task<LinkConsumerAckStrategy> Execute(ILinkConsumedMessage<byte[]> msg, CancellationToken ct, HandleDeliveryDelegate executeCore)
+            {
+                if (_interceptor == null)
+                    return executeCore(msg, ct);
+
+                return _interceptor.Intercept(msg, ct, (message, innerCt) => _next.Execute(message, innerCt, executeCore));
+            }
         }
     }
 }

@@ -2,9 +2,11 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using RabbitLink.Connection;
 using RabbitLink.Consumer;
+using RabbitLink.Interceptors;
 using RabbitLink.Serialization;
 using RabbitLink.Topology;
 
@@ -21,6 +23,7 @@ namespace RabbitLink.Builders
         private readonly LinkTypeNameMapping _typeNameMapping;
         private readonly ILinkSerializer _serializer;
         private readonly ConsumerTagProviderDelegate _consumerTagProvider;
+        private readonly IReadOnlyList<IDeliveryInterceptor> _deliveryInterceptors;
 
         #endregion
 
@@ -31,7 +34,8 @@ namespace RabbitLink.Builders
             LinkTypeNameMapping typeNameMapping,
             ILinkSerializer serializer,
             TimeSpan? getMessageTimeout = null,
-            ConsumerTagProviderDelegate consumerTagProvider = null
+            ConsumerTagProviderDelegate consumerTagProvider = null,
+            IReadOnlyList<IDeliveryInterceptor> deliveryInterceptors = null
         )
         {
             _serializer = serializer;
@@ -40,6 +44,7 @@ namespace RabbitLink.Builders
             _typeNameMapping = typeNameMapping ?? throw new ArgumentNullException(nameof(typeNameMapping));
             _serializer = serializer;
             _consumerTagProvider = consumerTagProvider;
+            _deliveryInterceptors = deliveryInterceptors;
         }
 
         private LinkPullConsumerBuilder(
@@ -48,13 +53,15 @@ namespace RabbitLink.Builders
             LinkTypeNameMapping typeNameMapping = null,
             ILinkSerializer serializer = null,
             TimeSpan? getMessageTimeout = null,
-            ConsumerTagProviderDelegate consumerTagProvider = null
+            ConsumerTagProviderDelegate consumerTagProvider = null,
+            IReadOnlyList<IDeliveryInterceptor> deliveryInterceptors = null
         ) : this(
             consumerBuilder ?? prev._consumerBuilder,
             typeNameMapping ?? prev._typeNameMapping,
             serializer ?? prev._serializer,
             getMessageTimeout ?? prev._getMessageTimeout,
-            consumerTagProvider ?? prev._consumerTagProvider
+            consumerTagProvider ?? prev._consumerTagProvider,
+            deliveryInterceptors ?? prev._deliveryInterceptors
         )
         {
         }
@@ -65,7 +72,14 @@ namespace RabbitLink.Builders
 
         public ILinkPullConsumer Build()
         {
-            return new LinkPullConsumer(_consumerBuilder, _getMessageTimeout, _typeNameMapping, _serializer, _consumerTagProvider);
+            return new LinkPullConsumer(
+                _consumerBuilder,
+                _getMessageTimeout,
+                _typeNameMapping,
+                _serializer,
+                _consumerTagProvider,
+                _deliveryInterceptors
+            );
         }
 
         public ILinkPullConsumerBuilder RecoveryInterval(TimeSpan value)
@@ -154,13 +168,27 @@ namespace RabbitLink.Builders
             return new LinkPullConsumerBuilder(this, typeNameMapping: builder.Build());
         }
 
-
+        /// <inheritdoc />
         public ILinkPullConsumerBuilder ConsumerTag(ConsumerTagProviderDelegate tagProviderDelegate)
         {
             if (tagProviderDelegate == null)
                 throw new ArgumentNullException(nameof(tagProviderDelegate));
 
             return new LinkPullConsumerBuilder(this, consumerTagProvider: tagProviderDelegate);
+        }
+
+        /// <inheritdoc />
+        public ILinkPullConsumerBuilder WithInterception(IDeliveryInterceptor value)
+        {
+            if (value == null)
+                throw new ArgumentNullException(nameof(value));
+
+            if (_deliveryInterceptors == null)
+                return new LinkPullConsumerBuilder(this, deliveryInterceptors: new[] { value });
+
+            var newInterceptors = _deliveryInterceptors.Concat(new[] { value })
+                                                       .ToArray();
+            return new LinkPullConsumerBuilder(this, deliveryInterceptors: newInterceptors);
         }
 
         #endregion

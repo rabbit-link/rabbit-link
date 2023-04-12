@@ -1,7 +1,9 @@
 #region Usings
 
 using System;
+using System.Collections.Generic;
 using RabbitLink.Consumer;
+using RabbitLink.Interceptors;
 using RabbitLink.Serialization;
 using RabbitLink.Topology;
 
@@ -23,7 +25,8 @@ namespace RabbitLink.Builders
             ILinkConsumerErrorStrategy errorStrategy,
             LinkConsumerMessageHandlerDelegate<byte[]> messageHandler,
             ILinkSerializer serializer,
-            ConsumerTagProviderDelegate consumerTagProvider
+            ConsumerTagProviderDelegate consumerTagProvider,
+            IReadOnlyList<IDeliveryInterceptor> deliveryInterceptors
         )
         {
             if (recoveryInterval < TimeSpan.Zero)
@@ -44,6 +47,7 @@ namespace RabbitLink.Builders
             StateHandler = stateHandler ?? throw new ArgumentNullException(nameof(stateHandler));
             Serializer = serializer;
             ConsumerTagProvider = consumerTagProvider;
+            DeliveryInterceptors = deliveryInterceptors ?? Array.Empty<IDeliveryInterceptor>();
         }
 
         public TimeSpan RecoveryInterval { get; }
@@ -58,5 +62,6 @@ namespace RabbitLink.Builders
         public LinkStateHandler<LinkConsumerState> StateHandler { get; }
         public ILinkSerializer Serializer { get; }
         public ConsumerTagProviderDelegate ConsumerTagProvider { get; }
+        public IReadOnlyList<IDeliveryInterceptor> DeliveryInterceptors { get; }
     }
 }
