@@ -35,11 +35,11 @@ public class GzipMessageInterceptor : IDeliveryInterceptor, IPublishInterceptor
 #if NETSTANDARD2_1
         using (var byteStream = msg.Body.AsStream())
 #else
-        using (var byteStream = new MemoryStream(msg.Body.ToArray()))
+        using (var sourceStream = new MemoryStream(msg.Body.ToArray()))
 #endif
         {
             using var decompressedStream = new MemoryStream();
-            using (var compressor = new GZipStream(byteStream, _level))
+            using (var compressor = new GZipStream(sourceStream, _level))
             {
 #if NETSTANDARD2_1
                 compressor.CopyTo(decompressedStream);
@@ -62,18 +62,18 @@ public class GzipMessageInterceptor : IDeliveryInterceptor, IPublishInterceptor
         byte[] compressedBytes;
 
 #if NETSTANDARD2_1
-        using (var byteStream = msg.Body.AsStream())
+        using (var incomingStream = msg.Body.AsStream())
 #else
-        using (var byteStream = new MemoryStream(msg.Body.ToArray()))
+        using (var incomingStream = new MemoryStream(msg.Body.ToArray()))
 #endif
         {
-            using var newStream = new MemoryStream();
-            using (var compressor = new GZipStream(newStream, _level))
+            using var resultStream = new MemoryStream();
+            using (var compressor = new GZipStream(resultStream, _level))
             {
-                byteStream.CopyTo(compressor);
+                incomingStream.CopyTo(compressor);
             }
 
-            compressedBytes = newStream.ToArray();
+            compressedBytes = resultStream.ToArray();
         }
 
         var result = new LinkPublishMessage<ReadOnlyMemory<byte>>(compressedBytes, msg.Properties, msg.PublishProperties);
