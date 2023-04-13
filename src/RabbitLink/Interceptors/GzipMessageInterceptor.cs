@@ -39,7 +39,7 @@ public class GzipMessageInterceptor : IDeliveryInterceptor, IPublishInterceptor
 #endif
         {
             using var decompressedStream = new MemoryStream();
-            using (var compressor = new GZipStream(sourceStream, _level))
+            using (var compressor = new GZipStream(sourceStream, CompressionMode.Decompress))
             {
 #if NETSTANDARD2_1
                 compressor.CopyTo(decompressedStream);

@@ -167,10 +167,10 @@ namespace Playground
                     .Select(x => new Msg {Message = x})
                     .Select(x => new LinkPublishMessage<Msg>(x));
 
-                //for (var i = 0; i < 1000; i++)
-                //{
-                //    Task.Run(() => Thread.Sleep(1000));
-                //}
+                for (var i = 0; i < 1000; i++)
+                {
+                    Task.Run(() => Thread.Sleep(1000));
+                }
 
                 var ts = new List<Task>(10);
 
