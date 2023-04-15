@@ -33,7 +33,7 @@ public class GzipMessageInterceptor : IDeliveryInterceptor, IPublishInterceptor
     {
         byte[] decompressedBytes;
 #if NETSTANDARD2_1
-        using (var byteStream = msg.Body.AsStream())
+        using (var sourceStream = msg.Body.AsStream())
 #else
         using (var sourceStream = new MemoryStream(msg.Body.ToArray()))
 #endif
@@ -41,11 +41,7 @@ public class GzipMessageInterceptor : IDeliveryInterceptor, IPublishInterceptor
             using var decompressedStream = new MemoryStream();
             using (var compressor = new GZipStream(sourceStream, CompressionMode.Decompress))
             {
-#if NETSTANDARD2_1
                 compressor.CopyTo(decompressedStream);
-#else
-                compressor.CopyTo(decompressedStream);
-#endif
             }
 
             decompressedBytes = decompressedStream.ToArray();
