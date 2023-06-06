@@ -30,7 +30,7 @@ namespace RabbitLink.Serialization
         ///     Deserialize message and set properties
         /// </summary>
         public static object Deserialize(this ILinkSerializer @this, Type bodyType,
-            byte[] body, LinkMessageProperties properties)
+            ReadOnlyMemory<byte> body, LinkMessageProperties properties)
         {
             var genericMethod = DeserializeMethod.MakeGenericMethod(bodyType);
             return genericMethod.Invoke(@this, new object[] {body, properties});

@@ -9,7 +9,7 @@ namespace RabbitLink.Messaging
     /// <summary>
     ///     Represents RabbitMQ message received from broker
     /// </summary>
-    public interface ILinkConsumedMessage<out TBody> : ILinkMessage<TBody> where TBody : class
+    public interface ILinkConsumedMessage<out TBody> : ILinkMessage<TBody>
     {
         #region Properties
 

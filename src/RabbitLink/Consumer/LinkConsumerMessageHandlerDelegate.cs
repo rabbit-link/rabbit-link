@@ -1,4 +1,4 @@
-﻿#region Usings
+#region Usings
 
 using System.Threading.Tasks;
 using RabbitLink.Messaging;
@@ -13,5 +13,5 @@ namespace RabbitLink.Consumer
     /// <returns>Task when handle</returns>
     public delegate Task<LinkConsumerAckStrategy> LinkConsumerMessageHandlerDelegate<in TBody>(
         ILinkConsumedMessage<TBody> message
-    ) where TBody : class;
+    );
 }

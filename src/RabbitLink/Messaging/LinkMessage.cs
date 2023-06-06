@@ -1,7 +1,7 @@
 namespace RabbitLink.Messaging
 {
     /// <inheritdoc />
-    public abstract class LinkMessage<TBody> : ILinkMessage<TBody> where TBody : class
+    public abstract class LinkMessage<TBody> : ILinkMessage<TBody>
     {
         #region Ctor
 

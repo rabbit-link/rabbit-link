@@ -1,3 +1,4 @@
+using System;
 using System.Threading;
 using System.Threading.Tasks;
 using RabbitLink.Consumer;
@@ -20,5 +21,5 @@ public interface IDeliveryInterceptor
     /// can be missed due to invalid state of message or exceptions in interceptors.
     /// </param>
     /// <returns>Promise of consume completion with answer for rabbit mq.</returns>
-    Task<LinkConsumerAckStrategy> Intercept(ILinkConsumedMessage<byte[]> msg, CancellationToken ct, HandleDeliveryDelegate executeCore);
+    Task<LinkConsumerAckStrategy> Intercept(ILinkConsumedMessage<ReadOnlyMemory<byte>> msg, CancellationToken ct, HandleDeliveryDelegate executeCore);
 }

@@ -56,6 +56,7 @@ namespace RabbitLink.Producer
 
         private readonly string _appId;
         private readonly PublishInvocation _decoratorsInvocation;
+        private readonly HandlePublishDelegate _handlePublishDelegateCore;
 
         #endregion
 
@@ -94,6 +95,8 @@ namespace RabbitLink.Producer
 
                 _decoratorsInvocation = invocation;
             }
+
+            _handlePublishDelegateCore = (publishMessage, ct) => PublishInternalAsync(publishMessage, ct);
         }
 
         #endregion
@@ -262,7 +265,7 @@ namespace RabbitLink.Producer
                 throw new ArgumentNullException(nameof(message));
 
             var props = message.Properties.Clone();
-            byte[] body;
+            ReadOnlyMemory<byte> body;
 
             try
             {
@@ -286,11 +289,11 @@ namespace RabbitLink.Producer
                 throw new LinkProducerTypeNameMappingException(typeof(TBody));
             }
 
-            return PublishAsync(new LinkPublishMessage<byte[]>(body, props, message.PublishProperties), cancellation);
+            return PublishAsync(new LinkPublishMessage<ReadOnlyMemory<byte>>(body, props, message.PublishProperties), cancellation);
         }
 
         public Task PublishAsync(
-            ILinkPublishMessage<byte[]> message,
+            ILinkPublishMessage<ReadOnlyMemory<byte>> message,
             CancellationToken? cancellation = null
         )
         {
@@ -317,15 +320,12 @@ namespace RabbitLink.Producer
             }
 
             return _decoratorsInvocation != null
-                ? _decoratorsInvocation.Execute(
-                    message,
-                    cancellation.Value,
-                    (publishMessage, ct) => PublishInternalAsync(publishMessage, ct)
-                ) : PublishInternalAsync(message, cancellation);
+                ? _decoratorsInvocation.Execute(message, cancellation.Value, _handlePublishDelegateCore)
+                : PublishInternalAsync(message, cancellation);
         }
 
         private Task PublishInternalAsync(
-            ILinkPublishMessage<byte[]> message,
+            ILinkPublishMessage<ReadOnlyMemory<byte>> message,
             CancellationToken? cancellation
         )
         {
@@ -553,7 +553,7 @@ namespace RabbitLink.Producer
                 _interceptor = interceptor;
             }
 
-            public Task Execute(ILinkPublishMessage<byte[]> msg, CancellationToken ct, HandlePublishDelegate executeCore)
+            public Task Execute(ILinkPublishMessage<ReadOnlyMemory<byte>> msg, CancellationToken ct, HandlePublishDelegate executeCore)
             {
                 if (_next == null)
                     return executeCore(msg, ct);

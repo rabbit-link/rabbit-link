@@ -23,7 +23,7 @@ namespace RabbitLink.Builders
             ILinkConsumerTopologyHandler topologyHandler,
             LinkStateHandler<LinkConsumerState> stateHandler,
             ILinkConsumerErrorStrategy errorStrategy,
-            LinkConsumerMessageHandlerDelegate<byte[]> messageHandler,
+            LinkConsumerMessageHandlerDelegate<ReadOnlyMemory<byte>> messageHandler,
             ILinkSerializer serializer,
             ConsumerTagProviderDelegate consumerTagProvider,
             IReadOnlyList<IDeliveryInterceptor> deliveryInterceptors
@@ -55,7 +55,7 @@ namespace RabbitLink.Builders
         public bool AutoAck { get; }
         public bool CancelOnHaFailover { get; }
         public bool Exclusive { get; }
-        public LinkConsumerMessageHandlerDelegate<byte[]> MessageHandler { get; }
+        public LinkConsumerMessageHandlerDelegate<ReadOnlyMemory<byte>> MessageHandler { get; }
         public ILinkConsumerErrorStrategy ErrorStrategy { get; }
         public int Priority { get; }
         public ILinkConsumerTopologyHandler TopologyHandler { get; }

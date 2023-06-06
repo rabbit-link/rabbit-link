@@ -50,7 +50,7 @@ namespace RabbitLink.Producer
         /// <param name="cancellation">cancellation token, if null <see cref="Timeout" /> will be used</param>
         /// <returns><see cref="Task" /> which completed when message ACKed by broker</returns>
         Task PublishAsync(
-            ILinkPublishMessage<byte[]> message,
+            ILinkPublishMessage<ReadOnlyMemory<byte>> message,
             CancellationToken? cancellation = null
         );
 

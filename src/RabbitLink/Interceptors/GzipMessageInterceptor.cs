@@ -1,7 +1,11 @@
+using System;
 using System.IO;
 using System.IO.Compression;
 using System.Threading;
 using System.Threading.Tasks;
+#if NETSTANDARD2_1
+using CommunityToolkit.HighPerformance;
+#endif
 using RabbitLink.Consumer;
 using RabbitLink.Messaging;
 using RabbitLink.Messaging.Internals;
@@ -25,29 +29,39 @@ public class GzipMessageInterceptor : IDeliveryInterceptor, IPublishInterceptor
 
     /// <inheritdoc />
     /// <remarks> Async overload is not used due to lack of io-dependent logic. </remarks>
-    public Task<LinkConsumerAckStrategy> Intercept(ILinkConsumedMessage<byte[]> msg, CancellationToken ct, HandleDeliveryDelegate executeCore)
+    public Task<LinkConsumerAckStrategy> Intercept(ILinkConsumedMessage<ReadOnlyMemory<byte>> msg, CancellationToken ct, HandleDeliveryDelegate executeCore)
     {
         byte[] decompressedBytes;
-        using (var sourceStream = new MemoryStream(msg.Body))
+#if NETSTANDARD2_1
+        using (var sourceStream = msg.Body.AsStream())
+#else
+        using (var sourceStream = new MemoryStream(msg.Body.ToArray()))
+#endif
         {
             using var decompressedStream = new MemoryStream();
             using (var compressor = new GZipStream(sourceStream, CompressionMode.Decompress))
             {
                 compressor.CopyTo(decompressedStream);
             }
+
             decompressedBytes = decompressedStream.ToArray();
         }
 
-        var result = new LinkConsumedMessage<byte[]>(decompressedBytes, msg.Properties, msg.ReceiveProperties, msg.Cancellation);
+        var result = new LinkConsumedMessage<ReadOnlyMemory<byte>>(decompressedBytes, msg.Properties, msg.ReceiveProperties, msg.Cancellation);
         return executeCore(result, ct);
     }
 
     /// <inheritdoc />
     /// <remarks> Async overload is not used due to lack of io-dependent logic. </remarks>
-    public Task Intercept(ILinkPublishMessage<byte[]> msg, CancellationToken ct, HandlePublishDelegate executeCore)
+    public Task Intercept(ILinkPublishMessage<ReadOnlyMemory<byte>> msg, CancellationToken ct, HandlePublishDelegate executeCore)
     {
         byte[] compressedBytes;
-        using (var incomingStream = new MemoryStream(msg.Body))
+
+#if NETSTANDARD2_1
+        using (var incomingStream = msg.Body.AsStream())
+#else
+        using (var incomingStream = new MemoryStream(msg.Body.ToArray()))
+#endif
         {
             using var resultStream = new MemoryStream();
             using (var compressor = new GZipStream(resultStream, _level))
@@ -58,7 +72,7 @@ public class GzipMessageInterceptor : IDeliveryInterceptor, IPublishInterceptor
             compressedBytes = resultStream.ToArray();
         }
 
-        var result = new LinkPublishMessage<byte[]>(compressedBytes, msg.Properties, msg.PublishProperties);
+        var result = new LinkPublishMessage<ReadOnlyMemory<byte>>(compressedBytes, msg.Properties, msg.PublishProperties);
         return executeCore(result, ct);
     }
 }
