@@ -9,6 +9,7 @@ using RabbitLink.Internals.Async;
 using RabbitLink.Logging;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
+using RabbitMQ.Client.Exceptions;
 
 #endregion
 
@@ -179,9 +180,8 @@ namespace RabbitLink.Connection
                                 : LinkChannelState.Stopping;
                             break;
                         case LinkChannelState.Active:
-                            await ActiveAsync()
+                            newState = await ActiveAsync()
                                 .ConfigureAwait(false);
-                            newState = LinkChannelState.Stopping;
                             break;
                         case LinkChannelState.Stopping:
                             await AsyncHelper.RunAsync(Stop)
@@ -283,7 +283,7 @@ namespace RabbitLink.Connection
             }
         }
 
-        private async Task ActiveAsync()
+        private async ValueTask<LinkChannelState> ActiveAsync()
         {
             using var activeCts = CancellationTokenSource
                 .CreateLinkedTokenSource(_disposeCancellation, _modelActiveCts!.Token);
@@ -292,6 +292,10 @@ namespace RabbitLink.Connection
                 await _handler!.OnActive(_model!, activeCts.Token)
                     .ConfigureAwait(false);
             }
+            catch (AlreadyClosedException)
+            {
+                return LinkChannelState.Stopping;
+            }
             catch (Exception ex)
             {
                 _logger.Warning($"Processing handler exception: {ex}");
@@ -299,6 +303,7 @@ namespace RabbitLink.Connection
 
             await activeCts.Token.WaitCancellation()
                 .ConfigureAwait(false);
+            return LinkChannelState.Stopping;
         }
 
         #endregion
