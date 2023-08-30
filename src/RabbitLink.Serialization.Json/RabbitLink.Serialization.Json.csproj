@@ -9,7 +9,7 @@
         <PackageReadmeFile>README.md</PackageReadmeFile>
 
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
-        <TargetFrameworks>netstandard2.0</TargetFrameworks>
+        <TargetFramework>netstandard2.0</TargetFramework>
         <LibraryPrefix>json-v</LibraryPrefix>
 
         <CommitTagVersion Condition="$([System.Text.RegularExpressions.Regex]::Match($(CI_COMMIT_TAG), `^$(LibraryPrefix)([0-9]+)(\.([0-9]+)){1,2}.*$`).Success)">$([System.Text.RegularExpressions.Regex]::Replace($(CI_COMMIT_TAG), $(LibraryPrefix), ``))</CommitTagVersion>
@@ -17,7 +17,7 @@
         <Version Condition="'$(CommitTagVersion)' == ''">0.0.1</Version>
     </PropertyGroup>
     <ItemGroup>
-        <None Include="../../README.md" Pack="true" PackagePath="\" />
+        <None Include="../../README.md" Pack="true" PackagePath="\"/>
     </ItemGroup>
     <ItemGroup>
         <PackageReference Include="Newtonsoft.Json" Version="13.0.2" />

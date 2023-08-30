@@ -1,6 +1,10 @@
+#region Usings
+
 using System.IO.Compression;
 using RabbitLink.Builders;
 using RabbitLink.Interceptors;
+
+#endregion
 
 namespace RabbitLink.Extensions;
 

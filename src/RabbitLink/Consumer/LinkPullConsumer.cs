@@ -55,6 +55,7 @@ namespace RabbitLink.Consumer
                 .ErrorStrategy(new LinkConsumerDefaultErrorStrategy())
                 .Handler(OnMessageReceived)
                 .OnStateChange(OnStateChanged);
+
             if (deliveryInterceptors?.Count > 0)
             {
                 builder = deliveryInterceptors.Aggregate(

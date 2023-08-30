@@ -1,3 +1,5 @@
+#region Usings
+
 using System;
 using System.IO;
 using System.IO.Compression;
@@ -9,6 +11,8 @@ using CommunityToolkit.HighPerformance;
 using RabbitLink.Consumer;
 using RabbitLink.Messaging;
 using RabbitLink.Messaging.Internals;
+
+#endregion
 
 namespace RabbitLink.Interceptors;
 

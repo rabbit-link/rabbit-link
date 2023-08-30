@@ -148,7 +148,7 @@ namespace RabbitLink.Producer
                         break;
                     case LinkProducerState.Stopping:
                         await AsyncHelper.RunAsync(Stop)
-                                         .ConfigureAwait(false);
+                            .ConfigureAwait(false);
 
                         if (cancellation.IsCancellationRequested)
                         {
@@ -182,13 +182,13 @@ namespace RabbitLink.Producer
 
         public async Task OnConnecting(CancellationToken cancellation)
         {
-            if (cancellation.IsCancellationRequested)
+            if(cancellation.IsCancellationRequested)
                 return;
 
             try
             {
                 await _messageQueue.YieldAsync(cancellation)
-                                   .ConfigureAwait(false);
+                    .ConfigureAwait(false);
             }
             catch (TaskCanceledException)
             {
@@ -250,12 +250,12 @@ namespace RabbitLink.Producer
         public Task WaitReadyAsync(CancellationToken? cancellation = null)
         {
             return _readyCompletion.Task
-                                   .ContinueWith(
-                                       t => t.Result,
-                                       cancellation ?? CancellationToken.None,
-                                       TaskContinuationOptions.RunContinuationsAsynchronously,
-                                       TaskScheduler.Current
-                                   );
+                .ContinueWith(
+                   t => t.Result,
+                   cancellation ?? CancellationToken.None,
+                   TaskContinuationOptions.RunContinuationsAsynchronously,
+                   TaskScheduler.Current
+                );
         }
 
         public Task PublishAsync<TBody>(ILinkPublishMessage<TBody> message, CancellationToken? cancellation = null)
@@ -341,6 +341,7 @@ namespace RabbitLink.Producer
                 msgProperties,
                 publishProperties.Clone()
             );
+
             var msg = new LinkProducerMessage(body, msgProperties, publishProperties, cancellation.Value);
 
             try
@@ -387,7 +388,7 @@ namespace RabbitLink.Producer
 
             _readyCompletion.TrySetResult(null);
             await AsyncHelper.RunAsync(() => ProcessQueue(model, cancellation))
-                             .ConfigureAwait(false);
+                .ConfigureAwait(false);
         }
 
         private void ProcessQueue(IModel model, CancellationToken cancellation)
@@ -457,7 +458,7 @@ namespace RabbitLink.Producer
                 {
                     _logger.Debug($"Retrying in {_configuration.RecoveryInterval.TotalSeconds:0.###}s");
                     await Task.Delay(_configuration.RecoveryInterval, cancellation)
-                              .ConfigureAwait(false);
+                        .ConfigureAwait(false);
                 }
                 catch
                 {
@@ -470,8 +471,8 @@ namespace RabbitLink.Producer
             try
             {
                 _exchange = await _topologyRunner
-                                  .RunAsync(model, cancellation)
-                                  .ConfigureAwait(false);
+                    .RunAsync(model, cancellation)
+                    .ConfigureAwait(false);
             }
             catch (Exception ex)
             {
@@ -480,7 +481,7 @@ namespace RabbitLink.Producer
                 try
                 {
                     await _configuration.TopologyHandler.ConfigurationError(ex)
-                                        .ConfigureAwait(false);
+                        .ConfigureAwait(false);
                 }
                 catch (Exception handlerException)
                 {

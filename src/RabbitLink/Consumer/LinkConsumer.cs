@@ -92,12 +92,12 @@ namespace RabbitLink.Consumer
         public Task WaitReadyAsync(CancellationToken? cancellation = null)
         {
             return _readyCompletion.Task
-                                   .ContinueWith(
-                                       t => t.Result,
-                                       cancellation ?? CancellationToken.None,
-                                       TaskContinuationOptions.RunContinuationsAsynchronously,
-                                       TaskScheduler.Current
-                                   );
+                .ContinueWith(
+                   t => t.Result,
+                   cancellation ?? CancellationToken.None,
+                   TaskContinuationOptions.RunContinuationsAsynchronously,
+                   TaskScheduler.Current
+                );
         }
 
         public event EventHandler Disposed;
@@ -193,7 +193,7 @@ namespace RabbitLink.Consumer
                         break;
                     case LinkConsumerState.Stopping:
                         await AsyncHelper.RunAsync(() => Stop(model))
-                                         .ConfigureAwait(false);
+                            .ConfigureAwait(false);
 
                         if (cancellation.IsCancellationRequested)
                         {
@@ -218,7 +218,7 @@ namespace RabbitLink.Consumer
                 {
                     _logger.Debug($"Retrying in {_configuration.RecoveryInterval.TotalSeconds:0.###}s");
                     await Task.Delay(_configuration.RecoveryInterval, cancellation)
-                              .ConfigureAwait(false);
+                        .ConfigureAwait(false);
                 }
                 catch
                 {
@@ -231,8 +231,8 @@ namespace RabbitLink.Consumer
             try
             {
                 _queue = await _topologyRunner
-                               .RunAsync(model, cancellation)
-                               .ConfigureAwait(false);
+                   .RunAsync(model, cancellation)
+                   .ConfigureAwait(false);
             }
             catch (AlreadyClosedException ex)
             {
@@ -246,7 +246,7 @@ namespace RabbitLink.Consumer
                 try
                 {
                     await _configuration.TopologyHandler.ConfigurationError(ex)
-                                        .ConfigureAwait(false);
+                        .ConfigureAwait(false);
                 }
                 catch (Exception handlerException)
                 {
@@ -266,7 +266,7 @@ namespace RabbitLink.Consumer
             try
             {
                 await AsyncHelper.RunAsync(() => InitializeConsumer(model, cancellation))
-                                 .ConfigureAwait(false);
+                    .ConfigureAwait(false);
             }
             catch (OperationCanceledException)
             {
@@ -287,7 +287,7 @@ namespace RabbitLink.Consumer
                 _readyCompletion.TrySetResult(null);
 
                 await AsyncHelper.RunAsync(() => ProcessActionQueue(model, token))
-                                 .ConfigureAwait(false);
+                    .ConfigureAwait(false);
             }
             catch
             {
@@ -492,7 +492,7 @@ namespace RabbitLink.Consumer
                 }
 
                 await _actionQueue.PutAsync(action)
-                                  .ConfigureAwait(false);
+                    .ConfigureAwait(false);
             }
             catch
             {
@@ -537,7 +537,7 @@ namespace RabbitLink.Consumer
             try
             {
                 await _actionQueue.YieldAsync(cancellation)
-                                  .ConfigureAwait(false);
+                    .ConfigureAwait(false);
             }
             catch (TaskCanceledException)
             {
