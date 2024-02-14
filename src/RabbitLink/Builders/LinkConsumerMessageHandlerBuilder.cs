@@ -14,7 +14,7 @@ namespace RabbitLink.Builders
 {
     internal class LinkConsumerMessageHandlerBuilder
     {
-        public delegate LinkConsumerMessageHandlerDelegate<byte[]> HandlerFactory(
+        public delegate LinkConsumerMessageHandlerDelegate<ReadOnlyMemory<byte>> HandlerFactory(
             ILinkSerializer serializer,
             LinkTypeNameMapping mapping
         );
@@ -35,7 +35,7 @@ namespace RabbitLink.Builders
         public HandlerFactory Factory { get; }
 
         public static LinkConsumerMessageHandlerBuilder Create(
-            LinkConsumerMessageHandlerDelegate<byte[]> onMessage
+            LinkConsumerMessageHandlerDelegate<ReadOnlyMemory<byte>> onMessage
         )
             => new(
                 (_, _) => onMessage,
@@ -47,8 +47,8 @@ namespace RabbitLink.Builders
             LinkConsumerMessageHandlerDelegate<TBody> onMessage
         ) where TBody : class
         {
-            if (typeof(TBody) == typeof(byte[]) || typeof(TBody) == typeof(object))
-                throw new ArgumentException("Type of TBody must be set and not equal byte[]");
+            if (typeof(TBody) == typeof(ReadOnlyMemory<byte>) || typeof(TBody) == typeof(object))
+                throw new ArgumentException("Type of TBody must be set and not equal ReadOnlyMemory<byte>");
 
             return new LinkConsumerMessageHandlerBuilder(
                 (serializer, _) => msg =>

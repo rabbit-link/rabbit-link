@@ -1,7 +1,9 @@
 #region Usings
 
 using System;
+using System.Collections.Generic;
 using System.Threading;
+using RabbitLink.Interceptors;
 using RabbitLink.Messaging;
 using RabbitLink.Producer;
 using RabbitLink.Serialization;
@@ -27,7 +29,8 @@ namespace RabbitLink.Builders
             ILinkProducerTopologyHandler topologyHandler,
             LinkStateHandler<LinkProducerState> stateHandler,
             ILinkSerializer serializer,
-            LinkTypeNameMapping typeNameMapping
+            LinkTypeNameMapping typeNameMapping,
+            IReadOnlyList<IPublishInterceptor> publishInterceptors
         )
         {
             if (publishTimeout < TimeSpan.Zero && publishTimeout != Timeout.InfiniteTimeSpan)
@@ -48,6 +51,7 @@ namespace RabbitLink.Builders
             StateHandler = stateHandler ?? throw new ArgumentNullException(nameof(stateHandler));
             Serializer = serializer;
             TypeNameMapping = typeNameMapping ?? throw new ArgumentNullException(nameof(typeNameMapping));
+            PublishInterceptors = publishInterceptors ?? Array.Empty<IPublishInterceptor>();
         }
 
         public TimeSpan PublishTimeout { get; }
@@ -61,5 +65,6 @@ namespace RabbitLink.Builders
         public LinkStateHandler<LinkProducerState> StateHandler { get; }
         public ILinkSerializer Serializer { get; }
         public LinkTypeNameMapping TypeNameMapping { get; }
+        public IReadOnlyList<IPublishInterceptor> PublishInterceptors { get; }
     }
 }

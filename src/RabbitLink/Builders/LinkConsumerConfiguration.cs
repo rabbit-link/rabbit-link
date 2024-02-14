@@ -1,7 +1,9 @@
 #region Usings
 
 using System;
+using System.Collections.Generic;
 using RabbitLink.Consumer;
+using RabbitLink.Interceptors;
 using RabbitLink.Serialization;
 using RabbitLink.Topology;
 
@@ -21,9 +23,10 @@ namespace RabbitLink.Builders
             ILinkConsumerTopologyHandler topologyHandler,
             LinkStateHandler<LinkConsumerState> stateHandler,
             ILinkConsumerErrorStrategy errorStrategy,
-            LinkConsumerMessageHandlerDelegate<byte[]> messageHandler,
+            LinkConsumerMessageHandlerDelegate<ReadOnlyMemory<byte>> messageHandler,
             ILinkSerializer serializer,
-            ConsumerTagProviderDelegate consumerTagProvider
+            ConsumerTagProviderDelegate consumerTagProvider,
+            IReadOnlyList<IDeliveryInterceptor> deliveryInterceptors
         )
         {
             if (recoveryInterval < TimeSpan.Zero)
@@ -44,6 +47,7 @@ namespace RabbitLink.Builders
             StateHandler = stateHandler ?? throw new ArgumentNullException(nameof(stateHandler));
             Serializer = serializer;
             ConsumerTagProvider = consumerTagProvider;
+            DeliveryInterceptors = deliveryInterceptors ?? Array.Empty<IDeliveryInterceptor>();
         }
 
         public TimeSpan RecoveryInterval { get; }
@@ -51,12 +55,13 @@ namespace RabbitLink.Builders
         public bool AutoAck { get; }
         public bool CancelOnHaFailover { get; }
         public bool Exclusive { get; }
-        public LinkConsumerMessageHandlerDelegate<byte[]> MessageHandler { get; }
+        public LinkConsumerMessageHandlerDelegate<ReadOnlyMemory<byte>> MessageHandler { get; }
         public ILinkConsumerErrorStrategy ErrorStrategy { get; }
         public int Priority { get; }
         public ILinkConsumerTopologyHandler TopologyHandler { get; }
         public LinkStateHandler<LinkConsumerState> StateHandler { get; }
         public ILinkSerializer Serializer { get; }
         public ConsumerTagProviderDelegate ConsumerTagProvider { get; }
+        public IReadOnlyList<IDeliveryInterceptor> DeliveryInterceptors { get; }
     }
 }

@@ -2,12 +2,14 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO.Compression;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 using RabbitLink;
 using RabbitLink.Consumer;
+using RabbitLink.Extensions;
 using RabbitLink.Messaging;
 using RabbitLink.Serialization.Json;
 using RabbitLink.Topology;
@@ -67,6 +69,7 @@ namespace Playground
                 .Serializer(new LinkJsonSerializer())
                 .TypeNameMap(map => map.Set<Msg>("msg").Set<MsgInt>("msg_int").Set<MsgGuid>("msg_guid"))
                 .ConsumerTag(id => $"PlaygroundApp:{Environment.MachineName}:{id}")
+                // .WithGzip()
                 .Handler(msg =>
                 {
                     Console.WriteLine(
@@ -147,6 +150,7 @@ namespace Playground
                 })
                 .PublishTimeout(TimeSpan.FromSeconds(10))
                 .Serializer(new LinkJsonSerializer())
+                // .WithGzip(CompressionLevel.SmallestSize)
                 .TypeNameMap(map => map.Set<Msg>("msg").Set<MsgInt>("msg_int").Set<MsgGuid>("msg_guid"))
                 .Build()
             )

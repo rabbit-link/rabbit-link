@@ -1,4 +1,4 @@
-﻿#region Usings
+#region Usings
 
 using System;
 
@@ -12,7 +12,7 @@ namespace RabbitLink.Messaging
     public class LinkGuidMessageIdGenerator : ILinkMessageIdGenerator
     {
         /// <inheritdoc />
-        public void SetMessageId(byte[] body, LinkMessageProperties properties, LinkPublishProperties publishProperties)
+        public void SetMessageId(ReadOnlyMemory<byte> body, LinkMessageProperties properties, LinkPublishProperties publishProperties)
         {
             properties.MessageId = Guid.NewGuid().ToString("D");
         }

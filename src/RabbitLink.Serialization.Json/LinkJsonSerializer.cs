@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Text;
 using Newtonsoft.Json;
 using RabbitLink.Messaging;
@@ -51,17 +51,23 @@ namespace RabbitLink.Serialization.Json
         }
 
         /// <inheritdoc />
-        public TBody Deserialize<TBody>(byte[] body, LinkMessageProperties properties) where TBody : class
+        public TBody Deserialize<TBody>(ReadOnlyMemory<byte> body, LinkMessageProperties properties) where TBody : class
         {
             if (properties == null)
                 throw new ArgumentNullException(nameof(properties));
 
-            if (body == null)
+            if (body.Length <= 0)
             {
                 return null;
             }
 
-            var stringBody = Encoding.UTF8.GetString(body);
+            ReadOnlySpan<byte> readOnlySpan = body.Span;
+#if NETSTANDARD2_1
+            var stringBody = System.Text.Encoding.UTF8.GetString(readOnlySpan);
+
+#else
+            var stringBody = System.Text.Encoding.UTF8.GetString(readOnlySpan.ToArray());
+#endif
             return JsonConvert.DeserializeObject<TBody>(stringBody, _settings);
         }
     }

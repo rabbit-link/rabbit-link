@@ -1,10 +1,13 @@
 #region Usings
 
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using RabbitLink.Builders;
 using RabbitLink.Exceptions;
+using RabbitLink.Interceptors;
 using RabbitLink.Messaging;
 using RabbitLink.Messaging.Internals;
 using RabbitLink.Serialization;
@@ -32,7 +35,9 @@ namespace RabbitLink.Consumer
             ILinkConsumerBuilder consumerBuilder,
             TimeSpan getMessageTimeout,
             LinkTypeNameMapping typeNameMapping,
-            ILinkSerializer serializer
+            ILinkSerializer serializer,
+            ConsumerTagProviderDelegate consumerTagProvider,
+            IReadOnlyList<IDeliveryInterceptor> deliveryInterceptors
         )
         {
             if (consumerBuilder == null)
@@ -46,10 +51,24 @@ namespace RabbitLink.Consumer
             _typeNameMapping = typeNameMapping ?? throw new ArgumentNullException(nameof(typeNameMapping));
             _serializer = serializer;
 
-            _consumer = consumerBuilder
+            var builder = consumerBuilder
                 .ErrorStrategy(new LinkConsumerDefaultErrorStrategy())
                 .Handler(OnMessageReceived)
-                .OnStateChange(OnStateChanged)
+                .OnStateChange(OnStateChanged);
+            if (deliveryInterceptors?.Count > 0)
+            {
+                builder = deliveryInterceptors.Aggregate(
+                    builder,
+                    (current, interceptDelegate) => current.WithInterception(interceptDelegate)
+                );
+            }
+
+            if (consumerTagProvider != null)
+            {
+                builder = builder.ConsumerTag(consumerTagProvider);
+            }
+
+            _consumer = builder
                 .Build();
         }
 

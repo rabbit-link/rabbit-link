@@ -1,4 +1,4 @@
-﻿#region Usings
+#region Usings
 
 using System;
 using System.Threading;
@@ -11,7 +11,7 @@ namespace RabbitLink.Producer
 {
     internal class LinkProducerMessage : ChannelItem
     {
-        public LinkProducerMessage(byte[] body, LinkMessageProperties properties,
+        public LinkProducerMessage(ReadOnlyMemory<byte> body, LinkMessageProperties properties,
             LinkPublishProperties publishProperties, CancellationToken cancellation) : base(cancellation)
         {
             Body = body;

@@ -3,7 +3,7 @@ namespace RabbitLink.Messaging
     /// <summary>
     /// Represents RabbitMQ message
     /// </summary>
-    public interface ILinkMessage<out TBody> where TBody : class
+    public interface ILinkMessage<out TBody>
     {
         /// <summary>
         ///     Message properties
